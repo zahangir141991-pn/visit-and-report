@@ -308,6 +308,19 @@
 @media(max-width:900px){.chart-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
 @media(max-width:600px){.chart-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.chart-kpi:last-child{grid-column:1/-1}.chart-info-strip{font-size:.68rem}.chart-kpi b{font-size:1.1rem}}
         @media(max-width:600px){.chart-filter-grid{grid-template-columns:1fr 1fr}.chart-filter-grid .chart-reset{grid-column:1/-1}.chart-wrap{height:240px;}}
+        .visit-check-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:16px}
+        .visit-check{border:1px solid var(--border);border-radius:12px;padding:12px;background:#fff}
+        .visit-check label{margin:0 0 7px;font-size:.82rem}
+        .visit-check select{padding:9px;font-weight:700}
+        .status-ok{color:#047857}.status-not-ok{color:#b91c1c}.status-pending{color:#92400e}
+        .notice-badge{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:22px;padding:0 7px;border-radius:999px;background:#fee2e2;color:#b91c1c;font-size:.72rem;font-weight:800}
+        .notice-card{border-left:4px solid #ef4444}
+        .notice-item{padding:12px;border:1px solid var(--border);border-radius:12px;background:#fff;margin-bottom:10px}
+        .notice-item.unread{background:#fff7ed;border-color:#fdba74}
+        .review-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}
+        .review-grid select{font-size:.78rem;padding:7px}
+        .review-update{font-size:.72rem;color:#64748b;margin-top:6px}
+        @media(max-width:700px){.visit-check-grid{grid-template-columns:1fr}.review-grid{grid-template-columns:1fr}}
     </style>
 </head>
 <body>
@@ -450,13 +463,22 @@
                     </div>
 
                     <div class="form-group">
+                        <label>Visit Materials Check</label>
+                        <div class="visit-check-grid">
+                            <div class="visit-check"><label>Festoon</label><select id="festoon-status" required><option value="">Select</option><option value="OK">OK</option><option value="Not OK">Not OK</option></select></div>
+                            <div class="visit-check"><label>Banner</label><select id="banner-status" required><option value="">Select</option><option value="OK">OK</option><option value="Not OK">Not OK</option></select></div>
+                            <div class="visit-check"><label>File</label><select id="file-status" required><option value="">Select</option><option value="OK">OK</option><option value="Not OK">Not OK</option></select></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
                         <label>Visit Uddokta Selfie</label>
                         <div class="camera-box">
                             <video id="camera-video" autoplay playsinline></video>
                             <canvas id="camera-canvas" class="hidden"></canvas>
                             <img id="photo-preview" alt="Preview">
                             <div style="margin-top: 10px;">
-                                <button type="button" class="btn btn-sm" id="btn-capture" onclick="captureLivePhoto()">🤳 Take Selfie</button>
+                                <button type="button" class="btn btn-sm" id="btn-capture" onclick="captureLivePhoto()">📷 Start Camera</button>
                                 <button type="button" class="btn btn-sm btn-sec hidden" id="btn-recapture" onclick="resetLivePhoto()">🔄 Retake Selfie</button>
                             </div>
                         </div>
@@ -494,7 +516,7 @@
                         <div><label>Search Uddokta</label><input type="text" id="filter-search" placeholder="Name / number" oninput="renderReports()"></div>
                     </div>
                 </div>
-                <div class="table-wrap"><div class="table-responsive"><table class="reports-table"><thead><tr><th>Date</th><th>Visit Time</th><th>DSO</th><th>Uddokta</th><th>Number</th><th>Photo</th><th>Feedback</th><th>Location</th><th>Details</th></tr></thead><tbody id="reports-table-body"></tbody></table></div></div>
+                <div class="table-wrap"><div class="table-responsive"><table class="reports-table"><thead><tr><th>Date</th><th>Visit Time</th><th>DSO</th><th>Uddokta</th><th>Number</th><th>Photo</th><th>Feedback</th><th>Festoon</th><th>Banner</th><th>File</th><th>Review</th><th>Location</th><th>Details</th></tr></thead><tbody id="reports-table-body"></tbody></table></div></div>
             </div>
 
             <!-- Admin Panel -->
@@ -563,6 +585,12 @@
                 </div>
             </div>
 
+            <!-- Notices Page -->
+            <div id="view-notices" class="page">
+                <div class="section-head"><div><h2>Notice</h2><small style="color:#64748b">Not OK visit reports requiring DSS update</small></div><button class="btn btn-sm btn-sec" onclick="renderNotices()">↻ Refresh</button></div>
+                <div id="notice-list"></div>
+            </div>
+
             <!-- Visit Details Modal -->
             <div id="visit-details-modal" class="details-modal hidden" onclick="if(event.target===this) closeVisitDetails()">
                 <div class="details-card">
@@ -593,6 +621,7 @@
         <div class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')"><span>🏠<br>Dashboard</span></div>
         <div class="nav-item" id="nav-form" onclick="switchTab('form')"><span>➕<br>New Visit</span></div>
         <div class="nav-item" id="nav-daily" onclick="switchTab('daily')"><span>📋<br>Visit Report</span></div>
+        <div class="nav-item hidden" id="nav-notices" onclick="switchTab('notices')"><span>🔔<br>Notice</span></div>
         <div class="nav-item hidden" id="nav-admin" onclick="switchTab('admin')"><span>⚙️<br>Admin</span></div>
     </div>
 
@@ -667,6 +696,8 @@
         let reportsData = [];
         let currentUser = null;
         let capturedPhotoData = null;
+        window.visitNotices = {};
+
 
         // ----------------------------------------------------
         // ROLE / DATA ACCESS CONTROL
@@ -781,6 +812,9 @@
                 } else {
                     document.getElementById('nav-admin').classList.add('hidden');
                 }
+                const noticeNav = document.getElementById('nav-notices');
+                if (noticeNav) noticeNav.classList.toggle('hidden', !['DSS','DSO','DM','Admin'].includes(roleInfo.role));
+                renderNotices();
 
                 setupReportTypeFilter();
                 initApp();
@@ -1106,6 +1140,7 @@
             updateVisitSubmitState();
             listenFirebaseData();
             listenUddoktaMaster();
+            listenNotices();
             populateDsoFilter();
             document.getElementById('today-date-card').innerText = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
             const searchInput = document.getElementById('search-input');
@@ -1225,11 +1260,20 @@
 
         async function initCamera() {
             const video = document.getElementById('camera-video');
+            if (!video || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { showAlert('Camera is not supported in this browser.', 'error'); return false; }
+            stopCamera();
             try {
-                const videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: 'user' } }, audio: false });
-                video.srcObject = videoStream;
+                let stream;
+                try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }); }
+                catch(e) { stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }); }
+                video.srcObject = stream;
+                video.style.display = 'block';
+                await video.play().catch(()=>{});
+                document.getElementById('btn-capture').innerText = '🤳 Capture Selfie';
+                return true;
             } catch (err) {
-                showAlert('Live camera access permission is required!', 'error');
+                showAlert('Camera permission is required. Please allow camera access and try again.', 'error');
+                return false;
             }
         }
 
@@ -1248,23 +1292,28 @@
             if (btn) btn.disabled = !ready;
         }
 
-        function captureLivePhoto() {
+        async function captureLivePhoto() {
             const video = document.getElementById('camera-video');
             const canvas = document.getElementById('camera-canvas');
             const preview = document.getElementById('photo-preview');
-
-            canvas.width = video.videoWidth || 640;
-            canvas.height = video.videoHeight || 480;
-            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            capturedPhotoData = canvas.toDataURL('image/jpeg', 0.8);
+            if (!video.srcObject) {
+                const started = await initCamera();
+                if (started) showAlert('Camera ready. Press Capture Selfie again.', 'success');
+                return;
+            }
+            if (!video.videoWidth || !video.videoHeight) {
+                await video.play().catch(()=>{});
+                await new Promise(r=>setTimeout(r,250));
+            }
+            canvas.width = video.videoWidth || 1280;
+            canvas.height = video.videoHeight || 720;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            capturedPhotoData = canvas.toDataURL('image/jpeg', 0.86);
             preview.src = capturedPhotoData;
             preview.style.display = 'block';
             video.style.display = 'none';
-
-            // Camera MUST turn off immediately after taking the selfie.
             stopCamera();
-
             document.getElementById('btn-capture').classList.add('hidden');
             document.getElementById('btn-recapture').classList.remove('hidden');
             updateVisitSubmitState();
@@ -1276,6 +1325,7 @@
             document.getElementById('photo-preview').style.display = 'none';
             document.getElementById('camera-video').style.display = 'block';
             document.getElementById('btn-capture').classList.remove('hidden');
+            document.getElementById('btn-capture').innerText = '📷 Start Camera';
             document.getElementById('btn-recapture').classList.add('hidden');
 
             // Camera stays OFF after reset; user must press Take Selfie again.
@@ -1368,6 +1418,10 @@
                 showAlert('Uddokta selfie is required!', 'error');
                 return;
             }
+            if (!document.getElementById('festoon-status').value || !document.getElementById('banner-status').value || !document.getElementById('file-status').value) {
+                showAlert('Festoon, Banner and File status select করুন.', 'error');
+                return;
+            }
 
             const btnSubmit = document.getElementById('btn-submit');
             btnSubmit.disabled = true;
@@ -1386,6 +1440,12 @@
                 uddoktaNumber: document.getElementById('uddokta-number').value,
                 dssName: document.getElementById('dss-name').value,
                 feedback: document.getElementById('feedback').value,
+                festoonStatus: document.getElementById('festoon-status').value,
+                bannerStatus: document.getElementById('banner-status').value,
+                fileStatus: document.getElementById('file-status').value,
+                reviewStatus: 'Pending',
+                reviewUpdatedAt: '',
+                reviewUpdatedBy: '',
                 photo: capturedPhotoData,
                 locationName: document.getElementById('gps-location-name').value,
                 gps: document.getElementById('gps-location').value,
@@ -1394,6 +1454,10 @@
 
             try {
                 await db.ref('visit_reports/' + reportId).set(newReport);
+                const anyNotOk = [newReport.festoonStatus,newReport.bannerStatus,newReport.fileStatus].includes('Not OK');
+                if (String(newReport.user||'').toLowerCase()==='zahangir' && anyNotOk) {
+                    await createReviewNotice(reportId, newReport);
+                }
                 showAlert('Visit Report successfully saved to Firebase!', 'success');
                 this.reset();
                 resetLivePhoto();
@@ -1435,7 +1499,7 @@
         function switchTab(tab) {
             if (tab === 'admin' && currentUser !== 'admin') return;
             // Single-page navigation: ONLY the clicked page is visible.
-            const pages = ['dashboard','form','daily','admin','change-pass'];
+            const pages = ['dashboard','form','daily','notices','admin','change-pass'];
             pages.forEach(name => {
                 const el = document.getElementById('view-' + name);
                 if (!el) return;
@@ -1444,7 +1508,7 @@
                 el.setAttribute('aria-hidden', 'true');
             });
 
-            ['dashboard','form','daily','admin'].forEach(name => {
+            ['dashboard','form','daily','notices','admin'].forEach(name => {
                 const nav = document.getElementById('nav-' + name);
                 if (nav) nav.classList.remove('active');
             });
@@ -1470,6 +1534,7 @@
                 populateDsoFilter();
                 renderReports();
             }
+            if (tab === 'notices') renderNotices();
             if (tab === 'dashboard') renderDashboardVisitChart();
         }
 
@@ -1505,13 +1570,85 @@
             });
             const reportCount = document.getElementById('report-total-visit-count');
             if(reportCount) reportCount.innerText = rows.length;
-            if(!rows.length){ tableBody.innerHTML='<tr><td colspan="9" class="empty-state">No visit data found</td></tr>'; return; }
+            if(!rows.length){ tableBody.innerHTML='<tr><td colspan="14" class="empty-state">No visit data found</td></tr>'; return; }
             rows.forEach(r=>{
                 const tr=document.createElement('tr');
                 const idx=reportsData.indexOf(r);
-                tr.innerHTML=`<td>${r.date||''}</td><td>${r.visitTime||(r.timestamp?new Date(r.timestamp).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}):'')}</td><td>${r.dsoWallet||r.dsoNumber||''}</td><td>${r.uddoktaName||''}</td><td>${r.uddoktaNumber||''}</td><td>${r.photo?`<img src="${r.photo}" class="table-img" alt="Visit Uddokta Photo" onclick="showVisitDetails(${idx})">`:''}</td><td>${r.feedback||''}</td><td><small>${r.locationName||r.gps||''}</small></td><td><button class="detail-btn" onclick="showVisitDetails(${idx})">View</button></td>`;
+                const isDss = getRoleInfo().role === 'DSS';
+                const reviewHtml = isDss && (r.festoonStatus==='Not OK'||r.bannerStatus==='Not OK'||r.fileStatus==='Not OK') ? `<div class="review-grid"><select id="rf-${idx}" onchange="updateVisitCheck('${r.id}',this.value,'festoonStatus')"><option value="OK" ${r.festoonStatus==='OK'?'selected':''}>Festoon OK</option><option value="Not OK" ${r.festoonStatus==='Not OK'?'selected':''}>Festoon Not OK</option></select><select id="rb-${idx}" onchange="updateVisitCheck('${r.id}',this.value,'bannerStatus')"><option value="OK" ${r.bannerStatus==='OK'?'selected':''}>Banner OK</option><option value="Not OK" ${r.bannerStatus==='Not OK'?'selected':''}>Banner Not OK</option></select><select id="rfile-${idx}" onchange="updateVisitCheck('${r.id}',this.value,'fileStatus')"><option value="OK" ${r.fileStatus==='OK'?'selected':''}>File OK</option><option value="Not OK" ${r.fileStatus==='Not OK'?'selected':''}>File Not OK</option></select></div>` : `<span>${r.reviewStatus||'Pending'}</span>`;
+                const updatedText = r.reviewUpdatedAt ? `<div class="review-update">Updated: ${r.reviewUpdatedAt}${r.reviewUpdatedBy?' · '+r.reviewUpdatedBy:''}</div>` : '';
+                tr.innerHTML=`<td>${r.date||''}</td><td>${r.visitTime||(r.timestamp?new Date(r.timestamp).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}):'')}</td><td>${r.dsoWallet||r.dsoNumber||''}</td><td>${r.uddoktaName||''}</td><td>${r.uddoktaNumber||''}</td><td>${r.photo?`<img src="${r.photo}" class="table-img" alt="Visit Uddokta Photo" onclick="showVisitDetails(${idx})">`:''}</td><td>${r.feedback||''}</td><td>${r.festoonStatus||'Pending'}</td><td>${r.bannerStatus||'Pending'}</td><td>${r.fileStatus||'Pending'}</td><td>${reviewHtml}${updatedText}</td><td><small>${r.locationName||r.gps||''}</small></td><td><button class="detail-btn" onclick="showVisitDetails(${idx})">View</button></td>`;
                 tableBody.appendChild(tr);
             });
+        }
+
+        async function createReviewNotice(reportId, report) {
+            const notice = {
+                id: String(reportId), reportId: reportId, type: 'DM_VISIT_NOT_OK',
+                title: 'DM Visit Report: Not OK',
+                message: `DM visit for ${report.uddoktaName||''} (${report.uddoktaNumber||''}) has Not OK item(s). DSS must check and update it.`,
+                dssName: report.dssName || '', dsoWallet: report.dsoWallet || report.dsoNumber || '',
+                date: report.date || '', createdAt: firebase.database.ServerValue.TIMESTAMP,
+                resolved: false, resolvedAt: '', resolvedBy: ''
+            };
+            await db.ref('visit_notices/' + reportId).set(notice);
+        }
+
+        function canHandleNotice(n) {
+            const role = getRoleInfo();
+            if (role.role === 'Admin' || role.role === 'DM') return true;
+            if (role.role === 'DSS') return String(n.dssName||'').trim().toUpperCase() === String(role.dssName||'').trim().toUpperCase();
+            if (role.role === 'DSO') return String(n.dsoWallet||'').replace(/^0+/,'') === String(role.dsoWallet||'').replace(/^0+/,'');
+            return false;
+        }
+
+        function listenNotices() {
+            db.ref('visit_notices').on('value', snap => { window.visitNotices = snap.val() || {}; renderNotices(); });
+        }
+
+        function renderNotices() {
+            const box = document.getElementById('notice-list'); if (!box) return;
+            const all = Object.values(window.visitNotices || {}).filter(canHandleNotice).sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));
+            if (!all.length) { box.innerHTML='<div class="card empty-state">No notice found.</div>'; return; }
+            const role = getRoleInfo().role;
+            box.innerHTML = all.map(n => {
+                const report = reportsData.find(r => String(r.id)===String(n.reportId));
+                const canResolve = role==='DSS' && !n.resolved && report;
+                const updateInfo = n.resolved ? ' · Updated: ' + (n.resolvedAt||'—') + ' · By: ' + (n.resolvedBy||'—') : '';
+                const action = canResolve ? '<button class="btn btn-sm" style="margin-top:9px" onclick="resolveVisitNotice(\''+n.id+'\')">✓ DSS OK & Update</button>' : '<span class="notice-badge" style="margin-top:8px">'+(n.resolved?'Updated':'Action Required')+'</span>';
+                return '<div class="notice-item '+(n.resolved?'':'unread')+'"><b>'+(n.title||'Visit Notice')+'</b><div style="margin-top:5px;color:#475569;font-size:.84rem">'+(n.message||'')+'</div><div class="review-update">Date: '+(n.date||'—')+' · DSO: '+(n.dsoWallet||'—')+updateInfo+'</div>'+action+'</div>';
+            }).join('');
+        }
+
+        async function resolveVisitNotice(noticeId) {
+            const role = getRoleInfo(); if (role.role!=='DSS') return;
+            const n = (window.visitNotices||{})[noticeId]; if (!n) return;
+            const report = reportsData.find(r=>String(r.id)===String(n.reportId)); if (!report) return;
+            const now = new Date().toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true});
+            const updates = { festoonStatus:'OK', bannerStatus:'OK', fileStatus:'OK', reviewStatus:'DSS OK', reviewUpdatedAt:now, reviewUpdatedBy:role.dssName };
+            try {
+                await db.ref('visit_reports/'+n.reportId).update(updates);
+                await db.ref('visit_notices/'+noticeId).update({resolved:true,resolvedAt:now,resolvedBy:role.dssName});
+                showAlert('DSS OK করে Visit Report update করা হয়েছে.', 'success');
+            } catch(e) { showAlert('Update failed: '+e.message,'error'); }
+        }
+
+        async function updateVisitCheck(reportId, value, field) {
+            if (getRoleInfo().role !== 'DSS') return;
+            const r = reportsData.find(x=>String(x.id)===String(reportId)); if (!r) return;
+            const updated = { [field]: value };
+            const next = Object.assign({}, r, updated);
+            if (next.festoonStatus==='OK' && next.bannerStatus==='OK' && next.fileStatus==='OK') {
+                updated.reviewStatus='DSS OK';
+                updated.reviewUpdatedAt=new Date().toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true});
+                updated.reviewUpdatedBy=getRoleInfo().dssName;
+            }
+            await db.ref('visit_reports/'+reportId).update(updated);
+            if (updated.reviewStatus==='DSS OK') {
+                const notices=window.visitNotices||{};
+                const n=Object.values(notices).find(x=>String(x.reportId)===String(reportId));
+                if(n) await db.ref('visit_notices/'+n.id).update({resolved:true,resolvedAt:updated.reviewUpdatedAt,resolvedBy:updated.reviewUpdatedBy});
+            }
         }
 
         function showVisitDetails(index){
@@ -1528,6 +1665,10 @@
                     <div class="detail-box"><b>DSS Name</b><span>${r.dssName||'—'}</span></div>
                     <div class="detail-box"><b>Uddokta Name</b><span>${r.uddoktaName||'—'}</span></div>
                     <div class="detail-box"><b>Uddokta Number</b><span>${r.uddoktaNumber||'—'}</span></div>
+                    <div class="detail-box"><b>Festoon</b><span>${r.festoonStatus||'Pending'}</span></div>
+                    <div class="detail-box"><b>Banner</b><span>${r.bannerStatus||'Pending'}</span></div>
+                    <div class="detail-box"><b>File</b><span>${r.fileStatus||'Pending'}</span></div>
+                    <div class="detail-box"><b>Review Update</b><span>${r.reviewUpdatedAt||'—'}${r.reviewUpdatedBy?' · '+r.reviewUpdatedBy:''}</span></div>
                     <div class="detail-box" style="grid-column:1/-1"><b>Feedback</b><span>${r.feedback||'—'}</span></div>
                     <div class="detail-box" style="grid-column:1/-1"><b>Location</b><span>${r.locationName||r.gps||'—'}</span></div>
                 </div>
