@@ -274,25 +274,20 @@
                 <h2 style="font-size: 1.2rem; margin-bottom: 16px; text-align: center;">Login to Portal</h2>
                 <div id="login-alert" class="alert"></div>
                 <div class="form-group">
-                    <label>Select User / Role</label>
-                    <select id="login-user">
-                        <option value="admin">Admin</option>
-                        <option value="dm-zahangir">DM - Zahangir</option>
-                        <option value="sohag">DSS - Sohag</option>
-                        <option value="alamin">DSS - Alamin</option>
-                        <option value="imran">DSS - Imran</option>
-                        <option value="rubel">DSS - Rubel</option>
-                        <option value="shofiq">DSS - Shofiq</option>
-                        <optgroup label="DSO">
-                            ${Array.from({length:45},(_,i)=>`<option value="13325178${String(i+1).padStart(2,'0')}">DSO - 13325178${String(i+1).padStart(2,'0')}</option>`).join('')}
-                        </optgroup>
-                    </select>
+                    <label>User ID</label>
+                    <input type="text" id="login-user" inputmode="numeric" autocomplete="username" placeholder="Enter User ID (e.g. 801)">
+                    <small style="display:block;margin-top:6px;color:#64748b;line-height:1.45;">DSO User ID: <b>801–845</b> (801 = 01332517801, 802 = 01332517802 … 845 = 01332517845)</small>
                 </div>
                 <div class="form-group">
                     <label>Password</label>
-                    <input type="password" id="login-pass" placeholder="Default Password: 1234">
+                    <input type="password" id="login-pass" autocomplete="current-password" placeholder="Enter password">
                 </div>
                 <button type="button" class="btn" onclick="login()">Login</button>
+                <script>
+                    document.addEventListener('keydown', function(e){
+                        if(e.key === 'Enter' && document.getElementById('view-login') && !document.getElementById('view-login').classList.contains('hidden')) login();
+                    });
+                </script>
             </div>
         </div>
 
@@ -489,6 +484,18 @@
         // DSS: only their assigned DSS records.
         // DSO: only their own DSO wallet + assigned Uddokta.
         // ----------------------------------------------------
+        function normalizeLoginUserId(raw) {
+            let u = String(raw || '').trim().toLowerCase();
+            // DSO login IDs 801–845 map to wallets 01332517801–01332517845.
+            // Internally the app uses the same wallet without the leading 0.
+            if (/^8(?:0[1-9]|[1-3]\d|4[0-5])$/.test(u)) {
+                return '13325178' + u;
+            }
+            // Also accept the full DSO wallet with or without the Bangladesh leading 0.
+            if (/^013325178(?:0[1-9]|[1-3]\d|4[0-5])$/.test(u)) return u.slice(1);
+            return u;
+        }
+
         function getRoleInfo() {
             const u = String(currentUser || '').toLowerCase();
             if (u === 'admin') return { role: 'Admin', all: true };
@@ -537,7 +544,8 @@
         }
 
         function login() {
-            const user = document.getElementById('login-user').value;
+            const rawUser = document.getElementById('login-user').value;
+            const user = normalizeLoginUserId(rawUser);
             const pass = document.getElementById('login-pass').value;
 
             if (userPasswords[user] && userPasswords[user] === pass) {
@@ -548,7 +556,8 @@
                 document.getElementById('app-nav').classList.remove('hidden');
 
                 const roleInfo = getRoleInfo();
-                const displayName = user === 'dm-zahangir' ? 'DM - ZAHANGIR' : (roleInfo.role === 'DSO' ? 'DSO - ' + user : user.toUpperCase());
+                const dsoUserId = roleInfo.role === 'DSO' ? roleInfo.dsoWallet.slice(-3) : '';
+                const displayName = user === 'dm-zahangir' ? 'DM - ZAHANGIR' : (roleInfo.role === 'DSO' ? 'DSO - ' + dsoUserId : user.toUpperCase());
                 document.getElementById('current-user-name').innerText = displayName;
                 document.getElementById('current-user-role').innerText = roleInfo.role;
 
