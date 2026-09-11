@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DM Daily Visit Report Web App</title>
+    <title>DMS-Nagad Manikganj</title>
     
     <!-- Firebase Web SDK (v10.8.0) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -250,6 +250,19 @@
         }
         .alert-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; }
         .alert-success { background: #ecfdf5; color: #047857; border: 1px solid #6ee7b7; }
+
+        .page{display:none}.page.active{display:block}
+        .section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+        .section-head h2{font-size:1.15rem}
+        .quick-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
+        .filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+        .filter-grid .btn{height:44px}
+        .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px;background:#fff}
+        .empty-state{text-align:center;padding:35px;color:var(--text-light)}
+        .nav-scroll{overflow-x:auto;justify-content:flex-start!important}
+        .nav-scroll .nav-item{min-width:92px;flex:0 0 auto}
+        @media(max-width:900px){.quick-grid{grid-template-columns:repeat(2,1fr)}.filter-grid{grid-template-columns:repeat(2,1fr)}}
+        @media(max-width:600px){body{padding-bottom:72px}.container{padding:12px}.cards-grid{grid-template-columns:1fr 1fr}.quick-grid{grid-template-columns:1fr 1fr}.filter-grid{grid-template-columns:1fr}.section-head{align-items:flex-start}.table-responsive{border-radius:8px}table.reports-table{min-width:850px}.nav-item{font-size:.68rem}.nav-scroll .nav-item{min-width:78px}header{padding:14px 12px}header h1{font-size:1.08rem}.user-bar{font-size:.76rem;padding:7px 10px}.user-bar .btn{padding:5px 8px}}
     </style>
 </head>
 <body>
@@ -294,7 +307,27 @@
         <!-- Main App Section -->
         <div id="main-app" class="hidden">
 
-            <div class="cards-grid">
+            <!-- Dashboard Page -->
+            <div id="view-dashboard" class="page active">
+                <div class="section-head">
+                    <div><h2>Dashboard</h2><small style="color:#64748b">DMS-Nagad Manikganj</small></div>
+                </div>
+                <div class="quick-grid">
+                    <div class="card"><div class="card-lbl">Total Visits</div><div class="card-val" id="total-visit-count">0</div></div>
+                    <div class="card"><div class="card-lbl">Today Visits</div><div class="card-val" id="unique-visit-count">0</div></div>
+                    <div class="card"><div class="card-lbl">Today</div><div class="card-val" id="today-date-card" style="font-size:1rem"></div></div>
+                    <div class="card"><div class="card-lbl">Access</div><div class="card-val" id="access-card" style="font-size:1rem"></div></div>
+                </div>
+                <div class="card" style="text-align:left">
+                    <h3 style="margin-bottom:10px">Quick Actions</h3>
+                    <div class="quick-grid" style="margin:0">
+                        <button class="btn" onclick="switchTab('form')">➕ New Visit</button>
+                        <button class="btn" onclick="switchTab('daily')">📅 Daily Visit</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="cards-grid hidden">
                 <div class="card">
                     <div class="card-lbl">Total Visits</div>
                     <div class="card-val" id="total-visit-count">0</div>
@@ -370,30 +403,22 @@
                 </form>
             </div>
 
-            <!-- Reports View -->
-            <div id="view-reports" class="hidden">
-                <h2 style="font-size:1.1rem; margin-bottom:12px;">Visit History (Live Firebase Data)</h2>
-                <div class="table-responsive">
-                    <table class="reports-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Visit Time</th>
-                                <th>DSO Wallet</th>
-                                <th>Uddokta Name</th>
-                                <th>Uddokta Number</th>
-                                <th>Visit Uddokta Photo</th>
-                                <th>Feedback</th>
-                                <th>Location Name</th>
-                            </tr>
-                        </thead>
-                        <tbody id="reports-table-body"></tbody>
-                    </table>
+            <!-- Daily Visit Page -->
+            <div id="view-daily" class="page">
+                <div class="section-head"><div><h2>Daily Visit</h2><small style="color:#64748b">Live visit records</small></div><button class="btn btn-sm btn-sec" onclick="resetDailyFilters()">Reset Filter</button></div>
+                <div class="card" style="text-align:left;margin-bottom:14px">
+                    <div class="filter-grid">
+                        <div><label>Date</label><input type="date" id="filter-date" onchange="renderReports()"></div>
+                        <div><label>DSO</label><select id="filter-dso" onchange="renderReports()"><option value="">All DSO</option></select></div>
+                        <div><label>DSS</label><select id="filter-dss" onchange="renderReports()"><option value="">All DSS</option><option value="MOHOSIN HOSSAIN SOHAG">Sohag</option><option value="MD. ALAMIN">Alamin</option><option value="MD. IMRAN HOSSAIN">Imran</option><option value="RUBEL">Rubel</option><option value="MD. SHOFIQ">Shofiq</option></select></div>
+                        <div><label>Search</label><input type="text" id="filter-search" placeholder="Uddokta name / number" oninput="renderReports()"></div>
+                    </div>
                 </div>
+                <div class="table-wrap"><div class="table-responsive"><table class="reports-table"><thead><tr><th>Date</th><th>Visit Time</th><th>DSO Wallet</th><th>Uddokta Name</th><th>Uddokta Number</th><th>Visit Uddokta Photo</th><th>Feedback</th><th>Location Name</th></tr></thead><tbody id="reports-table-body"></tbody></table></div></div>
             </div>
 
             <!-- Admin Panel -->
-            <div id="view-admin" class="hidden">
+            <div id="view-admin" class="page">
                 <h2 style="font-size:1.1rem; margin-bottom:12px;">Admin Management Panel</h2>
                 <div class="card" style="text-align:left; margin-bottom:16px;">
                     <h3 style="font-size:1rem; margin-bottom:10px;">Reset User Password</h3>
@@ -406,7 +431,7 @@
                             <option value="imran">DSS - Imran</option>
                             <option value="rubel">DSS - Rubel</option>
                             <option value="shofiq">DSS - Shofiq</option>
-                            <optgroup label="DSO"><option value="1332517801">DSO - 1332517801</option><option value="1332517802">DSO - 1332517802</option><option value="1332517803">DSO - 1332517803</option><option value="1332517804">DSO - 1332517804</option><option value="1332517805">DSO - 1332517805</option><option value="1332517806">DSO - 1332517806</option><option value="1332517807">DSO - 1332517807</option><option value="1332517808">DSO - 1332517808</option><option value="1332517809">DSO - 1332517809</option><option value="1332517810">DSO - 1332517810</option><option value="1332517811">DSO - 1332517811</option><option value="1332517812">DSO - 1332517812</option><option value="1332517813">DSO - 1332517813</option><option value="1332517814">DSO - 1332517814</option><option value="1332517815">DSO - 1332517815</option><option value="1332517816">DSO - 1332517816</option><option value="1332517817">DSO - 1332517817</option><option value="1332517818">DSO - 1332517818</option><option value="1332517819">DSO - 1332517819</option><option value="1332517820">DSO - 1332517820</option><option value="1332517821">DSO - 1332517821</option><option value="1332517822">DSO - 1332517822</option><option value="1332517823">DSO - 1332517823</option><option value="1332517824">DSO - 1332517824</option><option value="1332517825">DSO - 1332517825</option><option value="1332517826">DSO - 1332517826</option><option value="1332517827">DSO - 1332517827</option><option value="1332517828">DSO - 1332517828</option><option value="1332517829">DSO - 1332517829</option><option value="1332517830">DSO - 1332517830</option><option value="1332517831">DSO - 1332517831</option><option value="1332517832">DSO - 1332517832</option><option value="1332517833">DSO - 1332517833</option><option value="1332517834">DSO - 1332517834</option><option value="1332517835">DSO - 1332517835</option><option value="1332517836">DSO - 1332517836</option><option value="1332517837">DSO - 1332517837</option><option value="1332517838">DSO - 1332517838</option><option value="1332517839">DSO - 1332517839</option><option value="1332517840">DSO - 1332517840</option><option value="1332517841">DSO - 1332517841</option><option value="1332517842">DSO - 1332517842</option><option value="1332517843">DSO - 1332517843</option><option value="1332517844">DSO - 1332517844</option><option value="1332517845">DSO - 1332517845</option></optgroup>
+                            <optgroup label="DSO"><option value="1332517801">DSO - 801</option><option value="1332517802">DSO - 802</option><option value="1332517803">DSO - 803</option><option value="1332517804">DSO - 804</option><option value="1332517805">DSO - 805</option><option value="1332517806">DSO - 806</option><option value="1332517807">DSO - 807</option><option value="1332517808">DSO - 808</option><option value="1332517809">DSO - 809</option><option value="1332517810">DSO - 810</option><option value="1332517811">DSO - 811</option><option value="1332517812">DSO - 812</option><option value="1332517813">DSO - 813</option><option value="1332517814">DSO - 814</option><option value="1332517815">DSO - 815</option><option value="1332517816">DSO - 816</option><option value="1332517817">DSO - 817</option><option value="1332517818">DSO - 818</option><option value="1332517819">DSO - 819</option><option value="1332517820">DSO - 820</option><option value="1332517821">DSO - 821</option><option value="1332517822">DSO - 822</option><option value="1332517823">DSO - 823</option><option value="1332517824">DSO - 824</option><option value="1332517825">DSO - 825</option><option value="1332517826">DSO - 826</option><option value="1332517827">DSO - 827</option><option value="1332517828">DSO - 828</option><option value="1332517829">DSO - 829</option><option value="1332517830">DSO - 830</option><option value="1332517831">DSO - 831</option><option value="1332517832">DSO - 832</option><option value="1332517833">DSO - 833</option><option value="1332517834">DSO - 834</option><option value="1332517835">DSO - 835</option><option value="1332517836">DSO - 836</option><option value="1332517837">DSO - 837</option><option value="1332517838">DSO - 838</option><option value="1332517839">DSO - 839</option><option value="1332517840">DSO - 840</option><option value="1332517841">DSO - 841</option><option value="1332517842">DSO - 842</option><option value="1332517843">DSO - 843</option><option value="1332517844">DSO - 844</option><option value="1332517845">DSO - 845</option></optgroup>
                         </select>
                     </div>
                     <button type="button" class="btn btn-danger" onclick="adminResetPassword()">Reset Password to '1234'</button>
@@ -414,7 +439,7 @@
             </div>
 
             <!-- Change Password -->
-            <div id="view-change-pass" class="hidden">
+            <div id="view-change-pass" class="page">
                 <div class="card" style="max-width: 400px; margin: 20px auto; text-align: left;">
                     <h3 style="font-size:1rem; margin-bottom:12px;">Change Password</h3>
                     <div class="form-group">
@@ -431,16 +456,11 @@
     </div>
 
     <!-- Bottom Navigation Bar -->
-    <div id="app-nav" class="nav-bar hidden">
-        <div class="nav-item active" id="nav-form" onclick="switchTab('form')">
-            <span>📝 New Visit</span>
-        </div>
-        <div class="nav-item" id="nav-reports" onclick="switchTab('reports')">
-            <span>📊 Reports</span>
-        </div>
-        <div class="nav-item hidden" id="nav-admin" onclick="switchTab('admin')">
-            <span>⚙️ Admin</span>
-        </div>
+    <div id="app-nav" class="nav-bar nav-scroll hidden">
+        <div class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')"><span>🏠<br>Dashboard</span></div>
+        <div class="nav-item" id="nav-form" onclick="switchTab('form')"><span>➕<br>New Visit</span></div>
+        <div class="nav-item" id="nav-daily" onclick="switchTab('daily')"><span>📅<br>Daily Visit</span></div>
+        <div class="nav-item hidden" id="nav-admin" onclick="switchTab('admin')"><span>⚙️<br>Admin</span></div>
     </div>
 
     <script>
@@ -570,6 +590,7 @@
                 }
 
                 initApp();
+                switchTab('dashboard');
             } else {
                 showLoginAlert('Invalid User ID or Password. Please check your User ID and password.', 'error');
             }
@@ -610,6 +631,8 @@
             setTodayDate();
             updateVisitSubmitState();
             listenFirebaseData();
+            populateDsoFilter();
+            document.getElementById('today-date-card').innerText = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
             const searchInput = document.getElementById('search-input');
             searchInput.oninput = handleUddoktaSearch;
             searchInput.onkeyup = handleUddoktaSearch;
@@ -927,50 +950,44 @@
         }
 
         function switchTab(tab) {
-            document.getElementById('view-form').classList.add('hidden');
-            document.getElementById('view-reports').classList.add('hidden');
-            document.getElementById('view-admin').classList.add('hidden');
-            document.getElementById('view-change-pass').classList.add('hidden');
+            const pages=['dashboard','form','daily','admin','change-pass'];
+            pages.forEach(p=>{ const el=document.getElementById('view-'+p); if(el) el.classList.remove('active'); });
+            ['dashboard','form','daily','admin'].forEach(p=>{ const n=document.getElementById('nav-'+p); if(n) n.classList.remove('active'); });
+            const page=document.getElementById('view-'+tab);
+            if(page) page.classList.add('active');
+            const nav=document.getElementById('nav-'+tab);
+            if(nav) nav.classList.add('active');
+            if(tab==='form'){ fetchGPS(); stopCamera(); }
+            if(tab==='daily'){ populateDsoFilter(); renderReports(); }
+        }
 
-            document.getElementById('nav-form').classList.remove('active');
-            document.getElementById('nav-reports').classList.remove('active');
-            document.getElementById('nav-admin').classList.remove('active');
+        function populateDsoFilter(){
+            const sel=document.getElementById('filter-dso'); if(!sel) return;
+            const current=sel.value; sel.innerHTML='<option value="">All DSO</option>';
+            for(let i=801;i<=845;i++){ const wallet='13325178'+String(i-800).padStart(2,'0'); const info=getRoleInfo(); if(info.role==='DSO' && info.dsoWallet!==wallet) continue; sel.insertAdjacentHTML('beforeend',`<option value="${wallet}">${i} - ${wallet}</option>`); }
+            sel.value=current;
+        }
 
-            if (tab === 'form') {
-                document.getElementById('view-form').classList.remove('hidden');
-                document.getElementById('nav-form').classList.add('active');
-                // New Visit: automatically request the current GPS location. Camera stays OFF until Take Selfie.
-                fetchGPS();
-                stopCamera();
-            } else if (tab === 'reports') {
-                document.getElementById('view-reports').classList.remove('hidden');
-                document.getElementById('nav-reports').classList.add('active');
-            } else if (tab === 'admin') {
-                document.getElementById('view-admin').classList.remove('hidden');
-                document.getElementById('nav-admin').classList.add('active');
-            } else if (tab === 'change-pass') {
-                document.getElementById('view-change-pass').classList.remove('hidden');
-            }
+        function resetDailyFilters(){
+            const d=document.getElementById('filter-date'), s=document.getElementById('filter-dso'), ds=document.getElementById('filter-dss'), q=document.getElementById('filter-search');
+            if(d) d.value=''; if(s) s.value=''; if(ds) ds.value=''; if(q) q.value=''; renderReports();
         }
 
         function renderReports() {
-            const tableBody = document.getElementById('reports-table-body');
-            tableBody.innerHTML = '';
-
-            reportsData.filter(canSeeReport).forEach(r => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${r.date || ''}</td>
-                    <td>${r.visitTime || (r.timestamp ? new Date(r.timestamp).toLocaleString('en-GB', {timeZone:'Asia/Dhaka', hour12:true}) : '')}</td>
-                    <td>${r.dsoWallet || r.dsoNumber || ''}</td>
-                    <td>${r.uddoktaName || ''}</td>
-                    <td>${r.uddoktaNumber || ''}</td>
-                    <td>${r.photo ? `<img src="${r.photo}" class="table-img" alt="Visit Uddokta Photo" onclick="window.open('${r.photo}')">` : ''}</td>
-                    <td>${r.feedback || ''}</td>
-                    <td><small>${r.locationName || r.gps || ''}</small></td>
-                `;
-                tableBody.appendChild(tr);
+            const tableBody=document.getElementById('reports-table-body'); if(!tableBody) return; tableBody.innerHTML='';
+            const fd=(document.getElementById('filter-date')||{}).value||'';
+            const fds=(document.getElementById('filter-dso')||{}).value||'';
+            const fdss=((document.getElementById('filter-dss')||{}).value||'').toUpperCase();
+            const fq=((document.getElementById('filter-search')||{}).value||'').trim().toUpperCase();
+            const rows=reportsData.filter(canSeeReport).filter(r=>{
+                if(fd && r.date!==fd) return false;
+                if(fds && String(r.dsoWallet||r.dsoNumber||'')!==fds) return false;
+                if(fdss && !String(r.dssName||'').toUpperCase().includes(fdss)) return false;
+                if(fq && !(String(r.uddoktaName||'').toUpperCase().includes(fq)||String(r.uddoktaNumber||'').toUpperCase().includes(fq))) return false;
+                return true;
             });
+            if(!rows.length){ tableBody.innerHTML='<tr><td colspan="8" class="empty-state">No visit data found</td></tr>'; return; }
+            rows.forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${r.date||''}</td><td>${r.visitTime||(r.timestamp?new Date(r.timestamp).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}):'')}</td><td>${r.dsoWallet||r.dsoNumber||''}</td><td>${r.uddoktaName||''}</td><td>${r.uddoktaNumber||''}</td><td>${r.photo?`<img src="${r.photo}" class="table-img" alt="Visit Uddokta Photo" onclick="window.open('${r.photo}')">`:''}</td><td>${r.feedback||''}</td><td><small>${r.locationName||r.gps||''}</small></td>`; tableBody.appendChild(tr); });
         }
 
         function updateDashboard() {
@@ -978,7 +995,9 @@
             document.getElementById('total-visit-count').innerText = visibleReports.length;
             const today = new Date().toISOString().split('T')[0];
             const todayVisits = visibleReports.filter(r => r.date === today);
-            document.getElementById('unique-visit-count').innerText = new Set(todayVisits.map(r => r.uddoktaNumber)).size;
+            document.getElementById('unique-visit-count').innerText = todayVisits.length;
+            const info=getRoleInfo();
+            const ac=document.getElementById('access-card'); if(ac) ac.innerText=info.role;
         }
 
         function showLoginAlert(msg, type) {
