@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DMS</title>
+    <title>DMS-Nagad Manikganj</title>
     
     <!-- Firebase Web SDK (v10.8.0) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -620,6 +620,13 @@
 
             if (userPasswords[user] !== undefined && String(userPasswords[user]) === String(pass)) {
                 currentUser = user;
+                // Clear any previous failed-login message before entering the app.
+                const loginAlert = document.getElementById('login-alert');
+                if (loginAlert) {
+                    loginAlert.innerText = '';
+                    loginAlert.style.display = 'none';
+                    loginAlert.className = 'alert';
+                }
                 document.getElementById('view-login').classList.add('hidden');
                 document.getElementById('main-app').classList.remove('hidden');
                 document.getElementById('user-info-bar').classList.remove('hidden');
@@ -646,11 +653,22 @@
 
         function logout() {
             currentUser = null;
+
+            // Reset the login screen so a previous failed-login alert
+            // never appears automatically after logout.
+            const loginAlert = document.getElementById('login-alert');
+            if (loginAlert) {
+                loginAlert.innerText = '';
+                loginAlert.style.display = 'none';
+                loginAlert.className = 'alert';
+            }
+
             document.getElementById('view-login').classList.remove('hidden');
             document.getElementById('main-app').classList.add('hidden');
             document.getElementById('user-info-bar').classList.add('hidden');
             document.getElementById('app-nav').classList.add('hidden');
             document.getElementById('login-pass').value = '';
+            document.getElementById('login-user').focus();
         }
 
         function changePassword() {
