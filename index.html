@@ -63,6 +63,10 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: sticky;
+            top: 67px;
+            z-index: 99;
+            box-shadow: 0 2px 5px rgba(0,0,0,.12);
         }
 
         .container {
@@ -198,6 +202,15 @@
             text-align: left;
         }
 
+        table.reports-table thead th {
+            position: sticky;
+            top: 105px;
+            z-index: 5;
+            background: #f8fafc;
+            box-shadow: 0 1px 0 var(--border);
+            white-space: nowrap;
+        }
+
         .table-img {
             width: 45px;
             height: 45px;
@@ -288,7 +301,7 @@
         .detail-btn{padding:6px 10px;border:0;border-radius:8px;background:#e8f0ff;color:#1d4ed8;font-weight:700;cursor:pointer}
         @media(max-width:600px){.details-grid{grid-template-columns:1fr}.details-card{padding:14px}.nav-item{min-width:0!important}}
         @media(max-width:900px){.quick-grid{grid-template-columns:repeat(2,1fr)}.filter-grid{grid-template-columns:repeat(2,1fr)}}
-        @media(max-width:600px){body{padding-bottom:72px}.container{padding:12px}.cards-grid{grid-template-columns:1fr 1fr}.quick-grid{grid-template-columns:1fr 1fr}.filter-grid{grid-template-columns:1fr}.section-head{align-items:flex-start}.table-responsive{border-radius:8px}table.reports-table{min-width:850px}.nav-item{font-size:.68rem}.nav-scroll .nav-item{min-width:78px}header{padding:14px 12px}header h1{font-size:1.08rem}.user-bar{font-size:.76rem;padding:7px 10px}.user-bar .btn{padding:5px 8px}}
+        @media(max-width:600px){body{padding-bottom:72px}.container{padding:12px}.cards-grid{grid-template-columns:1fr 1fr}.quick-grid{grid-template-columns:1fr 1fr}.filter-grid{grid-template-columns:1fr}.section-head{align-items:flex-start}.table-responsive{border-radius:8px}table.reports-table{min-width:850px}.nav-item{font-size:.68rem}.nav-scroll .nav-item{min-width:78px}header{padding:14px 12px}header h1{font-size:1.08rem}.user-bar{font-size:.76rem;padding:7px 10px;top:55px}table.reports-table thead th{top:96px}.user-bar .btn{padding:5px 8px}}
 
         .dashboard-chart-card{margin-top:14px;text-align:left;}
         .dashboard-chart-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
