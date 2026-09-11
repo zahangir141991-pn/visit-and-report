@@ -464,8 +464,35 @@
             <div id="view-admin" class="page">
                 <h2 style="font-size:1.1rem; margin-bottom:12px;">Admin Management Panel</h2>
                 <div class="card" style="text-align:left; margin-bottom:16px;">
-                    <h3 style="font-size:1rem; margin-bottom:10px;">Reset User Password</h3>
+                    <h3 style="font-size:1rem; margin-bottom:6px;">Admin Password Management</h3>
+                    <p style="color:#64748b;font-size:.86rem;line-height:1.5;margin-bottom:12px;">Admin যেকোনো user-এর password সরাসরি পরিবর্তন করতে পারবেন। নতুন password সেট করলে সেটিই পরবর্তী login-এর জন্য কার্যকর হবে।</p>
                     <div class="form-group">
+                        <label>Select User</label>
+                        <select id="admin-password-user">
+                            <option value="admin">Admin</option>
+                            <option value="zahangir">DM - Zahangir</option>
+                            <option value="sohag">DSS - Sohag</option>
+                            <option value="alamin">DSS - Alamin</option>
+                            <option value="imran">DSS - Imran</option>
+                            <option value="rubel">DSS - Rubel</option>
+                            <option value="shofiq">DSS - Shofiq</option>
+                            <optgroup label="DSO"><option value="1332517801">DSO - 801</option><option value="1332517802">DSO - 802</option><option value="1332517803">DSO - 803</option><option value="1332517804">DSO - 804</option><option value="1332517805">DSO - 805</option><option value="1332517806">DSO - 806</option><option value="1332517807">DSO - 807</option><option value="1332517808">DSO - 808</option><option value="1332517809">DSO - 809</option><option value="1332517810">DSO - 810</option><option value="1332517811">DSO - 811</option><option value="1332517812">DSO - 812</option><option value="1332517813">DSO - 813</option><option value="1332517814">DSO - 814</option><option value="1332517815">DSO - 815</option><option value="1332517816">DSO - 816</option><option value="1332517817">DSO - 817</option><option value="1332517818">DSO - 818</option><option value="1332517819">DSO - 819</option><option value="1332517820">DSO - 820</option><option value="1332517821">DSO - 821</option><option value="1332517822">DSO - 822</option><option value="1332517823">DSO - 823</option><option value="1332517824">DSO - 824</option><option value="1332517825">DSO - 825</option><option value="1332517826">DSO - 826</option><option value="1332517827">DSO - 827</option><option value="1332517828">DSO - 828</option><option value="1332517829">DSO - 829</option><option value="1332517830">DSO - 830</option><option value="1332517831">DSO - 831</option><option value="1332517832">DSO - 832</option><option value="1332517833">DSO - 833</option><option value="1332517834">DSO - 834</option><option value="1332517835">DSO - 835</option><option value="1332517836">DSO - 836</option><option value="1332517837">DSO - 837</option><option value="1332517838">DSO - 838</option><option value="1332517839">DSO - 839</option><option value="1332517840">DSO - 840</option><option value="1332517841">DSO - 841</option><option value="1332517842">DSO - 842</option><option value="1332517843">DSO - 843</option><option value="1332517844">DSO - 844</option><option value="1332517845">DSO - 845</option></optgroup>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>New Password</label>
+                        <input type="password" id="admin-new-password" minlength="3" placeholder="Enter new password">
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button type="button" class="btn" onclick="adminChangePassword()">🔐 Change Password</button>
+                        <button type="button" class="btn btn-danger" onclick="adminResetPassword()">Reset Selected to '1234'</button>
+                    </div>
+                    <div id="admin-password-status" style="margin-top:10px;font-size:.85rem;color:#64748b;"></div>
+                </div>
+
+                <div class="card" style="text-align:left; margin-bottom:16px;">
+                    <h3 style="font-size:1rem; margin-bottom:10px;">Reset User Password</h3>
+                    <div class="form-group hidden">
                         <label>Select User to Reset Password</label>
                         <select id="reset-user-select">
                             <option value="zahangir">DM - Zahangir</option>
@@ -726,11 +753,58 @@
             switchTab('form');
         }
 
+        function adminChangePassword() {
+            if (String(currentUser || '').toLowerCase() !== 'admin') {
+                alert('Only Admin can change another user password.');
+                return;
+            }
+
+            const select = document.getElementById('admin-password-user');
+            const passInput = document.getElementById('admin-new-password');
+            const status = document.getElementById('admin-password-status');
+            const targetUser = select ? select.value : '';
+            const newPass = passInput ? passInput.value.trim() : '';
+
+            if (!targetUser) {
+                alert('Please select a user.');
+                return;
+            }
+            if (newPass.length < 3) {
+                alert('Password must be at least 3 characters.');
+                return;
+            }
+
+            userPasswords[targetUser] = newPass;
+            savePasswords();
+
+            const label = select.options[select.selectedIndex]?.text || targetUser.toUpperCase();
+            if (status) {
+                status.innerText = `Password changed successfully for ${label}.`;
+                status.style.color = '#15803d';
+            }
+            passInput.value = '';
+            alert(`Password for ${label} has been changed successfully.`);
+        }
+
         function adminResetPassword() {
-            const targetUser = document.getElementById('reset-user-select').value;
+            if (String(currentUser || '').toLowerCase() !== 'admin') {
+                alert('Only Admin can reset another user password.');
+                return;
+            }
+            const modernSelect = document.getElementById('admin-password-user');
+            const oldSelect = document.getElementById('reset-user-select');
+            const targetUser = modernSelect?.value || oldSelect?.value;
+            if (!targetUser) return;
             userPasswords[targetUser] = '1234';
             savePasswords();
-            alert(`Password for ${targetUser.toUpperCase()} has been reset to '1234'!`);
+            const label = modernSelect?.options[modernSelect.selectedIndex]?.text || targetUser.toUpperCase();
+            const status = document.getElementById('admin-password-status');
+            if (status) {
+                status.innerText = `Password reset to 1234 for ${label}.`;
+                status.style.color = '#b45309';
+            }
+            if (document.getElementById('admin-new-password')) document.getElementById('admin-new-password').value = '';
+            alert(`Password for ${label} has been reset to '1234'.`);
         }
 
         function openChangePassModal() { switchTab('change-pass'); }
