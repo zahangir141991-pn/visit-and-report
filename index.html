@@ -613,6 +613,39 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
+        // ----------------------------------------------------
+        // BROWSER CACHE / REALTIME SYNC
+        // Firebase is the source of truth. LocalStorage is only a
+        // short-lived fallback so old/stale data is automatically
+        // removed instead of being shown indefinitely.
+        // ----------------------------------------------------
+        const APP_CACHE_VERSION = '2026-09-11-v2';
+        const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
+        const UDDOKTA_CACHE_META_KEY = 'dms_uddokta_master_meta';
+        const UDDOKTA_CACHE_TTL = 5 * 60 * 1000; // 5 minutes fallback only
+
+        function clearStaleAppCache() {
+            try {
+                const meta = JSON.parse(localStorage.getItem(UDDOKTA_CACHE_META_KEY) || 'null');
+                if (!meta || meta.version !== APP_CACHE_VERSION || !meta.savedAt || (Date.now() - Number(meta.savedAt)) > UDDOKTA_CACHE_TTL) {
+                    localStorage.removeItem(UDDOKTA_CACHE_KEY);
+                    localStorage.removeItem(UDDOKTA_CACHE_META_KEY);
+                }
+            } catch (e) {
+                localStorage.removeItem(UDDOKTA_CACHE_KEY);
+                localStorage.removeItem(UDDOKTA_CACHE_META_KEY);
+            }
+        }
+
+        function saveUddoktaCache(arr) {
+            try {
+                localStorage.setItem(UDDOKTA_CACHE_KEY, JSON.stringify(arr));
+                localStorage.setItem(UDDOKTA_CACHE_META_KEY, JSON.stringify({version: APP_CACHE_VERSION, savedAt: Date.now()}));
+            } catch (e) {}
+        }
+
+        clearStaleAppCache();
+
         // Passwords Store
         // Login IDs: admin, zahangir, alamin, sohag, imran, rubel, shofiq, and DSO 801-845.
         let userPasswords = JSON.parse(localStorage.getItem('dm_app_passwords')) || {};
@@ -963,7 +996,7 @@
                     masterObj[encodeURIComponent(item[1])] = { dsoWallet:item[0], uddoktaNumber:item[1], uddoktaName:item[2], dssName:item[3] };
                 });
                 // Local backup makes the updated master immediately available on this browser.
-                localStorage.setItem('dms_uddokta_master', JSON.stringify(merged));
+                saveUddoktaCache(merged);
                 uddoktaDB = merged;
                 // Persistent realtime master copy for all users.
                 await db.ref('uddokta_master').set(masterObj);
@@ -997,13 +1030,20 @@
         }
 
         function loadLocalUddoktaMaster() {
+            clearStaleAppCache();
             try {
-                const saved = JSON.parse(localStorage.getItem('dms_uddokta_master') || 'null');
-                if (Array.isArray(saved) && saved.length) uddoktaDB = saved;
-            } catch(e) {}
+                const saved = JSON.parse(localStorage.getItem(UDDOKTA_CACHE_KEY) || 'null');
+                const meta = JSON.parse(localStorage.getItem(UDDOKTA_CACHE_META_KEY) || 'null');
+                const fresh = meta && meta.version === APP_CACHE_VERSION && meta.savedAt && (Date.now() - Number(meta.savedAt)) <= UDDOKTA_CACHE_TTL;
+                if (fresh && Array.isArray(saved) && saved.length) uddoktaDB = saved;
+            } catch(e) {
+                localStorage.removeItem(UDDOKTA_CACHE_KEY);
+                localStorage.removeItem(UDDOKTA_CACHE_META_KEY);
+            }
         }
 
         function listenUddoktaMaster() {
+            // on('value') keeps this browser continuously synced with Firebase.
             db.ref('uddokta_master').on('value', snapshot => {
                 const data = snapshot.val();
                 if (!data) return;
@@ -1013,10 +1053,52 @@
                 }).filter(x => x[1]);
                 if (arr.length) {
                     uddoktaDB = arr;
-                    localStorage.setItem('dms_uddokta_master', JSON.stringify(arr));
+                    saveUddoktaCache(arr);
+                    renderReports();
+                } else {
+                    // Firebase has an intentionally empty master: remove old browser copy.
+                    uddoktaDB = [];
+                    localStorage.removeItem(UDDOKTA_CACHE_KEY);
+                    localStorage.removeItem(UDDOKTA_CACHE_META_KEY);
                 }
+            }, error => {
+                console.warn('Uddokta realtime sync error:', error);
             });
         }
+
+        function forceRealtimeRefresh() {
+            // Never trust an old local cache after reconnect/returning to the tab.
+            try {
+                db.ref('uddokta_master').once('value').then(snapshot => {
+                    const data = snapshot.val();
+                    if (!data) return;
+                    const arr = Object.keys(data).map(k => {
+                        const x = data[k] || {};
+                        return [String(x.dsoWallet||''), String(x.uddoktaNumber||''), String(x.uddoktaName||''), String(x.dssName||'')];
+                    }).filter(x => x[1]);
+                    if (arr.length) {
+                        uddoktaDB = arr;
+                        saveUddoktaCache(arr);
+                        renderReports();
+                    }
+                }).catch(() => {});
+            } catch (e) {}
+        }
+
+        // Reconnect and tab-focus refresh: realtime listener remains active,
+        // while these events immediately reconcile any stale browser state.
+        window.addEventListener('online', forceRealtimeRefresh);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') forceRealtimeRefresh();
+        });
+        window.addEventListener('storage', (event) => {
+            if (event.key === UDDOKTA_CACHE_KEY && event.newValue) {
+                try {
+                    const arr = JSON.parse(event.newValue);
+                    if (Array.isArray(arr) && arr.length) { uddoktaDB = arr; renderReports(); }
+                } catch (e) {}
+            }
+        });
 
         function initApp() {
             loadLocalUddoktaMaster();
@@ -1341,6 +1423,14 @@
                 updateDashboard();
             });
         }
+
+        // Firebase connection status is realtime; when connection returns,
+        // the active listeners receive fresh data without a manual hard refresh.
+        db.ref('.info/connected').on('value', snapshot => {
+            if (snapshot.val() === true) {
+                forceRealtimeRefresh();
+            }
+        });
 
         function switchTab(tab) {
             if (tab === 'admin' && currentUser !== 'admin') return;
