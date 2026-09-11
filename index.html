@@ -10,6 +10,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <!-- SheetJS for Admin Excel upload/download -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Chart.js for role-based dashboard visit graph -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 
     <style>
         :root {
@@ -287,6 +289,16 @@
         @media(max-width:600px){.details-grid{grid-template-columns:1fr}.details-card{padding:14px}.nav-item{min-width:0!important}}
         @media(max-width:900px){.quick-grid{grid-template-columns:repeat(2,1fr)}.filter-grid{grid-template-columns:repeat(2,1fr)}}
         @media(max-width:600px){body{padding-bottom:72px}.container{padding:12px}.cards-grid{grid-template-columns:1fr 1fr}.quick-grid{grid-template-columns:1fr 1fr}.filter-grid{grid-template-columns:1fr}.section-head{align-items:flex-start}.table-responsive{border-radius:8px}table.reports-table{min-width:850px}.nav-item{font-size:.68rem}.nav-scroll .nav-item{min-width:78px}header{padding:14px 12px}header h1{font-size:1.08rem}.user-bar{font-size:.76rem;padding:7px 10px}.user-bar .btn{padding:5px 8px}}
+
+        .dashboard-chart-card{margin-top:14px;text-align:left;}
+        .dashboard-chart-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
+        .dashboard-chart-title{font-size:1rem;font-weight:700;}
+        .dashboard-chart-sub{font-size:.78rem;color:var(--text-light);margin-top:3px;}
+        .chart-filter-grid{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;margin-bottom:14px;}
+        .chart-filter-grid label{display:block;font-size:.78rem;font-weight:600;margin-bottom:5px;color:var(--text-light);}
+        .chart-wrap{position:relative;width:100%;height:300px;}
+        .chart-empty{text-align:center;padding:70px 10px;color:var(--text-light);display:none;font-size:.9rem;}
+        @media(max-width:600px){.chart-filter-grid{grid-template-columns:1fr 1fr}.chart-filter-grid .chart-reset{grid-column:1/-1}.chart-wrap{height:240px;}}
     </style>
 </head>
 <body>
@@ -348,6 +360,22 @@
                         <button class="btn" onclick="switchTab('form')">➕ New Visit</button>
                         <button class="btn" onclick="switchTab('daily')">📋 Visit Report</button>
                     </div>
+                </div>
+
+                <div id="dashboard-visit-chart-card" class="card dashboard-chart-card hidden">
+                    <div class="dashboard-chart-head">
+                        <div>
+                            <div class="dashboard-chart-title">Date-wise Visit Report</div>
+                            <div class="dashboard-chart-sub" id="dashboard-chart-subtitle">Visit count by date</div>
+                        </div>
+                    </div>
+                    <div class="chart-filter-grid">
+                        <div><label for="dashboard-chart-from">From Date</label><input type="date" id="dashboard-chart-from" onchange="renderDashboardVisitChart()"></div>
+                        <div><label for="dashboard-chart-to">To Date</label><input type="date" id="dashboard-chart-to" onchange="renderDashboardVisitChart()"></div>
+                        <button type="button" class="btn btn-sm btn-sec chart-reset" onclick="resetDashboardChartFilter()">↺ Reset</button>
+                    </div>
+                    <div class="chart-wrap"><canvas id="dashboard-visit-chart"></canvas></div>
+                    <div id="dashboard-chart-empty" class="chart-empty">No visit data found for the selected dates.</div>
                 </div>
             </div>
 
@@ -1343,6 +1371,7 @@
                 populateDsoFilter();
                 renderReports();
             }
+            if (tab === 'dashboard') renderDashboardVisitChart();
         }
 
         function populateDsoFilter(){
@@ -1408,12 +1437,111 @@
         }
         function closeVisitDetails(){ document.getElementById('visit-details-modal')?.classList.add('hidden'); }
 
-        function updateDashboard() {
-            const totalEl = document.getElementById('total-visit-count');
-            if(totalEl) totalEl.innerText = reportsData.length;
+        let dashboardVisitChart = null;
 
-            const today = new Date().toISOString().split('T')[0];
-            const todayVisits = reportsData.filter(r => r.date === today);
+        function getDhakaToday() {
+            return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dhaka', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        }
+
+        function getDashboardChartRows() {
+            const info = getRoleInfo();
+            if (!['Admin', 'DM', 'DSS'].includes(info.role)) return [];
+            return reportsData.filter(canSeeReport);
+        }
+
+        function renderDashboardVisitChart() {
+            const card = document.getElementById('dashboard-visit-chart-card');
+            const canvas = document.getElementById('dashboard-visit-chart');
+            const empty = document.getElementById('dashboard-chart-empty');
+            if (!card || !canvas || !empty) return;
+
+            const info = getRoleInfo();
+            if (!['Admin', 'DM', 'DSS'].includes(info.role)) {
+                card.classList.add('hidden');
+                if (dashboardVisitChart) { dashboardVisitChart.destroy(); dashboardVisitChart = null; }
+                return;
+            }
+            card.classList.remove('hidden');
+
+            const from = (document.getElementById('dashboard-chart-from') || {}).value || '';
+            const to = (document.getElementById('dashboard-chart-to') || {}).value || '';
+            let rows = getDashboardChartRows().filter(r => {
+                const d = String(r.date || '');
+                if (!d) return false;
+                if (from && d < from) return false;
+                if (to && d > to) return false;
+                return true;
+            });
+
+            const counts = {};
+            rows.forEach(r => { const d = String(r.date); counts[d] = (counts[d] || 0) + 1; });
+            const dates = Object.keys(counts).sort();
+            const labels = dates.map(d => {
+                const parts = d.split('-');
+                return parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : d;
+            });
+            const values = dates.map(d => counts[d]);
+
+            const subtitle = document.getElementById('dashboard-chart-subtitle');
+            if (subtitle) {
+                subtitle.innerText = info.role === 'DSS'
+                    ? 'Your DSS visit count by date'
+                    : info.role === 'DM'
+                        ? 'DM-accessible visit count by date'
+                        : 'All visit count by date';
+            }
+
+            if (dashboardVisitChart) { dashboardVisitChart.destroy(); dashboardVisitChart = null; }
+            if (!dates.length) {
+                canvas.style.display = 'none';
+                empty.style.display = 'block';
+                return;
+            }
+            canvas.style.display = 'block';
+            empty.style.display = 'none';
+
+            dashboardVisitChart = new Chart(canvas.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Visits',
+                        data: values,
+                        tension: 0.25,
+                        fill: true,
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { title: { display: true, text: 'Date' } },
+                        y: { beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: 'Visit Count' } }
+                    }
+                }
+            });
+        }
+
+        function resetDashboardChartFilter() {
+            const from = document.getElementById('dashboard-chart-from');
+            const to = document.getElementById('dashboard-chart-to');
+            if (from) from.value = '';
+            if (to) to.value = '';
+            renderDashboardVisitChart();
+        }
+
+        function updateDashboard() {
+            const visibleReports = reportsData.filter(canSeeReport);
+            const totalEl = document.getElementById('total-visit-count');
+            if(totalEl) totalEl.innerText = visibleReports.length;
+
+            const today = getDhakaToday();
+            const todayVisits = visibleReports.filter(r => r.date === today);
             const todayCount = todayVisits.length;
 
             const dashboardToday = document.getElementById('unique-visit-count');
@@ -1423,10 +1551,9 @@
             if(newVisitCount) newVisitCount.innerText = todayCount;
 
             const reportCount = document.getElementById('report-total-visit-count');
-            if(reportCount) {
-                const role = getRoleInfo().role;
-                reportCount.innerText = (role === 'Admin' || role === 'DM') ? reportsData.filter(canSeeReport).length : reportsData.filter(canSeeReport).length;
-            }
+            if(reportCount) reportCount.innerText = visibleReports.length;
+
+            renderDashboardVisitChart();
         }
 
         function showLoginAlert(msg, type) {
