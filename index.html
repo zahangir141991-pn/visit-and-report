@@ -354,6 +354,7 @@
                         <div class="camera-box">
                             <video id="camera-video" autoplay playsinline></video>
                             <canvas id="camera-canvas" class="hidden"></canvas>
+                             <input id="selfie-file" type="file" accept="image/*" capture="user" class="hidden">
                             <img id="photo-preview" alt="Preview">
                             <div style="margin-top: 10px;">
                                 <button type="button" class="btn btn-sm" id="btn-capture" onclick="captureLivePhoto()">🤳 Take Selfie</button>
@@ -539,6 +540,8 @@
             setTodayDate();
             fetchGPS();
             resetLivePhoto();
+            const selfieFile = document.getElementById('selfie-file');
+            if (selfieFile) selfieFile.onchange = handleSelfieFile;
 
             listenFirebaseData();
             const searchInput = document.getElementById('search-input');
@@ -651,21 +654,48 @@
 
         async function initCamera() {
             const video = document.getElementById('camera-video');
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                showAlert('Camera is not supported on this device/browser.', 'error');
+            const captureBtn = document.getElementById('btn-capture');
+
+            // Some phones/browsers expose the camera only through the native file picker.
+            if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                const fileInput = document.getElementById('selfie-file');
+                if (fileInput) {
+                    fileInput.value = '';
+                    fileInput.click();
+                    return 'fallback';
+                }
+                showAlert('Camera requires HTTPS/secure browser access.', 'error');
                 return false;
             }
+
             try {
-                // Front/selfie camera only.
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: { ideal: 'user' } },
-                    audio: false
-                });
+                stopCamera();
+                let stream;
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: { exact: 'user' } },
+                        audio: false
+                    });
+                } catch (e) {
+                    // Fallback for phones that reject exact front-camera constraints.
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'user' },
+                        audio: false
+                    });
+                }
                 video.srcObject = stream;
                 video.style.display = 'block';
                 await video.play();
+                captureBtn.innerText = '📸 Capture Photo';
                 return true;
             } catch (err) {
+                const fileInput = document.getElementById('selfie-file');
+                if (fileInput) {
+                    showAlert('Camera permission না এলে phone camera থেকে selfie নিতে নিচের camera option ব্যবহার করুন.', 'error');
+                    fileInput.value = '';
+                    fileInput.click();
+                    return 'fallback';
+                }
                 showAlert('Selfie camera permission is required.', 'error');
                 return false;
             }
@@ -677,46 +707,62 @@
                 video.srcObject.getTracks().forEach(track => track.stop());
                 video.srcObject = null;
             }
+            if (video) {
+                video.pause();
+                video.style.display = 'none';
+            }
+        }
+
+        function setCapturedPhoto(dataUrl) {
+            if (!dataUrl) return;
+            capturedPhotoData = dataUrl;
+            const preview = document.getElementById('photo-preview');
+            const captureBtn = document.getElementById('btn-capture');
+            preview.src = dataUrl;
+            preview.style.display = 'block';
+            stopCamera();
+            captureBtn.classList.add('hidden');
+            captureBtn.disabled = false;
+            captureBtn.innerText = '🤳 Take Selfie';
+            document.getElementById('btn-recapture').classList.remove('hidden');
         }
 
         async function captureLivePhoto() {
             const video = document.getElementById('camera-video');
             const canvas = document.getElementById('camera-canvas');
-            const preview = document.getElementById('photo-preview');
             const captureBtn = document.getElementById('btn-capture');
 
-            // First click: start the selfie camera. No photo is captured yet.
+            // First click: open/start camera. No photo is captured yet.
             if (!video.srcObject) {
                 captureBtn.disabled = true;
                 const started = await initCamera();
                 captureBtn.disabled = false;
-                if (started) {
-                    captureBtn.innerText = '📸 Capture Photo';
-                }
+                if (started === true) captureBtn.innerText = '📸 Capture Photo';
                 return;
             }
 
-            // Second click: capture the current live selfie frame.
-            if (!video.videoWidth || !video.videoHeight) {
-                showAlert('Camera is not ready yet. Please try again.', 'error');
+            if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
+                showAlert('Camera is still starting. Please wait a moment.', 'error');
                 return;
             }
 
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            setCapturedPhoto(canvas.toDataURL('image/jpeg', 0.88));
+        }
 
-            capturedPhotoData = canvas.toDataURL('image/jpeg', 0.85);
-            preview.src = capturedPhotoData;
-            preview.style.display = 'block';
-            video.style.display = 'none';
-
-            // IMPORTANT: live camera is turned OFF immediately after capture.
-            stopCamera();
-
-            captureBtn.classList.add('hidden');
-            captureBtn.innerText = '🤳 Take Selfie';
-            document.getElementById('btn-recapture').classList.remove('hidden');
+        function handleSelfieFile(e) {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                showAlert('Please select a photo.', 'error');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => setCapturedPhoto(reader.result);
+            reader.readAsDataURL(file);
         }
 
         function resetLivePhoto() {
@@ -724,81 +770,87 @@
             capturedPhotoData = null;
 
             const preview = document.getElementById('photo-preview');
-            const video = document.getElementById('camera-video');
             const captureBtn = document.getElementById('btn-capture');
             const retakeBtn = document.getElementById('btn-recapture');
+            const fileInput = document.getElementById('selfie-file');
 
             preview.src = '';
             preview.style.display = 'none';
-            video.style.display = 'none';
-
             captureBtn.classList.remove('hidden');
             captureBtn.disabled = false;
             captureBtn.innerText = '🤳 Take Selfie';
             retakeBtn.classList.add('hidden');
+            if (fileInput) fileInput.value = '';
         }
 
         async function fetchGPS() {
             const gpsInput = document.getElementById('gps-location');
             const nameInput = document.getElementById('gps-location-name');
+            const refreshBtn = document.querySelector('button[onclick="fetchGPS()"]');
 
             gpsInput.value = '';
             nameInput.value = 'Getting location...';
+            if (refreshBtn) refreshBtn.disabled = true;
 
-            if (!("geolocation" in navigator)) {
+            if (!window.isSecureContext) {
+                nameInput.value = 'Open this page using HTTPS';
+                if (refreshBtn) refreshBtn.disabled = false;
+                showAlert('Phone location works only on HTTPS/secure connection.', 'error');
+                return;
+            }
+            if (!navigator.geolocation) {
                 nameInput.value = 'Location unavailable';
+                if (refreshBtn) refreshBtn.disabled = false;
                 return;
             }
 
-            navigator.geolocation.getCurrentPosition(
-                async pos => {
-                    const lat = pos.coords.latitude;
-                    const lon = pos.coords.longitude;
-                    gpsInput.value = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+            const finish = () => { if (refreshBtn) refreshBtn.disabled = false; };
 
-                    // Reverse geocoding: coordinates -> readable place name.
+            navigator.geolocation.getCurrentPosition(async pos => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                gpsInput.value = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+
+                // Use BigDataCloud first because it is CORS-friendly for browser use.
+                try {
+                    const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lon)}&localityLanguage=bn`;
+                    const response = await fetch(url, { cache: 'no-store' });
+                    if (!response.ok) throw new Error('Reverse geocode failed');
+                    const data = await response.json();
+                    const parts = [
+                        data.localityInfo?.administrative?.[6]?.name,
+                        data.locality,
+                        data.city,
+                        data.principalSubdivision,
+                        data.countryName
+                    ].filter(Boolean);
+                    nameInput.value = [...new Set(parts)].join(', ') || data.locality || `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+                } catch (e) {
+                    // Secondary lookup.
                     try {
-                        const response = await fetch(
-                            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=18&addressdetails=1`,
-                            {
-                                headers: {
-                                    'Accept': 'application/json',
-                                    'Accept-Language': 'bn,en'
-                                }
-                            }
-                        );
-
-                        if (!response.ok) throw new Error('Location lookup failed');
-
+                        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=18&addressdetails=1`, { cache: 'no-store' });
+                        if (!response.ok) throw new Error('Nominatim failed');
                         const data = await response.json();
                         const a = data.address || {};
-
-                        const parts = [
-                            a.road,
-                            a.neighbourhood || a.suburb,
-                            a.village || a.town || a.city || a.municipality,
-                            a.upazila,
-                            a.district
-                        ].filter(Boolean);
-
-                        nameInput.value = parts.length
-                            ? [...new Set(parts)].join(', ')
-                            : (data.display_name || 'Location found');
-                    } catch (err) {
-                        // GPS coordinates are still saved even if place-name lookup fails.
+                        const parts = [a.road, a.neighbourhood || a.suburb, a.village || a.town || a.city || a.municipality, a.upazila, a.district].filter(Boolean);
+                        nameInput.value = parts.length ? [...new Set(parts)].join(', ') : (data.display_name || `${lat.toFixed(6)}, ${lon.toFixed(6)}`);
+                    } catch (e2) {
+                        // Coordinates are still valid location data and are saved with the report.
                         nameInput.value = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
                     }
-                },
-                err => {
-                    gpsInput.value = '';
-                    nameInput.value = 'Location permission required';
-                },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 15000,
-                    maximumAge: 0
                 }
-            );
+                finish();
+            }, err => {
+                gpsInput.value = '';
+                if (err && err.code === 1) nameInput.value = 'Location permission required';
+                else if (err && err.code === 3) nameInput.value = 'Location timeout - tap Refresh Location';
+                else nameInput.value = 'Location unavailable';
+                finish();
+            }, {
+                enableHighAccuracy: true,
+                timeout: 20000,
+                maximumAge: 0
+            });
         }
 
         // ----------------------------------------------------
@@ -813,9 +865,12 @@
             }
 
             const locationName = document.getElementById('gps-location-name').value.trim();
+            const gpsValue = document.getElementById('gps-location').value.trim();
             if (!locationName || locationName === 'Getting location...' ||
                 locationName === 'Location permission required' ||
-                locationName === 'Location unavailable') {
+                locationName === 'Location unavailable' ||
+                locationName === 'Open this page using HTTPS' ||
+                locationName.startsWith('Location timeout')) {
                 showAlert('Location Name is required!', 'error');
                 return;
             }
