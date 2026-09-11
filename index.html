@@ -1544,7 +1544,7 @@
 
         function getDashboardChartRows() {
             const info = getRoleInfo();
-            if (!['Admin', 'DM', 'DSS'].includes(info.role)) return [];
+            // Every logged-in user gets the same chart design; data remains permission-scoped.
             return reportsData.filter(canSeeReport);
         }
 
@@ -1555,11 +1555,7 @@
             if (!card || !canvas || !empty) return;
 
             const info = getRoleInfo();
-            if (!['Admin', 'DM', 'DSS'].includes(info.role)) {
-                card.classList.add('hidden');
-                if (dashboardVisitChart) { dashboardVisitChart.destroy(); dashboardVisitChart = null; }
-                return;
-            }
+            // Same chart is shown for Admin, DM, DSS and DSO. Only the data scope changes by permission.
             card.classList.remove('hidden');
 
             const from = (document.getElementById('dashboard-chart-from') || {}).value || '';
@@ -1612,11 +1608,7 @@
 
             const subtitle = document.getElementById('dashboard-chart-subtitle');
             if (subtitle) {
-                subtitle.innerText = info.role === 'DSS'
-                    ? 'DSS analytics: visit trend, unique Uddokta, repeat visit and visit rate by date'
-                    : info.role === 'DM'
-                        ? 'DM analytics: visit trend, unique Uddokta, repeat visit and visit rate by date'
-                        : 'Admin analytics: visit trend, unique Uddokta, repeat visit and visit rate by date';
+                subtitle.innerText = 'Visit trend, unique Uddokta, repeat visit and visit rate by date';
             }
 
             if (dashboardVisitChart) { dashboardVisitChart.destroy(); dashboardVisitChart = null; }
