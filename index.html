@@ -350,21 +350,22 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Live Real-Time Photo (Only Camera Allowed)</label>
+                        <label>Visit Uddokta Selfie</label>
                         <div class="camera-box">
                             <video id="camera-video" autoplay playsinline></video>
                             <canvas id="camera-canvas" class="hidden"></canvas>
                             <img id="photo-preview" alt="Preview">
                             <div style="margin-top: 10px;">
-                                <button type="button" class="btn btn-sm" id="btn-capture" onclick="captureLivePhoto()">📷 Capture Photo</button>
-                                <button type="button" class="btn btn-sm btn-sec hidden" id="btn-recapture" onclick="resetLivePhoto()">🔄 Retake Photo</button>
+                                <button type="button" class="btn btn-sm" id="btn-capture" onclick="captureLivePhoto()">🤳 Take Selfie</button>
+                                <button type="button" class="btn btn-sm btn-sec hidden" id="btn-recapture" onclick="resetLivePhoto()">🔄 Retake Selfie</button>
                             </div>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label>GPS Location</label>
-                        <input type="text" id="gps-location" readonly required>
+                        <label>GPS Location Name</label>
+                        <input type="text" id="gps-location-name" readonly required placeholder="Location name will appear here">
+                        <input type="hidden" id="gps-location">
                         <button type="button" class="btn btn-sec" style="padding:8px; margin-top:4px; font-size:0.8rem;" onclick="fetchGPS()">Refresh Location</button>
                     </div>
 
@@ -381,11 +382,11 @@
                             <tr>
                                 <th>Date</th>
                                 <th>Uddokta / Shop</th>
-                                <th>Agent No</th>
-                                <th>DSO</th>
+                                <th>Uddokta Wallet</th>
+                                <th>DSO Wallet</th>
                                 <th>Feedback</th>
                                 <th>Photo</th>
-                                <th>GPS</th>
+                                <th>Location</th>
                             </tr>
                         </thead>
                         <tbody id="reports-table-body"></tbody>
@@ -683,15 +684,67 @@
             document.getElementById('btn-recapture').classList.add('hidden');
         }
 
-        function fetchGPS() {
+        async function fetchGPS() {
             const gpsInput = document.getElementById('gps-location');
-            gpsInput.value = 'Fetching GPS...';
-            if ("geolocation" in navigator) {
-                navigator.geolocation.getCurrentPosition(
-                    pos => { gpsInput.value = `${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`; },
-                    err => { gpsInput.value = 'GPS Unavailable'; }
-                );
+            const nameInput = document.getElementById('gps-location-name');
+
+            gpsInput.value = '';
+            nameInput.value = 'Getting location...';
+
+            if (!("geolocation" in navigator)) {
+                nameInput.value = 'Location unavailable';
+                return;
             }
+
+            navigator.geolocation.getCurrentPosition(
+                async pos => {
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+                    gpsInput.value = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+
+                    // Reverse geocoding: coordinates -> readable place name.
+                    try {
+                        const response = await fetch(
+                            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=18&addressdetails=1`,
+                            {
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'Accept-Language': 'bn,en'
+                                }
+                            }
+                        );
+
+                        if (!response.ok) throw new Error('Location lookup failed');
+
+                        const data = await response.json();
+                        const a = data.address || {};
+
+                        const parts = [
+                            a.road,
+                            a.neighbourhood || a.suburb,
+                            a.village || a.town || a.city || a.municipality,
+                            a.upazila,
+                            a.district
+                        ].filter(Boolean);
+
+                        nameInput.value = parts.length
+                            ? [...new Set(parts)].join(', ')
+                            : (data.display_name || 'Location found');
+                    } catch (err) {
+                        // GPS coordinates are still saved even if place-name lookup fails.
+                        nameInput.value = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+                    }
+                },
+                err => {
+                    gpsInput.value = '';
+                    nameInput.value = 'Location permission required';
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 0
+                }
+            );
         }
 
         // ----------------------------------------------------
@@ -701,7 +754,7 @@
             e.preventDefault();
 
             if (!capturedPhotoData) {
-                showAlert('Live photo capture is strictly required!', 'error');
+                showAlert('Uddokta selfie is required!', 'error');
                 return;
             }
 
