@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DM Daily Visit Report Web App</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+            --danger: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            padding-bottom: 70px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #1e3a8a, #2563eb);
+            color: white;
+            padding: 18px 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        header h1 {
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+
+        .user-bar {
+            background: #1e293b;
+            color: #f8fafc;
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .card-val {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-top: 4px;
+        }
+
+        .card-lbl {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text);
+        }
+
+        input[type="text"],
+        input[type="date"],
+        input[type="password"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            background-color: var(--card-bg);
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            max-height: 220px;
+            overflow-y: auto;
+            z-index: 50;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+
+        .search-item {
+            padding: 10px 14px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .search-item:hover {
+            background-color: #eff6ff;
+        }
+
+        .camera-box {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            background: #fafafa;
+        }
+
+        #camera-video {
+            width: 100%;
+            max-height: 250px;
+            border-radius: 8px;
+            background: #000;
+            object-fit: cover;
+        }
+
+        #photo-preview {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 6px;
+            display: none;
+            margin: 10px auto 0 auto;
+        }
+
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            background: white;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        table.reports-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        table.reports-table th, table.reports-table td {
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+
+        .table-img {
+            width: 45px;
+            height: 45px;
+            object-fit: cover;
+            border-radius: 6px;
+        }
+
+        .btn {
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn:hover { background: var(--primary-hover); }
+
+        .btn-sec { background: #64748b; margin-top: 8px; }
+        .btn-sec:hover { background: #475569; }
+
+        .btn-danger { background: var(--danger); }
+        .btn-danger:hover { background: #dc2626; }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            width: auto;
+        }
+
+        .nav-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: var(--card-bg);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .nav-item {
+            flex: 1;
+            text-align: center;
+            padding: 8px 0;
+            color: var(--text-light);
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .nav-item.active { color: var(--primary); }
+
+        .hidden { display: none !important; }
+
+        .alert {
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 14px;
+            display: none;
+        }
+
+        .alert-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; }
+        .alert-success { background: #ecfdf5; color: #047857; border: 1px solid #6ee7b7; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>DM Daily Visit Report</h1>
+    </header>
+
+    <div id="user-info-bar" class="user-bar hidden">
+        <div>User: <strong id="current-user-name">Guest</strong> (<span id="current-user-role">Role</span>)</div>
+        <div>
+            <button class="btn btn-sm btn-sec" onclick="openChangePassModal()">Password</button>
+            <button class="btn btn-sm btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <!-- Login Section -->
+        <div id="view-login">
+            <div class="card" style="max-width: 400px; margin: 40px auto; text-align: left;">
+                <h2 style="font-size: 1.2rem; margin-bottom: 16px; text-align: center;">Login to Portal</h2>
+                <div id="login-alert" class="alert"></div>
+                <div class="form-group">
+                    <label>Select User / Role</label>
+                    <select id="login-user">
+                        <option value="admin">Admin</option>
+                        <option value="dm">DM</option>
+                        <option value="sohag">DSS - Mohosin Hossain Sohag</option>
+                        <option value="alamin">DSS - Md. Alamin</option>
+                        <option value="imran">DSS - Md. Imran Hossain</option>
+                        <option value="shofiq">DSS - Md. Shofiq</option>
+                        <option value="rubel">DSS - Rubel</option>
+                        <option value="dso">DSO (801 - 845)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="login-pass" placeholder="Default Password: 1234">
+                </div>
+                <button type="button" class="btn" onclick="login()">Login</button>
+            </div>
+        </div>
+
+        <!-- Main Dashboard & Visit Section -->
+        <div id="main-app" class="hidden">
+
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-lbl">Total Visits</div>
+                    <div class="card-val" id="total-visit-count">0</div>
+                </div>
+                <div class="card">
+                    <div class="card-lbl">Today Unique Visits</div>
+                    <div class="card-val" id="unique-visit-count">0</div>
+                </div>
+            </div>
+
+            <!-- New Visit Entry Form -->
+            <div id="view-form">
+                <div id="alert-box" class="alert"></div>
+
+                <form id="visit-form">
+                    <div class="form-group">
+                        <label>Visit Date</label>
+                        <input type="date" id="visit-date" required readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Search Uddokta Number (Digits)</label>
+                        <input type="text" id="search-input" placeholder="Type Agent Number (e.g. 1821703790)..." autocomplete="off" required>
+                        <div id="search-results" class="search-results"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>DSO Number</label>
+                        <input type="text" id="dso-number" readonly required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Agent Number</label>
+                        <input type="text" id="agent-number" readonly required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Agent Name</label>
+                        <input type="text" id="agent-name" readonly required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>DSS Name</label>
+                        <input type="text" id="dss-name" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Visit Feedback</label>
+                        <textarea id="feedback" rows="3" placeholder="Enter feedback..." required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Live Real-Time Photo (Only Live Photo Allowed)</label>
+                        <div class="camera-box">
+                            <video id="camera-video" autoplay playsinline></video>
+                            <canvas id="camera-canvas" class="hidden"></canvas>
+                            <img id="photo-preview" alt="Preview">
+                            <div style="margin-top: 10px;">
+                                <button type="button" class="btn btn-sm" id="btn-capture" onclick="captureLivePhoto()">📷 Capture Photo</button>
+                                <button type="button" class="btn btn-sm btn-sec hidden" id="btn-recapture" onclick="resetLivePhoto()">🔄 Retake Photo</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>GPS Location</label>
+                        <input type="text" id="gps-location" readonly required>
+                        <button type="button" class="btn btn-sec" style="padding:8px; margin-top:4px; font-size:0.8rem;" onclick="fetchGPS()">Refresh Location</button>
+                    </div>
+
+                    <button type="submit" class="btn">Submit Report</button>
+                </form>
+            </div>
+
+            <!-- Reports View -->
+            <div id="view-reports" class="hidden">
+                <h2 style="font-size:1.1rem; margin-bottom:12px;">Visit History</h2>
+                <div class="table-responsive">
+                    <table class="reports-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Agent / Shop</th>
+                                <th>Agent No</th>
+                                <th>DSO</th>
+                                <th>Feedback</th>
+                                <th>Photo</th>
+                                <th>GPS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reports-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Admin Panel -->
+            <div id="view-admin" class="hidden">
+                <h2 style="font-size:1.1rem; margin-bottom:12px;">Admin Management Panel</h2>
+                
+                <div class="card" style="text-align:left; margin-bottom:16px;">
+                    <h3 style="font-size:1rem; margin-bottom:10px;">Reset User Password</h3>
+                    <div class="form-group">
+                        <label>Select User to Reset Password</label>
+                        <select id="reset-user-select">
+                            <option value="dm">DM</option>
+                            <option value="sohag">DSS - Sohag</option>
+                            <option value="alamin">DSS - Alamin</option>
+                            <option value="imran">DSS - Imran</option>
+                            <option value="shofiq">DSS - Shofiq</option>
+                            <option value="rubel">DSS - Rubel</option>
+                            <option value="dso">DSO (801 - 845)</option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn btn-danger" onclick="adminResetPassword()">Reset Password to '1234'</button>
+                </div>
+            </div>
+
+            <!-- Change Password Box -->
+            <div id="view-change-pass" class="hidden">
+                <div class="card" style="max-width: 400px; margin: 20px auto; text-align: left;">
+                    <h3 style="font-size:1rem; margin-bottom:12px;">Change Password</h3>
+                    <div class="form-group">
+                        <label>New Password</label>
+                        <input type="password" id="new-password" placeholder="Enter new password">
+                    </div>
+                    <button type="button" class="btn" onclick="changePassword()">Save New Password</button>
+                    <button type="button" class="btn btn-sec" onclick="switchTab('form')">Cancel</button>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Navigation Bar -->
+    <div id="app-nav" class="nav-bar hidden">
+        <div class="nav-item active" id="nav-form" onclick="switchTab('form')">
+            <span>📝 New Visit</span>
+        </div>
+        <div class="nav-item" id="nav-reports" onclick="switchTab('reports')">
+            <span>📊 Reports</span>
+        </div>
+        <div class="nav-item hidden" id="nav-admin" onclick="switchTab('admin')">
+            <span>⚙️ Admin</span>
+        </div>
+    </div>
+
+    <script>
+        // Passwords Store
+        let userPasswords = JSON.parse(localStorage.getItem('dm_app_passwords')) || {
+            'admin': '1234',
+            'dm': '1234',
+            'sohag': '1234',
+            'alamin': '1234',
+            'imran': '1234',
+            'shofiq': '1234',
+            'rubel': '1234',
+            'dso': '1234'
+        };
+
+        // Complete 2,269 Uddokta Data
+        let uddoktaDB = JSON.parse(localStorage.getItem('custom_uddokta_db')) || [];
+
+        let reportsData = JSON.parse(localStorage.getItem('dm_visit_reports')) || [];
+        let currentUser = null;
+        let capturedPhotoData = null;
+        let videoStream = null;
+
+        function savePasswords() {
+            localStorage.setItem('dm_app_passwords', JSON.stringify(userPasswords));
+        }
+
+        function login() {
+            const user = document.getElementById('login-user').value;
+            const pass = document.getElementById('login-pass').value;
+
+            if (userPasswords[user] && userPasswords[user] === pass) {
+                currentUser = user;
+                document.getElementById('view-login').classList.add('hidden');
+                document.getElementById('main-app').classList.remove('hidden');
+                document.getElementById('user-info-bar').classList.remove('hidden');
+                document.getElementById('app-nav').classList.remove('hidden');
+
+                document.getElementById('current-user-name').innerText = user.toUpperCase();
+                document.getElementById('current-user-role').innerText = user === 'admin' ? 'Administrator' : 'Field Staff';
+
+                if (user === 'admin') {
+                    document.getElementById('nav-admin').classList.remove('hidden');
+                } else {
+                    document.getElementById('nav-admin').classList.add('hidden');
+                }
+
+                initApp();
+            } else {
+                showLoginAlert('Invalid Password! Try again.', 'error');
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById('view-login').classList.remove('hidden');
+            document.getElementById('main-app').classList.add('hidden');
+            document.getElementById('user-info-bar').classList.add('hidden');
+            document.getElementById('app-nav').classList.add('hidden');
+            document.getElementById('login-pass').value = '';
+        }
+
+        function changePassword() {
+            const newPass = document.getElementById('new-password').value.trim();
+            if (newPass.length < 3) {
+                alert('Password must be at least 3 characters.');
+                return;
+            }
+            userPasswords[currentUser] = newPass;
+            savePasswords();
+            alert('Password changed successfully!');
+            document.getElementById('new-password').value = '';
+            switchTab('form');
+        }
+
+        function adminResetPassword() {
+            const targetUser = document.getElementById('reset-user-select').value;
+            userPasswords[targetUser] = '1234';
+            savePasswords();
+            alert(`Password for ${targetUser.toUpperCase()} has been reset to '1234'!`);
+        }
+
+        function openChangePassModal() {
+            switchTab('change-pass');
+        }
+
+        function initApp() {
+            setTodayDate();
+            fetchGPS();
+            initCamera();
+            updateDashboard();
+            renderReports();
+            document.getElementById('search-input').addEventListener('input', handleUddoktaSearch);
+        }
+
+        function setTodayDate() {
+            document.getElementById('visit-date').value = new Date().toISOString().split('T')[0];
+        }
+
+        function handleUddoktaSearch(e) {
+            const query = e.target.value.trim();
+            const resultsBox = document.getElementById('search-results');
+            resultsBox.innerHTML = '';
+
+            if (query.length < 3) {
+                resultsBox.style.display = 'none';
+                return;
+            }
+
+            const matches = uddoktaDB.filter(item => String(item[0]).includes(query));
+            if (matches.length === 0) {
+                resultsBox.style.display = 'none';
+                return;
+            }
+
+            matches.slice(0, 10).forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'search-item';
+                div.innerHTML = `<strong>${item[0]}</strong> - ${item[2]} <small style="color:#64748b;">(DSO: ${item[1]})</small>`;
+                div.onclick = () => selectUddokta(item);
+                resultsBox.appendChild(div);
+            });
+
+            resultsBox.style.display = 'block';
+        }
+
+        function selectUddokta(item) {
+            document.getElementById('agent-number').value = item[0];
+            document.getElementById('dso-number').value = item[1];
+            document.getElementById('agent-name').value = item[2];
+            document.getElementById('dss-name').value = item[3] || 'N/A';
+            document.getElementById('search-input').value = item[0];
+            document.getElementById('search-results').style.display = 'none';
+        }
+
+        async function initCamera() {
+            const video = document.getElementById('camera-video');
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' },
+                    audio: false
+                });
+                video.srcObject = videoStream;
+            } catch (err) {
+                showAlert('Live camera access permission is required!', 'error');
+            }
+        }
+
+        function captureLivePhoto() {
+            const video = document.getElementById('camera-video');
+            const canvas = document.getElementById('camera-canvas');
+            const preview = document.getElementById('photo-preview');
+
+            if (!video.srcObject || video.videoWidth === 0) {
+                showAlert('Camera stream not ready yet. Please allow camera access!', 'error');
+                return;
+            }
+
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            capturedPhotoData = canvas.toDataURL('image/jpeg', 0.85);
+            preview.src = capturedPhotoData;
+            preview.style.display = 'block';
+            video.style.display = 'none';
+
+            document.getElementById('btn-capture').classList.add('hidden');
+            document.getElementById('btn-recapture').classList.remove('hidden');
+        }
+
+        function resetLivePhoto() {
+            capturedPhotoData = null;
+            document.getElementById('photo-preview').style.display = 'none';
+            document.getElementById('camera-video').style.display = 'block';
+            document.getElementById('btn-capture').classList.remove('hidden');
+            document.getElementById('btn-recapture').classList.add('hidden');
+        }
+
+        function fetchGPS() {
+            const gpsInput = document.getElementById('gps-location');
+            gpsInput.value = 'Fetching GPS...';
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    pos => { gpsInput.value = `${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`; },
+                    err => { gpsInput.value = 'GPS Unavailable'; },
+                    { enableHighAccuracy: true, timeout: 8000 }
+                );
+            }
+        }
+
+        document.getElementById('visit-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            if (!capturedPhotoData) {
+                showAlert('Live photo capture is strictly required!', 'error');
+                return;
+            }
+
+            const newReport = {
+                id: Date.now(),
+                user: currentUser,
+                date: document.getElementById('visit-date').value,
+                agentNumber: document.getElementById('agent-number').value,
+                dsoNumber: document.getElementById('dso-number').value,
+                agentName: document.getElementById('agent-name').value,
+                feedback: document.getElementById('feedback').value,
+                photo: capturedPhotoData,
+                gps: document.getElementById('gps-location').value
+            };
+
+            reportsData.unshift(newReport);
+            localStorage.setItem('dm_visit_reports', JSON.stringify(reportsData));
+            showAlert('Visit Report saved successfully!', 'success');
+
+            this.reset();
+            resetLivePhoto();
+            setTodayDate();
+            fetchGPS();
+            updateDashboard();
+        });
+
+        function switchTab(tab) {
+            document.getElementById('view-form').classList.add('hidden');
+            document.getElementById('view-reports').classList.add('hidden');
+            document.getElementById('view-admin').classList.add('hidden');
+            document.getElementById('view-change-pass').classList.add('hidden');
+
+            document.getElementById('nav-form').classList.remove('active');
+            document.getElementById('nav-reports').classList.remove('active');
+            document.getElementById('nav-admin').classList.remove('active');
+
+            if (tab === 'form') {
+                document.getElementById('view-form').classList.remove('hidden');
+                document.getElementById('nav-form').classList.add('active');
+            } else if (tab === 'reports') {
+                document.getElementById('view-reports').classList.remove('hidden');
+                document.getElementById('nav-reports').classList.add('active');
+                renderReports();
+            } else if (tab === 'admin') {
+                document.getElementById('view-admin').classList.remove('hidden');
+                document.getElementById('nav-admin').classList.add('active');
+            } else if (tab === 'change-pass') {
+                document.getElementById('view-change-pass').classList.remove('hidden');
+            }
+        }
+
+        function renderReports() {
+            const tableBody = document.getElementById('reports-table-body');
+            tableBody.innerHTML = '';
+
+            reportsData.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${r.date}</td>
+                    <td>${r.agentName}</td>
+                    <td>${r.agentNumber}</td>
+                    <td>${r.dsoNumber}</td>
+                    <td>${r.feedback}</td>
+                    <td><img src="${r.photo}" class="table-img" onclick="window.open('${r.photo}')"></td>
+                    <td><small>${r.gps}</small></td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        function updateDashboard() {
+            document.getElementById('total-visit-count').innerText = reportsData.length;
+            const today = new Date().toISOString().split('T')[0];
+            const todayVisits = reportsData.filter(r => r.date === today);
+            document.getElementById('unique-visit-count').innerText = new Set(todayVisits.map(r => r.agentNumber)).size;
+        }
+
+        function showLoginAlert(msg, type) {
+            const box = document.getElementById('login-alert');
+            box.className = `alert alert-${type}`;
+            box.innerText = msg;
+            box.style.display = 'block';
+        }
+
+        function showAlert(msg, type) {
+            const box = document.getElementById('alert-box');
+            box.className = `alert alert-${type}`;
+            box.innerText = msg;
+            box.style.display = 'block';
+            setTimeout(() => { box.style.display = 'none'; }, 3000);
+        }
+    </script>
+</body>
+</html>
