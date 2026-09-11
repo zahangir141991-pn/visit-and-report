@@ -320,7 +320,7 @@
 
                     <div class="form-group">
                         <label>Search Uddokta Number</label>
-                        <input type="text" id="search-input" placeholder="Type Uddokta Number (e.g. 1821703790)..." autocomplete="off" required>
+                        <input type="text" id="search-input" placeholder="Type last 4 / last 6 / full Uddokta Number..." autocomplete="off" required>
                         <div id="search-results" class="search-results"></div>
                     </div>
 
@@ -548,52 +548,104 @@
             document.getElementById('visit-date').value = new Date().toISOString().split('T')[0];
         }
 
-        function normalizeAgentNumber(value) {
-            const banglaDigits = '০১২৩৪৫৬৭৮৯';
-            const englishDigits = '0123456789';
+        function normalizeUddoktaNumber(value) {
+            const bn = '০১২৩৪৫৬৭৮৯';
+            const en = '0123456789';
+
             return String(value ?? '')
+                .trim()
                 .split('')
                 .map(ch => {
-                    const i = banglaDigits.indexOf(ch);
-                    return i >= 0 ? englishDigits[i] : ch;
+                    const i = bn.indexOf(ch);
+                    return i >= 0 ? en[i] : ch;
                 })
                 .join('')
-                .replace(/\D/g, '');
+                .replace(/[^0-9]/g, '');
         }
 
         function handleUddoktaSearch(e) {
-            const query = normalizeAgentNumber(e.target.value || '');
+            const raw = e.target.value || '';
+            const query = normalizeUddoktaNumber(raw);
             const resultsBox = document.getElementById('search-results');
+
             resultsBox.innerHTML = '';
             resultsBox.style.display = 'none';
 
-            // Minimum 4 digits. Supports last 4, last 6, or full Uddokta Number.
+            // Search starts from 4 digits.
+            // Supports last 4, last 6, or the complete Uddokta Number.
             if (query.length < 4) return;
 
             const matches = uddoktaDB.filter(item => {
-                const no = normalizeAgentNumber(item[0]);
-                return no && (query.length >= no.length ? no === query : no.endsWith(query));
+                // IMPORTANT:
+                // item[0] = DSO Wallet
+                // item[1] = Uddokta Number
+                const uddoktaNo = normalizeUddoktaNumber(item[1]);
+                if (!uddoktaNo) return false;
+
+                // Full number
+                if (query === uddoktaNo) return true;
+
+                // Last 4 / last 6 / any valid suffix
+                return query.length < uddoktaNo.length && uddoktaNo.endsWith(query);
             });
 
             matches.slice(0, 12).forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'search-item';
-                div.innerHTML = `<strong>${item[0]}</strong> - ${item[2]} <small style="color:#64748b;">(DSO: ${item[1]})</small>`;
+
+                const dsoWallet = item[0] ?? '';
+                const uddoktaNo = item[1] ?? '';
+                const uddoktaName = item[2] ?? '';
+                const dssName = item[3] ?? '';
+
+                div.innerHTML =
+                    `<strong>${uddoktaNo}</strong> - ${uddoktaName}` +
+                    `<small style="display:block;color:#64748b;margin-top:3px;">DSO: ${dsoWallet}${dssName ? ' | ' + dssName : ''}</small>`;
+
                 div.onclick = () => selectUddokta(item);
                 resultsBox.appendChild(div);
             });
 
-            if (matches.length) resultsBox.style.display = 'block';
+            if (matches.length) {
+                resultsBox.style.display = 'block';
+            }
         }
 
         function selectUddokta(item) {
-            document.getElementById('uddokta-number').value = String(item[0]);
-            document.getElementById('dso-number').value = String(item[1]);
-            document.getElementById('uddokta-name').value = item[2];
-            document.getElementById('dss-name').value = item[3] || 'N/A';
-            document.getElementById('search-input').value = item[0];
+            // Excel order:
+            // [DSO Wallet, Uddokta Number, Uddokta Name, DSS Name]
+            document.getElementById('uddokta-number').value = String(item[1] ?? '');
+            document.getElementById('dso-number').value = String(item[0] ?? '');
+            document.getElementById('uddokta-name').value = String(item[2] ?? '');
+            document.getElementById('dss-name').value = String(item[3] || 'N/A');
+
+            document.getElementById('search-input').value = String(item[1] ?? '');
             document.getElementById('search-results').style.display = 'none';
         }
+
+        function setupUddoktaSearch() {
+            const input = document.getElementById('search-input');
+            if (!input) return;
+
+            // Prevent duplicate event listeners if initApp() runs more than once.
+            input.oninput = handleUddoktaSearch;
+            input.onkeyup = handleUddoktaSearch;
+
+            input.addEventListener('paste', () => {
+                setTimeout(() => {
+                    handleUddoktaSearch({ target: input });
+                }, 0);
+            });
+        }
+
+        document.addEventListener('click', function(e) {
+            const input = document.getElementById('search-input');
+            const box = document.getElementById('search-results');
+
+            if (input && box && !input.contains(e.target) && !box.contains(e.target)) {
+                box.style.display = 'none';
+            }
+        });
 
         async function initCamera() {
             const video = document.getElementById('camera-video');
