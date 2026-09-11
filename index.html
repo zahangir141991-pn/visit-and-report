@@ -422,6 +422,10 @@
                         <div class="card-lbl">Today Visit Count</div>
                         <div class="card-val" id="new-visit-today-count">0</div>
                     </div>
+                    <div class="card visit-count-card">
+                        <div class="card-lbl">Total Uddokta Count</div>
+                        <div class="card-val" id="new-visit-total-uddokta-count">0</div>
+                    </div>
                 </div>
                 <div id="alert-box" class="alert"></div>
 
@@ -1846,6 +1850,17 @@
 
             const newVisitCount = document.getElementById('new-visit-today-count');
             if(newVisitCount) newVisitCount.innerText = todayCount;
+
+            // Total unique Uddokta count for the currently visible/allowed visit data.
+            const uddoktaKeys = new Set();
+            visibleReports.forEach(r => {
+                const no = String(r.uddoktaNumber || '').trim();
+                const name = String(r.uddoktaName || '').trim().toUpperCase();
+                const key = no || name;
+                if (key) uddoktaKeys.add(key);
+            });
+            const totalUddoktaEl = document.getElementById('new-visit-total-uddokta-count');
+            if(totalUddoktaEl) totalUddoktaEl.innerText = uddoktaKeys.size;
 
             const reportCount = document.getElementById('report-total-visit-count');
             if(reportCount) reportCount.innerText = visibleReports.length;
