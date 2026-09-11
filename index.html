@@ -63,10 +63,6 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            position: sticky;
-            top: 67px;
-            z-index: 99;
-            box-shadow: 0 2px 5px rgba(0,0,0,.12);
         }
 
         .container {
@@ -202,15 +198,6 @@
             text-align: left;
         }
 
-        table.reports-table thead th {
-            position: sticky;
-            top: 105px;
-            z-index: 5;
-            background: #f8fafc;
-            box-shadow: 0 1px 0 var(--border);
-            white-space: nowrap;
-        }
-
         .table-img {
             width: 45px;
             height: 45px;
@@ -280,7 +267,9 @@
         .quick-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
         .filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
         .filter-grid .btn{height:44px}
-        .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px;background:#fff}
+        .table-wrap{overflow:visible;border:1px solid var(--border);border-radius:12px;background:#fff}
+        .table-responsive{max-height:68vh;overflow:auto;position:relative}
+        table.reports-table thead th{position:sticky;top:0;z-index:20;background:#1e3a8a;color:#fff;white-space:nowrap;box-shadow:0 2px 4px rgba(15,23,42,.12)}
         .empty-state{text-align:center;padding:35px;color:var(--text-light)}
         .nav-scroll{overflow-x:auto;justify-content:flex-start!important}
         .nav-scroll .nav-item{min-width:92px;flex:0 0 auto}
@@ -301,7 +290,7 @@
         .detail-btn{padding:6px 10px;border:0;border-radius:8px;background:#e8f0ff;color:#1d4ed8;font-weight:700;cursor:pointer}
         @media(max-width:600px){.details-grid{grid-template-columns:1fr}.details-card{padding:14px}.nav-item{min-width:0!important}}
         @media(max-width:900px){.quick-grid{grid-template-columns:repeat(2,1fr)}.filter-grid{grid-template-columns:repeat(2,1fr)}}
-        @media(max-width:600px){body{padding-bottom:72px}.container{padding:12px}.cards-grid{grid-template-columns:1fr 1fr}.quick-grid{grid-template-columns:1fr 1fr}.filter-grid{grid-template-columns:1fr}.section-head{align-items:flex-start}.table-responsive{border-radius:8px}table.reports-table{min-width:850px}.nav-item{font-size:.68rem}.nav-scroll .nav-item{min-width:78px}header{padding:14px 12px}header h1{font-size:1.08rem}.user-bar{font-size:.76rem;padding:7px 10px;top:55px}table.reports-table thead th{top:96px}.user-bar .btn{padding:5px 8px}}
+        @media(max-width:600px){body{padding-bottom:72px}.container{padding:12px}.cards-grid{grid-template-columns:1fr 1fr}.quick-grid{grid-template-columns:1fr 1fr}.filter-grid{grid-template-columns:1fr}.section-head{align-items:flex-start}.table-responsive{border-radius:8px}table.reports-table{min-width:850px}.nav-item{font-size:.68rem}.nav-scroll .nav-item{min-width:78px}header{padding:14px 12px}header h1{font-size:1.08rem}.user-bar{font-size:.76rem;padding:7px 10px}.user-bar .btn{padding:5px 8px}}
 
         .dashboard-chart-card{margin-top:14px;text-align:left;}
         .dashboard-chart-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
@@ -543,17 +532,7 @@
             <!-- Admin Panel -->
             <div id="view-admin" class="page">
                 <h2 style="font-size:1.1rem; margin-bottom:12px;">Admin Management Panel</h2>
-                                    <div class="card" style="text-align:left; margin-bottom:16px; border:1px solid #fecaca; background:#fff7f7;">
-                        <h3 style="font-size:1rem; margin-bottom:6px; color:#b91c1c;">Delete Visit Report by Month</h3>
-                        <p style="color:#64748b;font-size:.86rem;line-height:1.5;margin-bottom:12px;">Admin মাস নির্বাচন করে ওই মাসের সব Visit Report delete করতে পারবেন। Delete করার আগে Admin password দিতে হবে। এই কাজটি Firebase-এর Visit Report এবং সংশ্লিষ্ট review notice থেকেও data সরাবে।</p>
-                        <div class="form-group">
-                            <label>Select Month</label>
-                            <input type="month" id="admin-delete-month">
-                        </div>
-                        <button type="button" class="btn" style="background:#dc2626;" onclick="deleteVisitReportsByMonth()">Delete Month Visit Reports</button>
-                    </div>
-
-<div class="card" style="text-align:left; margin-bottom:16px;">
+                <div class="card" style="text-align:left; margin-bottom:16px;">
                     <h3 style="font-size:1rem; margin-bottom:6px;">Admin Password Management</h3>
                     <p style="color:#64748b;font-size:.86rem;line-height:1.5;margin-bottom:12px;">Admin যেকোনো user-এর password সরাসরি পরিবর্তন করতে পারবেন। নতুন password সেট করলে সেটিই পরবর্তী login-এর জন্য কার্যকর হবে।</p>
                     <div class="form-group">
@@ -767,15 +746,44 @@
             return { role: 'Field Staff' };
         }
 
+        function normalizeScopeWallet(value) {
+            return String(value || '').replace(/\D/g, '').replace(/^0+/, '');
+        }
+
+        function dssHasAssignedDso(dssName, dsoWallet) {
+            const dss = String(dssName || '').trim().toUpperCase();
+            const dso = normalizeScopeWallet(dsoWallet);
+            if (!dss || !dso) return false;
+            return (Array.isArray(uddoktaDB) ? uddoktaDB : []).some(item => {
+                const itemDss = String(item[3] || '').trim().toUpperCase();
+                const itemDso = normalizeScopeWallet(item[0]);
+                return itemDso === dso && itemDss === dss;
+            });
+        }
+
+        function getAssignedDsoWalletsForDss(dssName) {
+            const dss = String(dssName || '').trim().toUpperCase();
+            const set = new Set();
+            (Array.isArray(uddoktaDB) ? uddoktaDB : []).forEach(item => {
+                if (String(item[3] || '').trim().toUpperCase() === dss) {
+                    const w = normalizeScopeWallet(item[0]);
+                    if (w) set.add(w);
+                }
+            });
+            return set;
+        }
+
         function canSeeReport(r) {
             const info = getRoleInfo();
             if (info.role === 'Admin' || info.role === 'DM') return true;
             if (info.role === 'DSS') {
                 const a = String(r.dssName || '').trim().toUpperCase();
                 const allowed = String(info.dssName || '').trim().toUpperCase();
-                return !!a && (a === allowed || a.includes(allowed) || allowed.includes(a));
+                if (!a || !allowed || !(a === allowed || a.includes(allowed) || allowed.includes(a))) return false;
+                // DSS can see only visits of DSO(s) assigned to that DSS.
+                return dssHasAssignedDso(allowed, r.dsoWallet || r.dsoNumber);
             }
-            if (info.role === 'DSO') return String(r.dsoWallet || r.dsoNumber || '').replace(/^0+/, '') === String(info.dsoWallet || '').replace(/^0+/, '');
+            if (info.role === 'DSO') return normalizeScopeWallet(r.dsoWallet || r.dsoNumber) === normalizeScopeWallet(info.dsoWallet);
             return false;
         }
 
@@ -1579,30 +1587,53 @@
 
         function populateDsoFilter(){
             const sel=document.getElementById('filter-dso'); if(!sel) return;
-            const current=sel.value; sel.innerHTML='<option value="">All DSO</option>';
-            for(let i=801;i<=845;i++){ const wallet='13325178'+String(i-800).padStart(2,'0'); const info=getRoleInfo(); if(info.role==='DSO' && info.dsoWallet!==wallet) continue; sel.insertAdjacentHTML('beforeend',`<option value="${wallet}">${i} - ${wallet}</option>`); }
-            sel.value=current;
+            const current=sel.value;
+            const info=getRoleInfo();
+            sel.innerHTML='<option value="">All DSO</option>';
+            let wallets=[];
+            if(info.role==='DSO') {
+                wallets=[normalizeScopeWallet(info.dsoWallet)];
+            } else if(info.role==='DSS') {
+                wallets=Array.from(getAssignedDsoWalletsForDss(info.dssName));
+            } else {
+                for(let i=801;i<=845;i++) wallets.push('13325178'+String(i-800).padStart(2,'0'));
+            }
+            wallets.sort();
+            wallets.forEach(wallet=>{
+                if(!wallet) return;
+                const suffix=wallet.slice(-2);
+                const dsoNum=String(800+Number(suffix));
+                sel.insertAdjacentHTML('beforeend',`<option value="${wallet}">${dsoNum} - ${wallet}</option>`);
+            });
+            if(wallets.includes(current)) sel.value=current;
+            else sel.value='';
         }
 
         function resetDailyFilters(){
             const d=document.getElementById('filter-date'), s=document.getElementById('filter-dso'), ds=document.getElementById('filter-dss'), q=document.getElementById('filter-search'), rt=document.getElementById('filter-report-type');
-            if(d) d.value=''; if(s) s.value=''; if(ds) ds.value=''; if(q) q.value=''; if(rt) rt.value='all'; renderReports();
+            if(d) d.value=''; if(s) s.value=''; if(q) q.value=''; if(rt) rt.value='all';
+            const role=getRoleInfo();
+            if(ds) ds.value = role.role === 'DSS' ? String(role.dssName || '') : '';
+            renderReports();
         }
 
         function renderReports() {
             const tableBody=document.getElementById('reports-table-body');
             if(!tableBody) return;
             tableBody.innerHTML='';
+            const role=getRoleInfo();
             setupReportTypeFilter();
+            populateDsoFilter();
             const fd=(document.getElementById('filter-date')||{}).value||'';
-            const fds=(document.getElementById('filter-dso')||{}).value||'';
-            const fdss=((document.getElementById('filter-dss')||{}).value||'').toUpperCase();
+            const fds=normalizeScopeWallet((document.getElementById('filter-dso')||{}).value||'');
+            let fdss=((document.getElementById('filter-dss')||{}).value||'').toUpperCase();
             const fq=((document.getElementById('filter-search')||{}).value||'').trim().toUpperCase();
             const frt=(document.getElementById('filter-report-type')||{}).value||'all';
+            if(role.role==='DSS') fdss=String(role.dssName||'').toUpperCase();
             const rows=reportsData.filter(canSeeReport).filter(r=>{
                 if(frt !== 'all' && getReportType(r) !== frt) return false;
                 if(fd && r.date!==fd) return false;
-                if(fds && String(r.dsoWallet||r.dsoNumber||'')!==fds) return false;
+                if(fds && normalizeScopeWallet(r.dsoWallet||r.dsoNumber)!==fds) return false;
                 if(fdss && !String(r.dssName||'').toUpperCase().includes(fdss)) return false;
                 if(fq && !(String(r.uddoktaName||'').toUpperCase().includes(fq)||String(r.uddoktaNumber||'').toUpperCase().includes(fq))) return false;
                 return true;
@@ -1613,51 +1644,12 @@
             rows.forEach(r=>{
                 const tr=document.createElement('tr');
                 const idx=reportsData.indexOf(r);
-                const isDss = getRoleInfo().role === 'DSS';
+                const isDss = role.role === 'DSS';
                 const reviewHtml = isDss && (r.festoonStatus==='Not OK'||r.bannerStatus==='Not OK'||r.fileStatus==='Not OK') ? `<div class="review-grid">${r.festoonStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${r.id}','OK','festoonStatus')">✓ Festoon OK</button>`:''}${r.bannerStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${r.id}','OK','bannerStatus')">✓ Banner OK</button>`:''}${r.fileStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${r.id}','OK','fileStatus')">✓ File OK</button>`:''}</div>` : `<span>${r.reviewStatus||'Pending'}</span>`;
                 const updatedText = r.reviewUpdatedAt ? `<div class="review-update">Updated: ${r.reviewUpdatedAt}${r.reviewUpdatedBy?' · '+r.reviewUpdatedBy:''}</div>` : '';
                 tr.innerHTML=`<td>${r.visitTime||(r.timestamp?new Date(r.timestamp).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}):'')}</td><td>${r.dsoWallet||r.dsoNumber||''}</td><td>${r.uddoktaName||''}</td><td>${r.uddoktaNumber||''}</td><td>${r.festoonStatus||'Pending'}</td><td>${r.bannerStatus||'Pending'}</td><td>${r.fileStatus||'Pending'}</td><td>${reviewHtml}${updatedText}</td><td><small>${r.locationName||r.gps||''}</small></td><td>${r.photo?`<img src="${r.photo}" class="table-img" alt="Visit Uddokta Photo" onclick="showVisitDetails(${idx})">`:''}</td><td><button class="detail-btn" onclick="showVisitDetails(${idx})">View</button></td>`;
                 tableBody.appendChild(tr);
             });
-        }
-
-
-        async function deleteVisitReportsByMonth(){
-            const role = getRoleInfo();
-            if (String(currentUser||'').toLowerCase() !== 'admin' || role.role !== 'Admin') {
-                showAlert('শুধু Admin এই কাজটি করতে পারবেন.', 'error');
-                return;
-            }
-            const monthEl = document.getElementById('admin-delete-month');
-            const month = monthEl ? monthEl.value : '';
-            if (!month) { showAlert('একটি Month নির্বাচন করুন.', 'error'); return; }
-            const rows = reportsData.filter(r => String(r.date||'').startsWith(month + '-'));
-            if (!rows.length) { showAlert(month + ' মাসে কোনো Visit Report পাওয়া যায়নি.', 'error'); return; }
-            const password = window.prompt('Admin password দিন:');
-            if (password === null) return;
-            if (String(userPasswords.admin || '') !== String(password)) {
-                showAlert('Admin password সঠিক নয়। Delete করা হয়নি.', 'error');
-                return;
-            }
-            const ok = window.confirm(month + ' মাসের ' + rows.length + 'টি Visit Report স্থায়ীভাবে delete করবেন?');
-            if (!ok) return;
-            try {
-                const updates = {};
-                rows.forEach(r => {
-                    const id = String(r.id || '').trim();
-                    if (id) {
-                        updates['visit_reports/' + id] = null;
-                        updates['visit_notices/' + id] = null;
-                    }
-                });
-                await db.ref().update(updates);
-                showAlert(month + ' মাসের ' + rows.length + 'টি Visit Report delete হয়েছে.', 'success');
-                if (monthEl) monthEl.value = '';
-                renderReports();
-            } catch (err) {
-                console.error(err);
-                showAlert('Delete করা যায়নি। Firebase connection/check করুন.', 'error');
-            }
         }
 
         async function createReviewNotice(reportId, report) {
@@ -1744,7 +1736,7 @@
             const time=r.visitTime||(r.timestamp?new Date(r.timestamp).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}):'');
             box.innerHTML=`
                 <div class="details-grid">
-                        <div class="detail-box"><b>Visit Time</b><span>${time||'—'}</span></div>
+                    <div class="detail-box"><b>Visit Time</b><span>${time||'—'}</span></div>
                     <div class="detail-box"><b>DSO Wallet</b><span>${r.dsoWallet||r.dsoNumber||'—'}</span></div>
                     <div class="detail-box"><b>DSS Name</b><span>${r.dssName||'—'}</span></div>
                     <div class="detail-box"><b>Uddokta Name</b><span>${r.uddoktaName||'—'}</span></div>
