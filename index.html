@@ -365,8 +365,8 @@
                 <div id="dashboard-visit-chart-card" class="card dashboard-chart-card hidden">
                     <div class="dashboard-chart-head">
                         <div>
-                            <div class="dashboard-chart-title">Date-wise Visit Report</div>
-                            <div class="dashboard-chart-sub" id="dashboard-chart-subtitle">Visit count by date</div>
+                            <div class="dashboard-chart-title">Date-wise Visit Analytics</div>
+                            <div class="dashboard-chart-sub" id="dashboard-chart-subtitle">Visit count, unique Uddokta count and visit rate by date</div>
                         </div>
                     </div>
                     <div class="chart-filter-grid">
@@ -1465,7 +1465,7 @@
 
             const from = (document.getElementById('dashboard-chart-from') || {}).value || '';
             const to = (document.getElementById('dashboard-chart-to') || {}).value || '';
-            let rows = getDashboardChartRows().filter(r => {
+            const rows = getDashboardChartRows().filter(r => {
                 const d = String(r.date || '');
                 if (!d) return false;
                 if (from && d < from) return false;
@@ -1473,22 +1473,33 @@
                 return true;
             });
 
-            const counts = {};
-            rows.forEach(r => { const d = String(r.date); counts[d] = (counts[d] || 0) + 1; });
-            const dates = Object.keys(counts).sort();
+            // One date can contain multiple visits. Uddokta count is unique by number,
+            // with name as a fallback. Visit rate = visits per unique Uddokta * 100.
+            const byDate = {};
+            rows.forEach(r => {
+                const d = String(r.date || '');
+                if (!byDate[d]) byDate[d] = { visits: 0, uddoktas: new Set() };
+                byDate[d].visits++;
+                const uddoktaKey = String(r.uddoktaNumber || r.uddoktaName || '').trim().toUpperCase();
+                if (uddoktaKey) byDate[d].uddoktas.add(uddoktaKey);
+            });
+
+            const dates = Object.keys(byDate).sort();
             const labels = dates.map(d => {
                 const parts = d.split('-');
                 return parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : d;
             });
-            const values = dates.map(d => counts[d]);
+            const visitValues = dates.map(d => byDate[d].visits);
+            const uddoktaValues = dates.map(d => byDate[d].uddoktas.size);
+            const rateValues = dates.map(d => byDate[d].uddoktas.size ? +(byDate[d].visits / byDate[d].uddoktas.size * 100).toFixed(1) : 0);
 
             const subtitle = document.getElementById('dashboard-chart-subtitle');
             if (subtitle) {
                 subtitle.innerText = info.role === 'DSS'
-                    ? 'Your DSS visit count by date'
+                    ? 'Your DSS: visit count, unique Uddokta count and visit rate by date'
                     : info.role === 'DM'
-                        ? 'DM-accessible visit count by date'
-                        : 'All visit count by date';
+                        ? 'DM: visit count, unique Uddokta count and visit rate by date'
+                        : 'Admin: visit count, unique Uddokta count and visit rate by date';
             }
 
             if (dashboardVisitChart) { dashboardVisitChart.destroy(); dashboardVisitChart = null; }
@@ -1500,28 +1511,58 @@
             canvas.style.display = 'block';
             empty.style.display = 'none';
 
-            dashboardVisitChart = new Chart(canvas.getContext('2d'), {
+            const ctx = canvas.getContext('2d');
+            const visitGradient = ctx.createLinearGradient(0, 0, 0, 300);
+            visitGradient.addColorStop(0, 'rgba(37, 99, 235, 0.45)');
+            visitGradient.addColorStop(1, 'rgba(37, 99, 235, 0.04)');
+            const uddoktaGradient = ctx.createLinearGradient(0, 0, 0, 300);
+            uddoktaGradient.addColorStop(0, 'rgba(16, 185, 129, 0.38)');
+            uddoktaGradient.addColorStop(1, 'rgba(16, 185, 129, 0.04)');
+
+            dashboardVisitChart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels,
-                    datasets: [{
-                        label: 'Visits',
-                        data: values,
-                        tension: 0.25,
-                        fill: true,
-                        borderWidth: 2,
-                        pointRadius: 4,
-                        pointHoverRadius: 6
-                    }]
+                    datasets: [
+                        {
+                            label: 'Visit Count', data: visitValues,
+                            borderColor: '#2563eb', backgroundColor: visitGradient,
+                            tension: 0.28, fill: true, borderWidth: 3,
+                            pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: '#2563eb', pointBorderColor: '#fff', pointBorderWidth: 2
+                        },
+                        {
+                            label: 'Unique Uddokta Count', data: uddoktaValues,
+                            borderColor: '#10b981', backgroundColor: uddoktaGradient,
+                            tension: 0.28, fill: true, borderWidth: 3,
+                            pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: '#10b981', pointBorderColor: '#fff', pointBorderWidth: 2
+                        },
+                        {
+                            label: 'Visit Rate', data: rateValues,
+                            borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.08)',
+                            tension: 0.28, fill: false, borderWidth: 3,
+                            pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: '#f59e0b', pointBorderColor: '#fff', pointBorderWidth: 2,
+                            yAxisID: 'rateAxis'
+                        }
+                    ]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    responsive: true, maintainAspectRatio: false,
                     interaction: { mode: 'index', intersect: false },
-                    plugins: { legend: { display: false } },
+                    plugins: {
+                        legend: { display: true, position: 'top', labels: { usePointStyle: true, padding: 16, font: { weight: '700' } } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed.y ?? 0;
+                                    return context.dataset.label === 'Visit Rate' ? ` Visit Rate: ${value}%` : ` ${context.dataset.label}: ${value}`;
+                                }
+                            }
+                        }
+                    },
                     scales: {
-                        x: { title: { display: true, text: 'Date' } },
-                        y: { beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: 'Visit Count' } }
+                        x: { title: { display: true, text: 'Visit Date', font: { weight: '700' } }, grid: { display: false } },
+                        y: { beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: 'Visit / Uddokta Count', font: { weight: '700' } } },
+                        rateAxis: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Visit Rate (%)', font: { weight: '700' } }, ticks: { callback: v => v + '%' } }
                     }
                 }
             });
