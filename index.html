@@ -458,17 +458,17 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Visit Feedback</label>
-                        <textarea id="feedback" rows="3" placeholder="Enter feedback..." required></textarea>
-                    </div>
-
-                    <div class="form-group">
                         <label>Visit Materials Check</label>
                         <div class="visit-check-grid">
                             <div class="visit-check"><label>Festoon</label><select id="festoon-status" required><option value="">Select</option><option value="OK">OK</option><option value="Not OK">Not OK</option></select></div>
                             <div class="visit-check"><label>Banner</label><select id="banner-status" required><option value="">Select</option><option value="OK">OK</option><option value="Not OK">Not OK</option></select></div>
                             <div class="visit-check"><label>File</label><select id="file-status" required><option value="">Select</option><option value="OK">OK</option><option value="Not OK">Not OK</option></select></div>
                         </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Visit Feedback</label>
+                        <textarea id="feedback" rows="3" placeholder="Enter feedback..." required></textarea>
                     </div>
 
                     <div class="form-group">
@@ -587,7 +587,7 @@
 
             <!-- Notices Page -->
             <div id="view-notices" class="page">
-                <div class="section-head"><div><h2>Notice</h2><small style="color:#64748b">Not OK visit reports requiring DSS update</small></div><button class="btn btn-sm btn-sec" onclick="renderNotices()">↻ Refresh</button></div>
+                <div class="section-head"><div><h2>Notice</h2><small style="color:#64748b">Only assigned DSS receives Not OK notices and can update them</small></div><button class="btn btn-sm btn-sec" onclick="renderNotices()">↻ Refresh</button></div>
                 <div id="notice-list"></div>
             </div>
 
@@ -813,7 +813,7 @@
                     document.getElementById('nav-admin').classList.add('hidden');
                 }
                 const noticeNav = document.getElementById('nav-notices');
-                if (noticeNav) noticeNav.classList.toggle('hidden', !['DSS','DSO','DM','Admin'].includes(roleInfo.role));
+                if (noticeNav) noticeNav.classList.toggle('hidden', roleInfo.role !== 'DSS');
                 renderNotices();
 
                 setupReportTypeFilter();
@@ -1418,8 +1418,16 @@
                 showAlert('Uddokta selfie is required!', 'error');
                 return;
             }
-            if (!document.getElementById('festoon-status').value || !document.getElementById('banner-status').value || !document.getElementById('file-status').value) {
-                showAlert('Festoon, Banner and File status select করুন.', 'error');
+            const feedbackValue = document.getElementById('feedback').value.trim();
+            const festoonValue = document.getElementById('festoon-status').value;
+            const bannerValue = document.getElementById('banner-status').value;
+            const fileValue = document.getElementById('file-status').value;
+            if (!feedbackValue) {
+                showAlert('Visit Feedback পূরণ না করলে Submit করা যাবে না.', 'error');
+                return;
+            }
+            if (!festoonValue || !bannerValue || !fileValue) {
+                showAlert('Festoon, Banner এবং File status পূরণ না করলে Submit করা যাবে না.', 'error');
                 return;
             }
 
@@ -1439,7 +1447,7 @@
                 uddoktaName: document.getElementById('uddokta-name').value,
                 uddoktaNumber: document.getElementById('uddokta-number').value,
                 dssName: document.getElementById('dss-name').value,
-                feedback: document.getElementById('feedback').value,
+                feedback: feedbackValue,
                 festoonStatus: document.getElementById('festoon-status').value,
                 bannerStatus: document.getElementById('banner-status').value,
                 fileStatus: document.getElementById('file-status').value,
@@ -1575,7 +1583,7 @@
                 const tr=document.createElement('tr');
                 const idx=reportsData.indexOf(r);
                 const isDss = getRoleInfo().role === 'DSS';
-                const reviewHtml = isDss && (r.festoonStatus==='Not OK'||r.bannerStatus==='Not OK'||r.fileStatus==='Not OK') ? `<div class="review-grid"><select id="rf-${idx}" onchange="updateVisitCheck('${r.id}',this.value,'festoonStatus')"><option value="OK" ${r.festoonStatus==='OK'?'selected':''}>Festoon OK</option><option value="Not OK" ${r.festoonStatus==='Not OK'?'selected':''}>Festoon Not OK</option></select><select id="rb-${idx}" onchange="updateVisitCheck('${r.id}',this.value,'bannerStatus')"><option value="OK" ${r.bannerStatus==='OK'?'selected':''}>Banner OK</option><option value="Not OK" ${r.bannerStatus==='Not OK'?'selected':''}>Banner Not OK</option></select><select id="rfile-${idx}" onchange="updateVisitCheck('${r.id}',this.value,'fileStatus')"><option value="OK" ${r.fileStatus==='OK'?'selected':''}>File OK</option><option value="Not OK" ${r.fileStatus==='Not OK'?'selected':''}>File Not OK</option></select></div>` : `<span>${r.reviewStatus||'Pending'}</span>`;
+                const reviewHtml = isDss && (r.festoonStatus==='Not OK'||r.bannerStatus==='Not OK'||r.fileStatus==='Not OK') ? `<div class="review-grid">${r.festoonStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${r.id}','OK','festoonStatus')">✓ Festoon OK</button>`:''}${r.bannerStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${r.id}','OK','bannerStatus')">✓ Banner OK</button>`:''}${r.fileStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${r.id}','OK','fileStatus')">✓ File OK</button>`:''}</div>` : `<span>${r.reviewStatus||'Pending'}</span>`;
                 const updatedText = r.reviewUpdatedAt ? `<div class="review-update">Updated: ${r.reviewUpdatedAt}${r.reviewUpdatedBy?' · '+r.reviewUpdatedBy:''}</div>` : '';
                 tr.innerHTML=`<td>${r.date||''}</td><td>${r.visitTime||(r.timestamp?new Date(r.timestamp).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}):'')}</td><td>${r.dsoWallet||r.dsoNumber||''}</td><td>${r.uddoktaName||''}</td><td>${r.uddoktaNumber||''}</td><td>${r.photo?`<img src="${r.photo}" class="table-img" alt="Visit Uddokta Photo" onclick="showVisitDetails(${idx})">`:''}</td><td>${r.feedback||''}</td><td>${r.festoonStatus||'Pending'}</td><td>${r.bannerStatus||'Pending'}</td><td>${r.fileStatus||'Pending'}</td><td>${reviewHtml}${updatedText}</td><td><small>${r.locationName||r.gps||''}</small></td><td><button class="detail-btn" onclick="showVisitDetails(${idx})">View</button></td>`;
                 tableBody.appendChild(tr);
@@ -1586,7 +1594,7 @@
             const notice = {
                 id: String(reportId), reportId: reportId, type: 'DM_VISIT_NOT_OK',
                 title: 'DM Visit Report: Not OK',
-                message: `DM visit for ${report.uddoktaName||''} (${report.uddoktaNumber||''}) has Not OK item(s). DSS must check and update it.`,
+                message: `DM visit for ${report.uddoktaName||''} (${report.uddoktaNumber||''}) has Not OK item(s). DSS can see exactly which items are Not OK and update them to OK.`,
                 dssName: report.dssName || '', dsoWallet: report.dsoWallet || report.dsoNumber || '',
                 date: report.date || '', createdAt: firebase.database.ServerValue.TIMESTAMP,
                 resolved: false, resolvedAt: '', resolvedBy: ''
@@ -1595,11 +1603,12 @@
         }
 
         function canHandleNotice(n) {
+            // Only the assigned DSS receives review notices.
+            // DM/Admin can see the notice list only if explicitly opened later;
+            // DSO never receives DM/DSS review notices.
             const role = getRoleInfo();
-            if (role.role === 'Admin' || role.role === 'DM') return true;
-            if (role.role === 'DSS') return String(n.dssName||'').trim().toUpperCase() === String(role.dssName||'').trim().toUpperCase();
-            if (role.role === 'DSO') return String(n.dsoWallet||'').replace(/^0+/,'') === String(role.dsoWallet||'').replace(/^0+/,'');
-            return false;
+            if (role.role !== 'DSS') return false;
+            return String(n.dssName||'').trim().toUpperCase() === String(role.dssName||'').trim().toUpperCase();
         }
 
         function listenNotices() {
@@ -1625,29 +1634,35 @@
             const n = (window.visitNotices||{})[noticeId]; if (!n) return;
             const report = reportsData.find(r=>String(r.id)===String(n.reportId)); if (!report) return;
             const now = new Date().toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true});
-            const updates = { festoonStatus:'OK', bannerStatus:'OK', fileStatus:'OK', reviewStatus:'DSS OK', reviewUpdatedAt:now, reviewUpdatedBy:role.dssName };
+            const updates = { reviewUpdatedAt: now, reviewUpdatedBy: role.dssName };
+            if (report.festoonStatus === 'Not OK') updates.festoonStatus = 'OK';
+            if (report.bannerStatus === 'Not OK') updates.bannerStatus = 'OK';
+            if (report.fileStatus === 'Not OK') updates.fileStatus = 'OK';
+            updates.reviewStatus = 'DSS OK';
             try {
                 await db.ref('visit_reports/'+n.reportId).update(updates);
                 await db.ref('visit_notices/'+noticeId).update({resolved:true,resolvedAt:now,resolvedBy:role.dssName});
-                showAlert('DSS OK করে Visit Report update করা হয়েছে.', 'success');
+                showAlert('Not OK itemগুলো OK করে Visit Report update করা হয়েছে.', 'success');
             } catch(e) { showAlert('Update failed: '+e.message,'error'); }
         }
 
         async function updateVisitCheck(reportId, value, field) {
-            if (getRoleInfo().role !== 'DSS') return;
+            const role = getRoleInfo();
+            if (role.role !== 'DSS' || value !== 'OK') return;
             const r = reportsData.find(x=>String(x.id)===String(reportId)); if (!r) return;
-            const updated = { [field]: value };
+            if (r[field] !== 'Not OK') return;
+            const now = new Date().toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true});
+            const updated = { [field]: 'OK', reviewUpdatedAt: now, reviewUpdatedBy: role.dssName };
             const next = Object.assign({}, r, updated);
-            if (next.festoonStatus==='OK' && next.bannerStatus==='OK' && next.fileStatus==='OK') {
-                updated.reviewStatus='DSS OK';
-                updated.reviewUpdatedAt=new Date().toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true});
-                updated.reviewUpdatedBy=getRoleInfo().dssName;
-            }
+            if (next.festoonStatus==='OK' && next.bannerStatus==='OK' && next.fileStatus==='OK') updated.reviewStatus='DSS OK';
             await db.ref('visit_reports/'+reportId).update(updated);
             if (updated.reviewStatus==='DSS OK') {
                 const notices=window.visitNotices||{};
                 const n=Object.values(notices).find(x=>String(x.reportId)===String(reportId));
-                if(n) await db.ref('visit_notices/'+n.id).update({resolved:true,resolvedAt:updated.reviewUpdatedAt,resolvedBy:updated.reviewUpdatedBy});
+                if(n) await db.ref('visit_notices/'+n.id).update({resolved:true,resolvedAt:now,resolvedBy:role.dssName});
+                showAlert('সব Not OK item OK হয়েছে এবং Update Date save হয়েছে.', 'success');
+            } else {
+                showAlert('Not OK itemটি OK করা হয়েছে। বাকি Not OK item update করুন.', 'success');
             }
         }
 
