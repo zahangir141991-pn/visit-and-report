@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DM Daily Visit Report Web App</title>
+    
+    <!-- Firebase Web SDK (v10.8.0) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
     <style>
         :root {
             --primary: #2563eb;
@@ -15,14 +20,13 @@
             --border: #e2e8f0;
             --danger: #ef4444;
             --success: #10b981;
-            --warning: #f59e0b;
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
 
         body {
@@ -119,12 +123,6 @@
             background-color: var(--card-bg);
             color: var(--text);
             outline: none;
-            transition: border-color 0.2s;
-        }
-
-        input:focus, select:focus, textarea:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
         .search-results {
@@ -215,25 +213,13 @@
             cursor: pointer;
         }
 
-        .btn:hover { background: var(--primary-hover); }
-
         .btn-sec { background: #64748b; margin-top: 8px; }
-        .btn-sec:hover { background: #475569; }
-
         .btn-danger { background: var(--danger); }
-        .btn-danger:hover { background: #dc2626; }
-
-        .btn-sm {
-            padding: 6px 12px;
-            font-size: 0.8rem;
-            width: auto;
-        }
+        .btn-sm { padding: 6px 12px; font-size: 0.8rem; width: auto; }
 
         .nav-bar {
             position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
+            bottom: 0; left: 0; right: 0;
             height: 60px;
             background: var(--card-bg);
             border-top: 1px solid var(--border);
@@ -244,8 +230,7 @@
         }
 
         .nav-item {
-            flex: 1;
-            text-align: center;
+            flex: 1; text-align: center;
             padding: 8px 0;
             color: var(--text-light);
             font-size: 0.75rem;
@@ -254,7 +239,6 @@
         }
 
         .nav-item.active { color: var(--primary); }
-
         .hidden { display: none !important; }
 
         .alert {
@@ -264,7 +248,6 @@
             margin-bottom: 14px;
             display: none;
         }
-
         .alert-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; }
         .alert-success { background: #ecfdf5; color: #047857; border: 1px solid #6ee7b7; }
     </style>
@@ -272,7 +255,7 @@
 <body>
 
     <header>
-        <h1>DM Daily Visit Report</h1>
+        <h1>DM Daily Visit Report (Firebase Connected)</h1>
     </header>
 
     <div id="user-info-bar" class="user-bar hidden">
@@ -311,7 +294,7 @@
             </div>
         </div>
 
-        <!-- Main Dashboard & Visit Section -->
+        <!-- Main App Section -->
         <div id="main-app" class="hidden">
 
             <div class="cards-grid">
@@ -336,7 +319,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Search Uddokta Number (Digits)</label>
+                        <label>Search Uddokta Number</label>
                         <input type="text" id="search-input" placeholder="Type Agent Number (e.g. 1821703790)..." autocomplete="off" required>
                         <div id="search-results" class="search-results"></div>
                     </div>
@@ -367,7 +350,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Live Real-Time Photo (Only Live Photo Allowed)</label>
+                        <label>Live Real-Time Photo (Only Camera Allowed)</label>
                         <div class="camera-box">
                             <video id="camera-video" autoplay playsinline></video>
                             <canvas id="camera-canvas" class="hidden"></canvas>
@@ -385,13 +368,13 @@
                         <button type="button" class="btn btn-sec" style="padding:8px; margin-top:4px; font-size:0.8rem;" onclick="fetchGPS()">Refresh Location</button>
                     </div>
 
-                    <button type="submit" class="btn">Submit Report</button>
+                    <button type="submit" class="btn" id="btn-submit">Submit Report to Firebase</button>
                 </form>
             </div>
 
             <!-- Reports View -->
             <div id="view-reports" class="hidden">
-                <h2 style="font-size:1.1rem; margin-bottom:12px;">Visit History</h2>
+                <h2 style="font-size:1.1rem; margin-bottom:12px;">Visit History (Live Firebase Data)</h2>
                 <div class="table-responsive">
                     <table class="reports-table">
                         <thead>
@@ -413,7 +396,6 @@
             <!-- Admin Panel -->
             <div id="view-admin" class="hidden">
                 <h2 style="font-size:1.1rem; margin-bottom:12px;">Admin Management Panel</h2>
-                
                 <div class="card" style="text-align:left; margin-bottom:16px;">
                     <h3 style="font-size:1rem; margin-bottom:10px;">Reset User Password</h3>
                     <div class="form-group">
@@ -432,7 +414,7 @@
                 </div>
             </div>
 
-            <!-- Change Password Box -->
+            <!-- Change Password -->
             <div id="view-change-pass" class="hidden">
                 <div class="card" style="max-width: 400px; margin: 20px auto; text-align: left;">
                     <h3 style="font-size:1rem; margin-bottom:12px;">Change Password</h3>
@@ -449,7 +431,7 @@
 
     </div>
 
-    <!-- Navigation Bar -->
+    <!-- Bottom Navigation Bar -->
     <div id="app-nav" class="nav-bar hidden">
         <div class="nav-item active" id="nav-form" onclick="switchTab('form')">
             <span>📝 New Visit</span>
@@ -463,25 +445,39 @@
     </div>
 
     <script>
-        // Passwords Store
-        let userPasswords = JSON.parse(localStorage.getItem('dm_app_passwords')) || {
-            'admin': '1234',
-            'dm': '1234',
-            'sohag': '1234',
-            'alamin': '1234',
-            'imran': '1234',
-            'shofiq': '1234',
-            'rubel': '1234',
-            'dso': '1234'
+        // ----------------------------------------------------
+        // 1. FIREBASE INITIALIZATION
+        // ----------------------------------------------------
+        const firebaseConfig = {
+            apiKey: "YOUR_FIREBASE_API_KEY",
+            authDomain: "visit-report-ea224.firebaseapp.com",
+            databaseURL: "https://visit-report-ea224-default-rtdb.firebaseio.com",
+            projectId: "visit-report-ea224",
+            storageBucket: "visit-report-ea224.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
 
-        // Complete 2,269 Uddokta Data
-        let uddoktaDB = JSON.parse(localStorage.getItem('custom_uddokta_db')) || [];
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-        let reportsData = JSON.parse(localStorage.getItem('dm_visit_reports')) || [];
+        // Passwords Store
+        let userPasswords = JSON.parse(localStorage.getItem('dm_app_passwords')) || {
+            'admin': '1234', 'dm': '1234', 'sohag': '1234', 'alamin': '1234',
+            'imran': '1234', 'shofiq': '1234', 'rubel': '1234', 'dso': '1234'
+        };
+
+        let uddoktaDB = [
+            [1821703790, 1332517809, "NUNHA STORE", "MOHOSIN HOSSAIN SOHAG"],
+            [1309893646, 1332517831, "MAHAR ALI STORE", "MD. ALAMIN"],
+            [1868107795, 1332517838, "MAMA VAGINA TELECOM", "MD. IMRAN HOSSAIN"],
+            [1975504427, 1332517841, "M K TELECOM", "MD. IMRAN HOSSAIN"],
+            [1752557881, 1332517837, "FARIHA COSMETICS", "MD. IMRAN HOSSAIN"]
+        ];
+
+        let reportsData = [];
         let currentUser = null;
         let capturedPhotoData = null;
-        let videoStream = null;
 
         function savePasswords() {
             localStorage.setItem('dm_app_passwords', JSON.stringify(userPasswords));
@@ -542,16 +538,13 @@
             alert(`Password for ${targetUser.toUpperCase()} has been reset to '1234'!`);
         }
 
-        function openChangePassModal() {
-            switchTab('change-pass');
-        }
+        function openChangePassModal() { switchTab('change-pass'); }
 
         function initApp() {
             setTodayDate();
             fetchGPS();
             initCamera();
-            updateDashboard();
-            renderReports();
+            listenFirebaseData();
             document.getElementById('search-input').addEventListener('input', handleUddoktaSearch);
         }
 
@@ -575,10 +568,10 @@
                 return;
             }
 
-            matches.slice(0, 10).forEach(item => {
+            matches.slice(0, 8).forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'search-item';
-                div.innerHTML = `<strong>${item[0]}</strong> - ${item[2]} <small style="color:#64748b;">(DSO: ${item[1]})</small>`;
+                div.innerHTML = `<strong>${item[0]}</strong> - ${item[2]}`;
                 div.onclick = () => selectUddokta(item);
                 resultsBox.appendChild(div);
             });
@@ -598,10 +591,7 @@
         async function initCamera() {
             const video = document.getElementById('camera-video');
             try {
-                videoStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'environment' },
-                    audio: false
-                });
+                const videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
                 video.srcObject = videoStream;
             } catch (err) {
                 showAlert('Live camera access permission is required!', 'error');
@@ -613,17 +603,11 @@
             const canvas = document.getElementById('camera-canvas');
             const preview = document.getElementById('photo-preview');
 
-            if (!video.srcObject || video.videoWidth === 0) {
-                showAlert('Camera stream not ready yet. Please allow camera access!', 'error');
-                return;
-            }
-
             canvas.width = video.videoWidth || 640;
             canvas.height = video.videoHeight || 480;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            capturedPhotoData = canvas.toDataURL('image/jpeg', 0.85);
+            capturedPhotoData = canvas.toDataURL('image/jpeg', 0.8);
             preview.src = capturedPhotoData;
             preview.style.display = 'block';
             video.style.display = 'none';
@@ -646,13 +630,15 @@
             if ("geolocation" in navigator) {
                 navigator.geolocation.getCurrentPosition(
                     pos => { gpsInput.value = `${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`; },
-                    err => { gpsInput.value = 'GPS Unavailable'; },
-                    { enableHighAccuracy: true, timeout: 8000 }
+                    err => { gpsInput.value = 'GPS Unavailable'; }
                 );
             }
         }
 
-        document.getElementById('visit-form').addEventListener('submit', function(e) {
+        // ----------------------------------------------------
+        // 2. SUBMIT REPORT TO FIREBASE REALTIME DATABASE
+        // ----------------------------------------------------
+        document.getElementById('visit-form').addEventListener('submit', async function(e) {
             e.preventDefault();
 
             if (!capturedPhotoData) {
@@ -660,28 +646,56 @@
                 return;
             }
 
+            const btnSubmit = document.getElementById('btn-submit');
+            btnSubmit.disabled = true;
+            btnSubmit.innerText = 'Saving to Firebase...';
+
+            const reportId = Date.now();
             const newReport = {
-                id: Date.now(),
+                id: reportId,
                 user: currentUser,
                 date: document.getElementById('visit-date').value,
                 agentNumber: document.getElementById('agent-number').value,
                 dsoNumber: document.getElementById('dso-number').value,
                 agentName: document.getElementById('agent-name').value,
+                dssName: document.getElementById('dss-name').value,
                 feedback: document.getElementById('feedback').value,
                 photo: capturedPhotoData,
-                gps: document.getElementById('gps-location').value
+                gps: document.getElementById('gps-location').value,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
             };
 
-            reportsData.unshift(newReport);
-            localStorage.setItem('dm_visit_reports', JSON.stringify(reportsData));
-            showAlert('Visit Report saved successfully!', 'success');
-
-            this.reset();
-            resetLivePhoto();
-            setTodayDate();
-            fetchGPS();
-            updateDashboard();
+            try {
+                await db.ref('visit_reports/' + reportId).set(newReport);
+                showAlert('Visit Report successfully saved to Firebase!', 'success');
+                this.reset();
+                resetLivePhoto();
+                setTodayDate();
+                fetchGPS();
+            } catch (err) {
+                showAlert('Error saving data to Firebase: ' + err.message, 'error');
+            } finally {
+                btnSubmit.disabled = false;
+                btnSubmit.innerText = 'Submit Report to Firebase';
+            }
         });
+
+        // ----------------------------------------------------
+        // 3. LISTEN TO REALTIME FIREBASE UPDATES
+        // ----------------------------------------------------
+        function listenFirebaseData() {
+            db.ref('visit_reports').on('value', (snapshot) => {
+                const data = snapshot.val();
+                reportsData = [];
+                if (data) {
+                    Object.keys(data).forEach(key => {
+                        reportsData.unshift(data[key]);
+                    });
+                }
+                renderReports();
+                updateDashboard();
+            });
+        }
 
         function switchTab(tab) {
             document.getElementById('view-form').classList.add('hidden');
@@ -699,7 +713,6 @@
             } else if (tab === 'reports') {
                 document.getElementById('view-reports').classList.remove('hidden');
                 document.getElementById('nav-reports').classList.add('active');
-                renderReports();
             } else if (tab === 'admin') {
                 document.getElementById('view-admin').classList.remove('hidden');
                 document.getElementById('nav-admin').classList.add('active');
