@@ -473,7 +473,6 @@
         let reportsData = [];
         let currentUser = null;
         let capturedPhotoData = null;
-            updateVisitSubmitState();
 
         function savePasswords() {
             localStorage.setItem('dm_app_passwords', JSON.stringify(userPasswords));
@@ -539,8 +538,8 @@
         function initApp() {
             setTodayDate();
             fetchGPS();
-            initCamera();
-            updateVisitSubmitState();
+            resetLivePhoto();
+
             listenFirebaseData();
             const searchInput = document.getElementById('search-input');
             searchInput.oninput = handleUddoktaSearch;
@@ -650,19 +649,25 @@
             }
         });
 
-        document.addEventListener('visibilitychange', function() {
-            if (document.hidden) stopCamera();
-        });
-
-        window.addEventListener('beforeunload', stopCamera);
-
-        async async function initCamera() {
+        async function initCamera() {
             const video = document.getElementById('camera-video');
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showAlert('Camera is not supported on this device/browser.', 'error');
+                return false;
+            }
             try {
-                const videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: 'user' } }, audio: false });
-                video.srcObject = videoStream;
+                // Front/selfie camera only.
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { ideal: 'user' } },
+                    audio: false
+                });
+                video.srcObject = stream;
+                video.style.display = 'block';
+                await video.play();
+                return true;
             } catch (err) {
-                showAlert('Live camera access permission is required!', 'error');
+                showAlert('Selfie camera permission is required.', 'error');
+                return false;
             }
         }
 
@@ -674,45 +679,63 @@
             }
         }
 
-        function updateVisitSubmitState() {
-            const btn = document.getElementById('btn-submit');
-            const location = document.getElementById('gps-location-name');
-            const ready = !!capturedPhotoData && !!(location && location.value.trim() && location.value.trim() !== 'Getting location...');
-            if (btn) btn.disabled = !ready;
-        }
-
-        function captureLivePhoto() {
+        async function captureLivePhoto() {
             const video = document.getElementById('camera-video');
             const canvas = document.getElementById('camera-canvas');
             const preview = document.getElementById('photo-preview');
+            const captureBtn = document.getElementById('btn-capture');
 
-            canvas.width = video.videoWidth || 640;
-            canvas.height = video.videoHeight || 480;
+            // First click: start the selfie camera. No photo is captured yet.
+            if (!video.srcObject) {
+                captureBtn.disabled = true;
+                const started = await initCamera();
+                captureBtn.disabled = false;
+                if (started) {
+                    captureBtn.innerText = '📸 Capture Photo';
+                }
+                return;
+            }
+
+            // Second click: capture the current live selfie frame.
+            if (!video.videoWidth || !video.videoHeight) {
+                showAlert('Camera is not ready yet. Please try again.', 'error');
+                return;
+            }
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            capturedPhotoData = canvas.toDataURL('image/jpeg', 0.8);
+            capturedPhotoData = canvas.toDataURL('image/jpeg', 0.85);
             preview.src = capturedPhotoData;
             preview.style.display = 'block';
             video.style.display = 'none';
 
-            // Camera MUST turn off immediately after taking the selfie.
+            // IMPORTANT: live camera is turned OFF immediately after capture.
             stopCamera();
 
-            document.getElementById('btn-capture').classList.add('hidden');
+            captureBtn.classList.add('hidden');
+            captureBtn.innerText = '🤳 Take Selfie';
             document.getElementById('btn-recapture').classList.remove('hidden');
-            updateVisitSubmitState();
         }
 
         function resetLivePhoto() {
             stopCamera();
             capturedPhotoData = null;
-            document.getElementById('photo-preview').style.display = 'none';
-            document.getElementById('camera-video').style.display = 'block';
-            document.getElementById('btn-capture').classList.remove('hidden');
-            document.getElementById('btn-recapture').classList.add('hidden');
 
-            // Re-open front camera only when the user chooses to retake.
-            initCamera();
+            const preview = document.getElementById('photo-preview');
+            const video = document.getElementById('camera-video');
+            const captureBtn = document.getElementById('btn-capture');
+            const retakeBtn = document.getElementById('btn-recapture');
+
+            preview.src = '';
+            preview.style.display = 'none';
+            video.style.display = 'none';
+
+            captureBtn.classList.remove('hidden');
+            captureBtn.disabled = false;
+            captureBtn.innerText = '🤳 Take Selfie';
+            retakeBtn.classList.add('hidden');
         }
 
         async function fetchGPS() {
@@ -724,7 +747,6 @@
 
             if (!("geolocation" in navigator)) {
                 nameInput.value = 'Location unavailable';
-                updateVisitSubmitState();
                 return;
             }
 
@@ -785,50 +807,72 @@
         document.getElementById('visit-form').addEventListener('submit', async function(e) {
             e.preventDefault();
 
-            const locationName = document.getElementById('gps-location-name').value.trim();
-
             if (!capturedPhotoData) {
                 showAlert('Visit Uddokta selfie is required!', 'error');
                 return;
             }
 
-            if (!locationName || locationName === 'Getting location...') {
+            const locationName = document.getElementById('gps-location-name').value.trim();
+            if (!locationName || locationName === 'Getting location...' ||
+                locationName === 'Location permission required' ||
+                locationName === 'Location unavailable') {
                 showAlert('Location Name is required!', 'error');
-                return;
-            }
-
-            if (!capturedPhotoData) {
-                showAlert('Uddokta selfie is required!', 'error');
                 return;
             }
 
             const btnSubmit = document.getElementById('btn-submit');
             btnSubmit.disabled = true;
-            btnSubmit.innerText = 'Saving to Firebase...';
+            btnSubmit.innerText = 'Saving...';
 
             const reportId = Date.now();
             const newReport = {
                 id: reportId,
                 user: currentUser,
                 date: document.getElementById('visit-date').value,
-                dsoWallet: document.getElementById('dso-number').value,
-                dsoNumber: document.getElementById('dso-number').value,
-                uddoktaName: document.getElementById('uddokta-name').value,
                 uddoktaNumber: document.getElementById('uddokta-number').value,
+                dsoNumber: document.getElementById('dso-number').value,
+                dsoWallet: document.getElementById('dso-number').value,
+                uddoktaName: document.getElementById('uddokta-name').value,
                 dssName: document.getElementById('dss-name').value,
-                feedback: document.getElementById('feedback').value,
+                feedback: document.getElementById('feedback').value.trim(),
                 photo: capturedPhotoData,
-                locationName: document.getElementById('gps-location-name').value,
+                locationName: locationName,
                 gps: document.getElementById('gps-location').value,
                 timestamp: firebase.database.ServerValue.TIMESTAMP
             };
 
             try {
                 await db.ref('visit_reports/' + reportId).set(newReport);
-                showAlert('Visit Report successfully saved to Firebase!', 'success');
-                this.reset();
-                resetLivePhoto();
+                showAlert('Visit Report successfully saved!', 'success');
+
+                // NEW VISIT: remove ALL previous visit values from the form.
+                stopCamera();
+                capturedPhotoData = null;
+
+                document.getElementById('visit-form').reset();
+                document.getElementById('search-input').value = '';
+                document.getElementById('dso-number').value = '';
+                document.getElementById('uddokta-number').value = '';
+                document.getElementById('uddokta-name').value = '';
+                document.getElementById('dss-name').value = '';
+                document.getElementById('feedback').value = '';
+                document.getElementById('gps-location').value = '';
+                document.getElementById('gps-location-name').value = '';
+
+                document.getElementById('photo-preview').src = '';
+                document.getElementById('photo-preview').style.display = 'none';
+                document.getElementById('camera-video').srcObject = null;
+                document.getElementById('camera-video').style.display = 'none';
+
+                document.getElementById('btn-capture').classList.remove('hidden');
+                document.getElementById('btn-capture').disabled = false;
+                document.getElementById('btn-capture').innerText = '🤳 Take Selfie';
+                document.getElementById('btn-recapture').classList.add('hidden');
+
+                document.getElementById('search-results').style.display = 'none';
+
                 setTodayDate();
+                // Get fresh location for the NEW visit, without carrying previous visit data.
                 fetchGPS();
             } catch (err) {
                 showAlert('Error saving data to Firebase: ' + err.message, 'error');
@@ -886,11 +930,11 @@
             reportsData.forEach(r => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td>${r.date || ''}</td>
+                    <td>${r.date}</td>
                     <td>${r.dsoWallet || r.dsoNumber || ''}</td>
                     <td>${r.uddoktaName || ''}</td>
                     <td>${r.uddoktaNumber || ''}</td>
-                    <td>${r.photo ? `<img src="${r.photo}" class="table-img" alt="Visit Uddokta Photo" onclick="window.open('${r.photo}')">` : ''}</td>
+                    <td><img src="${r.photo || ''}" class="table-img" alt="Visit Uddokta Photo" onclick="window.open('${r.photo || ''}')"></td>
                     <td>${r.feedback || ''}</td>
                     <td><small>${r.locationName || r.gps || ''}</small></td>
                 `;
