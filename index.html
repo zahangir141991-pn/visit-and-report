@@ -449,6 +449,7 @@
                 <div class="card" style="text-align:left;margin-bottom:14px">
                     <div class="filter-grid">
                         <div><label>Date</label><input type="date" id="filter-date" onchange="renderReports()"></div>
+                        <div id="report-type-wrap" class="hidden"><label>Report Type</label><select id="filter-report-type" onchange="renderReports()"><option value="all">All Visit Reports</option><option value="dm">DM Visit Report</option><option value="dss">DSS Visit Report</option></select></div>
                         <div><label>DSO</label><select id="filter-dso" onchange="renderReports()"><option value="">All DSO</option></select></div>
                         <div><label>DSS</label><select id="filter-dss" onchange="renderReports()"><option value="">All DSS</option><option value="MOHOSIN HOSSAIN SOHAG">Sohag</option><option value="MD. ALAMIN">Alamin</option><option value="MD. IMRAN HOSSAIN">Imran</option><option value="RUBEL">Rubel</option><option value="MD. SHOFIQ">Shofiq</option></select></div>
                         <div><label>Search Uddokta</label><input type="text" id="filter-search" placeholder="Name / number" oninput="renderReports()"></div>
@@ -589,7 +590,7 @@
 
         function canSeeReport(r) {
             const info = getRoleInfo();
-            if (info.all) return true;
+            if (info.role === 'Admin' || info.role === 'DM') return true;
             if (info.role === 'DSS') {
                 const a = String(r.dssName || '').trim().toUpperCase();
                 const allowed = String(info.dssName || '').trim().toUpperCase();
@@ -597,6 +598,26 @@
             }
             if (info.role === 'DSO') return String(r.dsoWallet || r.dsoNumber || '').replace(/^0+/, '') === String(info.dsoWallet || '').replace(/^0+/, '');
             return false;
+        }
+
+        // Report ownership/type helpers.
+        // DM report = report submitted by the DM login (zahangir).
+        // DSS report = report belonging to a DSS (identified by dssName).
+        function getReportType(r) {
+            const owner = String(r.user || '').trim().toLowerCase();
+            if (owner === 'zahangir' || owner === 'dm-zahangir') return 'dm';
+            if (String(r.dssName || '').trim()) return 'dss';
+            return 'other';
+        }
+
+        function setupReportTypeFilter() {
+            const wrap = document.getElementById('report-type-wrap');
+            const select = document.getElementById('filter-report-type');
+            if (!wrap || !select) return;
+            const role = getRoleInfo().role;
+            const showTypeFilter = role === 'Admin' || role === 'DM';
+            wrap.classList.toggle('hidden', !showTypeFilter);
+            if (!showTypeFilter) select.value = 'all';
         }
 
         function canSeeUddokta(item) {
@@ -644,6 +665,7 @@
                     document.getElementById('nav-admin').classList.add('hidden');
                 }
 
+                setupReportTypeFilter();
                 initApp();
                 switchTab('dashboard');
             } else {
@@ -1062,19 +1084,22 @@
         }
 
         function resetDailyFilters(){
-            const d=document.getElementById('filter-date'), s=document.getElementById('filter-dso'), ds=document.getElementById('filter-dss'), q=document.getElementById('filter-search');
-            if(d) d.value=''; if(s) s.value=''; if(ds) ds.value=''; if(q) q.value=''; renderReports();
+            const d=document.getElementById('filter-date'), s=document.getElementById('filter-dso'), ds=document.getElementById('filter-dss'), q=document.getElementById('filter-search'), rt=document.getElementById('filter-report-type');
+            if(d) d.value=''; if(s) s.value=''; if(ds) ds.value=''; if(q) q.value=''; if(rt) rt.value='all'; renderReports();
         }
 
         function renderReports() {
             const tableBody=document.getElementById('reports-table-body');
             if(!tableBody) return;
             tableBody.innerHTML='';
+            setupReportTypeFilter();
             const fd=(document.getElementById('filter-date')||{}).value||'';
             const fds=(document.getElementById('filter-dso')||{}).value||'';
             const fdss=((document.getElementById('filter-dss')||{}).value||'').toUpperCase();
             const fq=((document.getElementById('filter-search')||{}).value||'').trim().toUpperCase();
+            const frt=(document.getElementById('filter-report-type')||{}).value||'all';
             const rows=reportsData.filter(canSeeReport).filter(r=>{
+                if(frt !== 'all' && getReportType(r) !== frt) return false;
                 if(fd && r.date!==fd) return false;
                 if(fds && String(r.dsoWallet||r.dsoNumber||'')!==fds) return false;
                 if(fdss && !String(r.dssName||'').toUpperCase().includes(fdss)) return false;
@@ -1129,7 +1154,10 @@
             if(newVisitCount) newVisitCount.innerText = todayCount;
 
             const reportCount = document.getElementById('report-total-visit-count');
-            if(reportCount) reportCount.innerText = reportsData.filter(canSeeReport).length;
+            if(reportCount) {
+                const role = getRoleInfo().role;
+                reportCount.innerText = (role === 'Admin' || role === 'DM') ? reportsData.filter(canSeeReport).length : reportsData.filter(canSeeReport).length;
+            }
         }
 
         function showLoginAlert(msg, type) {
