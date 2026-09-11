@@ -423,8 +423,12 @@
                         <div class="card-val" id="new-visit-today-count">0</div>
                     </div>
                     <div class="card visit-count-card">
-                        <div class="card-lbl">Total Uddokta Count</div>
+                        <div class="card-lbl">Total Uddokta</div>
                         <div class="card-val" id="new-visit-total-uddokta-count">0</div>
+                    </div>
+                    <div class="card visit-count-card">
+                        <div class="card-lbl">Visit Uddokta</div>
+                        <div class="card-val" id="new-visit-unique-uddokta-count">0</div>
                     </div>
                 </div>
                 <div id="alert-box" class="alert"></div>
@@ -1851,16 +1855,42 @@
             const newVisitCount = document.getElementById('new-visit-today-count');
             if(newVisitCount) newVisitCount.innerText = todayCount;
 
-            // Total unique Uddokta count for the currently visible/allowed visit data.
-            const uddoktaKeys = new Set();
+            // Total Uddokta = master Uddokta assigned to the logged-in scope.
+            // Visit Uddokta = only unique Uddokta who actually have a visible visit.
+            const roleInfo = getRoleInfo();
+            const masterRows = Array.isArray(uddoktaDB) ? uddoktaDB : [];
+            const scopedMaster = masterRows.filter(row => {
+                const dsoWallet = String(row[0] || '').replace(/^0+/, '');
+                const dssName = String(row[3] || '').trim().toUpperCase();
+                if (roleInfo.role === 'Admin' || roleInfo.role === 'DM') return true;
+                if (roleInfo.role === 'DSS') {
+                    const allowed = String(roleInfo.dssName || '').trim().toUpperCase();
+                    return !!dssName && (dssName === allowed || dssName.includes(allowed) || allowed.includes(dssName));
+                }
+                if (roleInfo.role === 'DSO') {
+                    return dsoWallet === String(roleInfo.dsoWallet || '').replace(/^0+/, '');
+                }
+                return false;
+            });
+            const totalUddoktaKeys = new Set();
+            scopedMaster.forEach(row => {
+                const no = String(row[1] || '').trim();
+                const name = String(row[2] || '').trim().toUpperCase();
+                const key = no || name;
+                if (key) totalUddoktaKeys.add(key);
+            });
+            const totalUddoktaEl = document.getElementById('new-visit-total-uddokta-count');
+            if(totalUddoktaEl) totalUddoktaEl.innerText = totalUddoktaKeys.size;
+
+            const visitUddoktaKeys = new Set();
             visibleReports.forEach(r => {
                 const no = String(r.uddoktaNumber || '').trim();
                 const name = String(r.uddoktaName || '').trim().toUpperCase();
                 const key = no || name;
-                if (key) uddoktaKeys.add(key);
+                if (key) visitUddoktaKeys.add(key);
             });
-            const totalUddoktaEl = document.getElementById('new-visit-total-uddokta-count');
-            if(totalUddoktaEl) totalUddoktaEl.innerText = uddoktaKeys.size;
+            const visitUddoktaEl = document.getElementById('new-visit-unique-uddokta-count');
+            if(visitUddoktaEl) visitUddoktaEl.innerText = visitUddoktaKeys.size;
 
             const reportCount = document.getElementById('report-total-visit-count');
             if(reportCount) reportCount.innerText = visibleReports.length;
