@@ -381,12 +381,12 @@
                         <thead>
                             <tr>
                                 <th>Date</th>
-                                <th>Uddokta / Shop</th>
-                                <th>Uddokta Wallet</th>
                                 <th>DSO Wallet</th>
+                                <th>Uddokta Name</th>
+                                <th>Uddokta Number</th>
+                                <th>Visit Uddokta Photo</th>
                                 <th>Feedback</th>
-                                <th>Photo</th>
-                                <th>Location</th>
+                                <th>Location Name</th>
                             </tr>
                         </thead>
                         <tbody id="reports-table-body"></tbody>
@@ -648,13 +648,27 @@
             }
         });
 
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) stopCamera();
+        });
+
+        window.addEventListener('beforeunload', stopCamera);
+
         async function initCamera() {
             const video = document.getElementById('camera-video');
             try {
-                const videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                const videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: 'user' } }, audio: false });
                 video.srcObject = videoStream;
             } catch (err) {
                 showAlert('Live camera access permission is required!', 'error');
+            }
+        }
+
+        function stopCamera() {
+            const video = document.getElementById('camera-video');
+            if (video && video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
             }
         }
 
@@ -672,16 +686,23 @@
             preview.style.display = 'block';
             video.style.display = 'none';
 
+            // Camera MUST turn off immediately after taking the selfie.
+            stopCamera();
+
             document.getElementById('btn-capture').classList.add('hidden');
             document.getElementById('btn-recapture').classList.remove('hidden');
         }
 
         function resetLivePhoto() {
+            stopCamera();
             capturedPhotoData = null;
             document.getElementById('photo-preview').style.display = 'none';
             document.getElementById('camera-video').style.display = 'block';
             document.getElementById('btn-capture').classList.remove('hidden');
             document.getElementById('btn-recapture').classList.add('hidden');
+
+            // Re-open front camera only when the user chooses to retake.
+            initCamera();
         }
 
         async function fetchGPS() {
@@ -767,12 +788,14 @@
                 id: reportId,
                 user: currentUser,
                 date: document.getElementById('visit-date').value,
-                uddoktaNumber: document.getElementById('uddokta-number').value,
+                dsoWallet: document.getElementById('dso-number').value,
                 dsoNumber: document.getElementById('dso-number').value,
                 uddoktaName: document.getElementById('uddokta-name').value,
+                uddoktaNumber: document.getElementById('uddokta-number').value,
                 dssName: document.getElementById('dss-name').value,
                 feedback: document.getElementById('feedback').value,
                 photo: capturedPhotoData,
+                locationName: document.getElementById('gps-location-name').value,
                 gps: document.getElementById('gps-location').value,
                 timestamp: firebase.database.ServerValue.TIMESTAMP
             };
@@ -840,13 +863,13 @@
             reportsData.forEach(r => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td>${r.date}</td>
-                    <td>${r.uddoktaName}</td>
-                    <td>${r.uddoktaNumber}</td>
-                    <td>${r.dsoNumber}</td>
-                    <td>${r.feedback}</td>
-                    <td><img src="${r.photo}" class="table-img" onclick="window.open('${r.photo}')"></td>
-                    <td><small>${r.gps}</small></td>
+                    <td>${r.date || ''}</td>
+                    <td>${r.dsoWallet || r.dsoNumber || ''}</td>
+                    <td>${r.uddoktaName || ''}</td>
+                    <td>${r.uddoktaNumber || ''}</td>
+                    <td>${r.photo ? `<img src="${r.photo}" class="table-img" alt="Visit Uddokta Photo" onclick="window.open('${r.photo}')">` : ''}</td>
+                    <td>${r.feedback || ''}</td>
+                    <td><small>${r.locationName || r.gps || ''}</small></td>
                 `;
                 tableBody.appendChild(tr);
             });
