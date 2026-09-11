@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DMS-Nagad Manikganj</title>
+    <title>DMS</title>
     
     <!-- Firebase Web SDK (v10.8.0) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -252,6 +252,12 @@
         .alert-success { background: #ecfdf5; color: #047857; border: 1px solid #6ee7b7; }
 
         .page{display:none !important}.page.active{display:block !important}
+.visit-summary-grid,.report-summary-grid{grid-template-columns:minmax(180px,260px);margin-bottom:14px}
+.visit-count-card{text-align:center;padding:16px}
+.visit-count-card .card-lbl{font-size:.82rem}
+.visit-count-card .card-val{font-size:1.65rem}
+@media(max-width:600px){.visit-summary-grid,.report-summary-grid{grid-template-columns:1fr}}
+
         .section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
         .section-head h2{font-size:1.15rem}
         .quick-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
@@ -356,6 +362,15 @@
 
             <!-- New Visit Entry Form -->
             <div id="view-form" class="page">
+                <div class="section-head">
+                    <div><h2>New Visit</h2><small style="color:#64748b">Create a new Uddokta visit report</small></div>
+                </div>
+                <div class="quick-grid visit-summary-grid">
+                    <div class="card visit-count-card">
+                        <div class="card-lbl">Today Visit Count</div>
+                        <div class="card-val" id="new-visit-today-count">0</div>
+                    </div>
+                </div>
                 <div id="alert-box" class="alert"></div>
 
                 <form id="visit-form">
@@ -424,6 +439,12 @@
                 <div class="section-head">
                     <div><h2>Visit Report</h2><small style="color:#64748b">Date-wise visit report & details</small></div>
                     <button class="btn btn-sm btn-sec" onclick="resetDailyFilters()">↺ Reset Filter</button>
+                </div>
+                <div class="quick-grid report-summary-grid">
+                    <div class="card visit-count-card">
+                        <div class="card-lbl">Total Visit Count</div>
+                        <div class="card-val" id="report-total-visit-count">0</div>
+                    </div>
                 </div>
                 <div class="card" style="text-align:left;margin-bottom:14px">
                     <div class="filter-grid">
@@ -1042,6 +1063,8 @@
                 if(fq && !(String(r.uddoktaName||'').toUpperCase().includes(fq)||String(r.uddoktaNumber||'').toUpperCase().includes(fq))) return false;
                 return true;
             });
+            const reportCount = document.getElementById('report-total-visit-count');
+            if(reportCount) reportCount.innerText = rows.length;
             if(!rows.length){ tableBody.innerHTML='<tr><td colspan="9" class="empty-state">No visit data found</td></tr>'; return; }
             rows.forEach(r=>{
                 const tr=document.createElement('tr');
@@ -1074,13 +1097,21 @@
         function closeVisitDetails(){ document.getElementById('visit-details-modal')?.classList.add('hidden'); }
 
         function updateDashboard() {
-            const visibleReports = reportsData.filter(canSeeReport);
-            document.getElementById('total-visit-count').innerText = visibleReports.length;
+            const totalEl = document.getElementById('total-visit-count');
+            if(totalEl) totalEl.innerText = reportsData.length;
+
             const today = new Date().toISOString().split('T')[0];
-            const todayVisits = visibleReports.filter(r => r.date === today);
-            document.getElementById('unique-visit-count').innerText = todayVisits.length;
-            const info=getRoleInfo();
-            const ac=document.getElementById('access-card'); if(ac) ac.innerText=info.role;
+            const todayVisits = reportsData.filter(r => r.date === today);
+            const todayCount = todayVisits.length;
+
+            const dashboardToday = document.getElementById('unique-visit-count');
+            if(dashboardToday) dashboardToday.innerText = todayCount;
+
+            const newVisitCount = document.getElementById('new-visit-today-count');
+            if(newVisitCount) newVisitCount.innerText = todayCount;
+
+            const reportCount = document.getElementById('report-total-visit-count');
+            if(reportCount) reportCount.innerText = reportsData.filter(canSeeReport).length;
         }
 
         function showLoginAlert(msg, type) {
