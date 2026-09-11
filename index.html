@@ -251,7 +251,7 @@
         .alert-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; }
         .alert-success { background: #ecfdf5; color: #047857; border: 1px solid #6ee7b7; }
 
-        .page{display:none}.page.active{display:block}
+        .page{display:none !important}.page.active{display:block !important}
         .section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
         .section-head h2{font-size:1.15rem}
         .quick-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
@@ -950,15 +950,42 @@
         }
 
         function switchTab(tab) {
-            const pages=['dashboard','form','daily','admin','change-pass'];
-            pages.forEach(p=>{ const el=document.getElementById('view-'+p); if(el) el.classList.remove('active'); });
-            ['dashboard','form','daily','admin'].forEach(p=>{ const n=document.getElementById('nav-'+p); if(n) n.classList.remove('active'); });
-            const page=document.getElementById('view-'+tab);
-            if(page) page.classList.add('active');
-            const nav=document.getElementById('nav-'+tab);
-            if(nav) nav.classList.add('active');
-            if(tab==='form'){ fetchGPS(); stopCamera(); }
-            if(tab==='daily'){ populateDsoFilter(); renderReports(); }
+            // Single-page navigation: ONLY the clicked page is visible.
+            const pages = ['dashboard','form','daily','admin','change-pass'];
+            pages.forEach(name => {
+                const el = document.getElementById('view-' + name);
+                if (!el) return;
+                el.classList.remove('active');
+                el.classList.add('hidden');
+                el.setAttribute('aria-hidden', 'true');
+            });
+
+            ['dashboard','form','daily','admin'].forEach(name => {
+                const nav = document.getElementById('nav-' + name);
+                if (nav) nav.classList.remove('active');
+            });
+
+            const page = document.getElementById('view-' + tab);
+            if (page) {
+                page.classList.remove('hidden');
+                page.classList.add('active');
+                page.setAttribute('aria-hidden', 'false');
+            }
+
+            const nav = document.getElementById('nav-' + tab);
+            if (nav) nav.classList.add('active');
+
+            // Camera must remain OFF unless the user explicitly starts selfie capture.
+            if (tab !== 'form') stopCamera();
+
+            if (tab === 'form') {
+                fetchGPS();
+                stopCamera();
+            }
+            if (tab === 'daily') {
+                populateDsoFilter();
+                renderReports();
+            }
         }
 
         function populateDsoFilter(){
