@@ -255,7 +255,7 @@
 <body>
 
     <header>
-        <h1>DM Daily Visit Report (Firebase Connected)</h1>
+        <h1>DMS-Nagad Manikganj</h1>
     </header>
 
     <div id="user-info-bar" class="user-bar hidden">
@@ -276,7 +276,7 @@
                 <div class="form-group">
                     <label>User ID</label>
                     <input type="text" id="login-user" autocomplete="username" placeholder="Enter User ID (e.g. 801)">
-                    <small style="display:block;margin-top:6px;color:#64748b;line-height:1.45;">User ID: <b>admin</b> / <b>zahangir</b> / <b>alamin, sohag, imran, rubel, shofiq</b> / <b>801–845</b></small>
+
                 </div>
                 <div class="form-group">
                     <label>Password</label>
@@ -524,9 +524,10 @@
             if (info.all) return true;
             if (info.role === 'DSS') {
                 const a = String(r.dssName || '').trim().toUpperCase();
-                return a === info.dssName || a.includes(info.dssName) || info.dssName.includes(a);
+                const allowed = String(info.dssName || '').trim().toUpperCase();
+                return !!a && (a === allowed || a.includes(allowed) || allowed.includes(a));
             }
-            if (info.role === 'DSO') return String(r.dsoWallet || r.dsoNumber || '') === info.dsoWallet;
+            if (info.role === 'DSO') return String(r.dsoWallet || r.dsoNumber || '').replace(/^0+/, '') === String(info.dsoWallet || '').replace(/^0+/, '');
             return false;
         }
 
@@ -535,8 +536,8 @@
             if (info.all) return true;
             const dsoWallet = String(item[0] || '');
             const dssName = String(item[3] || '').trim().toUpperCase();
-            if (info.role === 'DSS') return dssName === info.dssName || dssName.includes(info.dssName) || info.dssName.includes(dssName);
-            if (info.role === 'DSO') return dsoWallet === info.dsoWallet;
+            if (info.role === 'DSS') { const allowed = String(info.dssName || '').trim().toUpperCase(); return !!dssName && (dssName === allowed || dssName.includes(allowed) || allowed.includes(dssName)); }
+            if (info.role === 'DSO') return dsoWallet.replace(/^0+/, '') === String(info.dsoWallet || '').replace(/^0+/, '');
             return false;
         }
 
