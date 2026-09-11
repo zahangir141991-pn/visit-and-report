@@ -275,8 +275,8 @@
                 <div id="login-alert" class="alert"></div>
                 <div class="form-group">
                     <label>User ID</label>
-                    <input type="text" id="login-user" inputmode="numeric" autocomplete="username" placeholder="Enter User ID (e.g. 801)">
-                    <small style="display:block;margin-top:6px;color:#64748b;line-height:1.45;">DSO User ID: <b>801–845</b> (801 = 01332517801, 802 = 01332517802 … 845 = 01332517845)</small>
+                    <input type="text" id="login-user" autocomplete="username" placeholder="Enter User ID (e.g. 801)">
+                    <small style="display:block;margin-top:6px;color:#64748b;line-height:1.45;">User ID: <b>admin</b> / <b>zahangir</b> / <b>alamin, sohag, imran, rubel, shofiq</b> / <b>801–845</b></small>
                 </div>
                 <div class="form-group">
                     <label>Password</label>
@@ -400,7 +400,7 @@
                     <div class="form-group">
                         <label>Select User to Reset Password</label>
                         <select id="reset-user-select">
-                            <option value="dm-zahangir">DM - Zahangir</option>
+                            <option value="zahangir">DM - Zahangir</option>
                             <option value="sohag">DSS - Sohag</option>
                             <option value="alamin">DSS - Alamin</option>
                             <option value="imran">DSS - Imran</option>
@@ -461,14 +461,18 @@
         const db = firebase.database();
 
         // Passwords Store
-        let userPasswords = JSON.parse(localStorage.getItem('dm_app_passwords')) || {
-            'admin': '1234', 'dm-zahangir': '1234', 'sohag': '1234', 'alamin': '1234',
-            'imran': '1234', 'shofiq': '1234', 'rubel': '1234'
-        };
-        // Every DSO wallet from 1332517801 to 1332517845 is a separate login.
-        for (let i = 1; i <= 45; i++) {
-            const dsoWallet = '13325178' + String(i).padStart(2, '0');
-            if (!userPasswords[dsoWallet]) userPasswords[dsoWallet] = '1234';
+        // Login IDs: admin, zahangir, alamin, sohag, imran, rubel, shofiq, and DSO 801-845.
+        let userPasswords = JSON.parse(localStorage.getItem('dm_app_passwords')) || {};
+        const fixedUserIds = ['admin','zahangir','alamin','sohag','imran','rubel','shofiq'];
+        fixedUserIds.forEach(id => {
+            if (typeof userPasswords[id] !== 'string' || userPasswords[id].length === 0) userPasswords[id] = '1234';
+        });
+        // Keep compatibility with the old DM login ID.
+        if (!userPasswords.zahangir && userPasswords['dm-zahangir']) userPasswords.zahangir = userPasswords['dm-zahangir'];
+        // DSO login ID 801 => wallet 1332517801 ... 845 => 1332517845.
+        for (let id = 801; id <= 845; id++) {
+            const wallet = '13325178' + String(id - 800).padStart(2, '0');
+            if (typeof userPasswords[wallet] !== 'string' || userPasswords[wallet].length === 0) userPasswords[wallet] = '1234';
         }
         localStorage.setItem('dm_app_passwords', JSON.stringify(userPasswords));
 
@@ -486,20 +490,21 @@
         // ----------------------------------------------------
         function normalizeLoginUserId(raw) {
             let u = String(raw || '').trim().toLowerCase();
-            // DSO login IDs 801–845 map to wallets 01332517801–01332517845.
-            // Internally the app uses the same wallet without the leading 0.
+            // Exact requested IDs. DSO 801-845 map to wallets 01332517801-01332517845.
             if (/^8(?:0[1-9]|[1-3]\d|4[0-5])$/.test(u)) {
-                return '13325178' + u;
+                return '13325178' + String(Number(u) - 800).padStart(2, '0');
             }
-            // Also accept the full DSO wallet with or without the Bangladesh leading 0.
+            // Accept DSO wallet forms too for backward compatibility.
             if (/^013325178(?:0[1-9]|[1-3]\d|4[0-5])$/.test(u)) return u.slice(1);
+            if (/^13325178(?:0[1-9]|[1-3]\d|4[0-5])$/.test(u)) return u;
+            if (u === 'dm-zahangir') return 'zahangir';
             return u;
         }
 
         function getRoleInfo() {
             const u = String(currentUser || '').toLowerCase();
             if (u === 'admin') return { role: 'Admin', all: true };
-            if (u === 'dm-zahangir' || u === 'dm') return { role: 'DM', all: true };
+            if (u === 'zahangir') return { role: 'DM', all: true };
             if (['sohag','alamin','imran','rubel','shofiq'].includes(u)) {
                 const map = {
                     sohag: 'MOHOSIN HOSSAIN SOHAG',
@@ -510,7 +515,7 @@
                 };
                 return { role: 'DSS', dssName: map[u] };
             }
-            if (/^13325178\d{2}$/.test(u)) return { role: 'DSO', dsoWallet: u };
+            if (/^13325178(?:0[1-9]|[1-3]\d|4[0-5])$/.test(u)) return { role: 'DSO', dsoWallet: u };
             return { role: 'Field Staff' };
         }
 
@@ -521,9 +526,7 @@
                 const a = String(r.dssName || '').trim().toUpperCase();
                 return a === info.dssName || a.includes(info.dssName) || info.dssName.includes(a);
             }
-            if (info.role === 'DSO') {
-                return String(r.dsoWallet || r.dsoNumber || '') === info.dsoWallet;
-            }
+            if (info.role === 'DSO') return String(r.dsoWallet || r.dsoNumber || '') === info.dsoWallet;
             return false;
         }
 
@@ -532,9 +535,7 @@
             if (info.all) return true;
             const dsoWallet = String(item[0] || '');
             const dssName = String(item[3] || '').trim().toUpperCase();
-            if (info.role === 'DSS') {
-                return dssName === info.dssName || dssName.includes(info.dssName) || info.dssName.includes(dssName);
-            }
+            if (info.role === 'DSS') return dssName === info.dssName || dssName.includes(info.dssName) || info.dssName.includes(dssName);
             if (info.role === 'DSO') return dsoWallet === info.dsoWallet;
             return false;
         }
@@ -548,7 +549,7 @@
             const user = normalizeLoginUserId(rawUser);
             const pass = document.getElementById('login-pass').value;
 
-            if (userPasswords[user] && userPasswords[user] === pass) {
+            if (userPasswords[user] !== undefined && String(userPasswords[user]) === String(pass)) {
                 currentUser = user;
                 document.getElementById('view-login').classList.add('hidden');
                 document.getElementById('main-app').classList.remove('hidden');
@@ -557,7 +558,7 @@
 
                 const roleInfo = getRoleInfo();
                 const dsoUserId = roleInfo.role === 'DSO' ? roleInfo.dsoWallet.slice(-3) : '';
-                const displayName = user === 'dm-zahangir' ? 'DM - ZAHANGIR' : (roleInfo.role === 'DSO' ? 'DSO - ' + dsoUserId : user.toUpperCase());
+                const displayName = user === 'zahangir' ? 'DM - ZAHANGIR' : (roleInfo.role === 'DSO' ? 'DSO - ' + dsoUserId : user.toUpperCase());
                 document.getElementById('current-user-name').innerText = displayName;
                 document.getElementById('current-user-role').innerText = roleInfo.role;
 
@@ -569,7 +570,7 @@
 
                 initApp();
             } else {
-                showLoginAlert('Invalid Password! Try again.', 'error');
+                showLoginAlert('Invalid User ID or Password. Please check your User ID and password.', 'error');
             }
         }
 
