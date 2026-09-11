@@ -261,6 +261,22 @@
         .empty-state{text-align:center;padding:35px;color:var(--text-light)}
         .nav-scroll{overflow-x:auto;justify-content:flex-start!important}
         .nav-scroll .nav-item{min-width:92px;flex:0 0 auto}
+
+        /* Polished single-page navigation + report details */
+        .nav-bar{gap:6px;padding:7px 10px;box-shadow:0 -4px 18px rgba(15,23,42,.08)}
+        .nav-item{border-radius:12px;padding:8px 10px;transition:.2s;line-height:1.15}
+        .nav-item:hover{background:#f1f5f9}
+        .nav-item.active{background:#e8f0ff;font-weight:800}
+        .details-modal{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:300;display:flex;align-items:center;justify-content:center;padding:16px}
+        .details-card{width:min(720px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:18px;padding:18px;box-shadow:0 20px 60px rgba(15,23,42,.25)}
+        .details-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;position:sticky;top:0;background:#fff;padding-bottom:8px;border-bottom:1px solid var(--border)}
+        .details-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+        .detail-box{padding:11px;border:1px solid var(--border);border-radius:10px;background:#f8fafc}
+        .detail-box b{display:block;font-size:.72rem;color:#64748b;margin-bottom:4px}
+        .detail-box span{font-size:.9rem;word-break:break-word}
+        .detail-photo{width:100%;max-height:320px;object-fit:contain;border-radius:12px;border:1px solid var(--border);background:#f8fafc;margin-top:12px}
+        .detail-btn{padding:6px 10px;border:0;border-radius:8px;background:#e8f0ff;color:#1d4ed8;font-weight:700;cursor:pointer}
+        @media(max-width:600px){.details-grid{grid-template-columns:1fr}.details-card{padding:14px}.nav-item{min-width:0!important}}
         @media(max-width:900px){.quick-grid{grid-template-columns:repeat(2,1fr)}.filter-grid{grid-template-columns:repeat(2,1fr)}}
         @media(max-width:600px){body{padding-bottom:72px}.container{padding:12px}.cards-grid{grid-template-columns:1fr 1fr}.quick-grid{grid-template-columns:1fr 1fr}.filter-grid{grid-template-columns:1fr}.section-head{align-items:flex-start}.table-responsive{border-radius:8px}table.reports-table{min-width:850px}.nav-item{font-size:.68rem}.nav-scroll .nav-item{min-width:78px}header{padding:14px 12px}header h1{font-size:1.08rem}.user-bar{font-size:.76rem;padding:7px 10px}.user-bar .btn{padding:5px 8px}}
     </style>
@@ -322,7 +338,7 @@
                     <h3 style="margin-bottom:10px">Quick Actions</h3>
                     <div class="quick-grid" style="margin:0">
                         <button class="btn" onclick="switchTab('form')">➕ New Visit</button>
-                        <button class="btn" onclick="switchTab('daily')">📅 Daily Visit</button>
+                        <button class="btn" onclick="switchTab('daily')">📋 Visit Report</button>
                     </div>
                 </div>
             </div>
@@ -339,7 +355,7 @@
             </div>
 
             <!-- New Visit Entry Form -->
-            <div id="view-form">
+            <div id="view-form" class="page">
                 <div id="alert-box" class="alert"></div>
 
                 <form id="visit-form">
@@ -403,18 +419,21 @@
                 </form>
             </div>
 
-            <!-- Daily Visit Page -->
+            <!-- Visit Report Page -->
             <div id="view-daily" class="page">
-                <div class="section-head"><div><h2>Daily Visit</h2><small style="color:#64748b">Live visit records</small></div><button class="btn btn-sm btn-sec" onclick="resetDailyFilters()">Reset Filter</button></div>
+                <div class="section-head">
+                    <div><h2>Visit Report</h2><small style="color:#64748b">Date-wise visit report & details</small></div>
+                    <button class="btn btn-sm btn-sec" onclick="resetDailyFilters()">↺ Reset Filter</button>
+                </div>
                 <div class="card" style="text-align:left;margin-bottom:14px">
                     <div class="filter-grid">
                         <div><label>Date</label><input type="date" id="filter-date" onchange="renderReports()"></div>
                         <div><label>DSO</label><select id="filter-dso" onchange="renderReports()"><option value="">All DSO</option></select></div>
                         <div><label>DSS</label><select id="filter-dss" onchange="renderReports()"><option value="">All DSS</option><option value="MOHOSIN HOSSAIN SOHAG">Sohag</option><option value="MD. ALAMIN">Alamin</option><option value="MD. IMRAN HOSSAIN">Imran</option><option value="RUBEL">Rubel</option><option value="MD. SHOFIQ">Shofiq</option></select></div>
-                        <div><label>Search</label><input type="text" id="filter-search" placeholder="Uddokta name / number" oninput="renderReports()"></div>
+                        <div><label>Search Uddokta</label><input type="text" id="filter-search" placeholder="Name / number" oninput="renderReports()"></div>
                     </div>
                 </div>
-                <div class="table-wrap"><div class="table-responsive"><table class="reports-table"><thead><tr><th>Date</th><th>Visit Time</th><th>DSO Wallet</th><th>Uddokta Name</th><th>Uddokta Number</th><th>Visit Uddokta Photo</th><th>Feedback</th><th>Location Name</th></tr></thead><tbody id="reports-table-body"></tbody></table></div></div>
+                <div class="table-wrap"><div class="table-responsive"><table class="reports-table"><thead><tr><th>Date</th><th>Visit Time</th><th>DSO</th><th>Uddokta</th><th>Number</th><th>Photo</th><th>Feedback</th><th>Location</th><th>Details</th></tr></thead><tbody id="reports-table-body"></tbody></table></div></div>
             </div>
 
             <!-- Admin Panel -->
@@ -435,6 +454,14 @@
                         </select>
                     </div>
                     <button type="button" class="btn btn-danger" onclick="adminResetPassword()">Reset Password to '1234'</button>
+                </div>
+            </div>
+
+            <!-- Visit Details Modal -->
+            <div id="visit-details-modal" class="details-modal hidden" onclick="if(event.target===this) closeVisitDetails()">
+                <div class="details-card">
+                    <div class="details-head"><h3>Visit Details</h3><button type="button" class="btn btn-sm btn-sec" onclick="closeVisitDetails()">✕</button></div>
+                    <div id="visit-details-content"></div>
                 </div>
             </div>
 
@@ -459,7 +486,7 @@
     <div id="app-nav" class="nav-bar nav-scroll hidden">
         <div class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')"><span>🏠<br>Dashboard</span></div>
         <div class="nav-item" id="nav-form" onclick="switchTab('form')"><span>➕<br>New Visit</span></div>
-        <div class="nav-item" id="nav-daily" onclick="switchTab('daily')"><span>📅<br>Daily Visit</span></div>
+        <div class="nav-item" id="nav-daily" onclick="switchTab('daily')"><span>📋<br>Visit Report</span></div>
         <div class="nav-item hidden" id="nav-admin" onclick="switchTab('admin')"><span>⚙️<br>Admin</span></div>
     </div>
 
@@ -1001,7 +1028,9 @@
         }
 
         function renderReports() {
-            const tableBody=document.getElementById('reports-table-body'); if(!tableBody) return; tableBody.innerHTML='';
+            const tableBody=document.getElementById('reports-table-body');
+            if(!tableBody) return;
+            tableBody.innerHTML='';
             const fd=(document.getElementById('filter-date')||{}).value||'';
             const fds=(document.getElementById('filter-dso')||{}).value||'';
             const fdss=((document.getElementById('filter-dss')||{}).value||'').toUpperCase();
@@ -1013,9 +1042,36 @@
                 if(fq && !(String(r.uddoktaName||'').toUpperCase().includes(fq)||String(r.uddoktaNumber||'').toUpperCase().includes(fq))) return false;
                 return true;
             });
-            if(!rows.length){ tableBody.innerHTML='<tr><td colspan="8" class="empty-state">No visit data found</td></tr>'; return; }
-            rows.forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${r.date||''}</td><td>${r.visitTime||(r.timestamp?new Date(r.timestamp).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}):'')}</td><td>${r.dsoWallet||r.dsoNumber||''}</td><td>${r.uddoktaName||''}</td><td>${r.uddoktaNumber||''}</td><td>${r.photo?`<img src="${r.photo}" class="table-img" alt="Visit Uddokta Photo" onclick="window.open('${r.photo}')">`:''}</td><td>${r.feedback||''}</td><td><small>${r.locationName||r.gps||''}</small></td>`; tableBody.appendChild(tr); });
+            if(!rows.length){ tableBody.innerHTML='<tr><td colspan="9" class="empty-state">No visit data found</td></tr>'; return; }
+            rows.forEach(r=>{
+                const tr=document.createElement('tr');
+                const idx=reportsData.indexOf(r);
+                tr.innerHTML=`<td>${r.date||''}</td><td>${r.visitTime||(r.timestamp?new Date(r.timestamp).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}):'')}</td><td>${r.dsoWallet||r.dsoNumber||''}</td><td>${r.uddoktaName||''}</td><td>${r.uddoktaNumber||''}</td><td>${r.photo?`<img src="${r.photo}" class="table-img" alt="Visit Uddokta Photo" onclick="showVisitDetails(${idx})">`:''}</td><td>${r.feedback||''}</td><td><small>${r.locationName||r.gps||''}</small></td><td><button class="detail-btn" onclick="showVisitDetails(${idx})">View</button></td>`;
+                tableBody.appendChild(tr);
+            });
         }
+
+        function showVisitDetails(index){
+            const r=reportsData[index];
+            if(!r) return;
+            const modal=document.getElementById('visit-details-modal');
+            const box=document.getElementById('visit-details-content');
+            const time=r.visitTime||(r.timestamp?new Date(r.timestamp).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}):'');
+            box.innerHTML=`
+                <div class="details-grid">
+                    <div class="detail-box"><b>Date</b><span>${r.date||'—'}</span></div>
+                    <div class="detail-box"><b>Visit Time</b><span>${time||'—'}</span></div>
+                    <div class="detail-box"><b>DSO Wallet</b><span>${r.dsoWallet||r.dsoNumber||'—'}</span></div>
+                    <div class="detail-box"><b>DSS Name</b><span>${r.dssName||'—'}</span></div>
+                    <div class="detail-box"><b>Uddokta Name</b><span>${r.uddoktaName||'—'}</span></div>
+                    <div class="detail-box"><b>Uddokta Number</b><span>${r.uddoktaNumber||'—'}</span></div>
+                    <div class="detail-box" style="grid-column:1/-1"><b>Feedback</b><span>${r.feedback||'—'}</span></div>
+                    <div class="detail-box" style="grid-column:1/-1"><b>Location</b><span>${r.locationName||r.gps||'—'}</span></div>
+                </div>
+                ${r.photo?`<img src="${r.photo}" class="detail-photo" alt="Visit Uddokta Photo">`:''}`;
+            modal.classList.remove('hidden');
+        }
+        function closeVisitDetails(){ document.getElementById('visit-details-modal')?.classList.add('hidden'); }
 
         function updateDashboard() {
             const visibleReports = reportsData.filter(canSeeReport);
