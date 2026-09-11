@@ -473,6 +473,7 @@
         let reportsData = [];
         let currentUser = null;
         let capturedPhotoData = null;
+            updateVisitSubmitState();
 
         function savePasswords() {
             localStorage.setItem('dm_app_passwords', JSON.stringify(userPasswords));
@@ -539,6 +540,7 @@
             setTodayDate();
             fetchGPS();
             initCamera();
+            updateVisitSubmitState();
             listenFirebaseData();
             const searchInput = document.getElementById('search-input');
             searchInput.oninput = handleUddoktaSearch;
@@ -654,7 +656,7 @@
 
         window.addEventListener('beforeunload', stopCamera);
 
-        async function initCamera() {
+        async async function initCamera() {
             const video = document.getElementById('camera-video');
             try {
                 const videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: 'user' } }, audio: false });
@@ -670,6 +672,13 @@
                 video.srcObject.getTracks().forEach(track => track.stop());
                 video.srcObject = null;
             }
+        }
+
+        function updateVisitSubmitState() {
+            const btn = document.getElementById('btn-submit');
+            const location = document.getElementById('gps-location-name');
+            const ready = !!capturedPhotoData && !!(location && location.value.trim() && location.value.trim() !== 'Getting location...');
+            if (btn) btn.disabled = !ready;
         }
 
         function captureLivePhoto() {
@@ -691,6 +700,7 @@
 
             document.getElementById('btn-capture').classList.add('hidden');
             document.getElementById('btn-recapture').classList.remove('hidden');
+            updateVisitSubmitState();
         }
 
         function resetLivePhoto() {
@@ -714,6 +724,7 @@
 
             if (!("geolocation" in navigator)) {
                 nameInput.value = 'Location unavailable';
+                updateVisitSubmitState();
                 return;
             }
 
@@ -773,6 +784,18 @@
         // ----------------------------------------------------
         document.getElementById('visit-form').addEventListener('submit', async function(e) {
             e.preventDefault();
+
+            const locationName = document.getElementById('gps-location-name').value.trim();
+
+            if (!capturedPhotoData) {
+                showAlert('Visit Uddokta selfie is required!', 'error');
+                return;
+            }
+
+            if (!locationName || locationName === 'Getting location...') {
+                showAlert('Location Name is required!', 'error');
+                return;
+            }
 
             if (!capturedPhotoData) {
                 showAlert('Uddokta selfie is required!', 'error');
