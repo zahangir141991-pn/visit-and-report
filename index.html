@@ -943,8 +943,42 @@ table{width:100%;max-width:100%}
             return false;
         }
 
+        function clearVisitFormForNewVisit() {
+            const form = document.getElementById('visit-form');
+            if (form) form.reset();
+
+            // Clear all programmatically populated visit fields as well.
+            ['search-input','dso-number','uddokta-number','uddokta-name','dss-name',
+             'feedback','festoon-status','banner-status','file-status','gps-location',
+             'gps-location-name'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+
+            const results = document.getElementById('search-results');
+            if (results) { results.innerHTML = ''; results.style.display = 'none'; }
+
+            const mapLink = document.getElementById('gps-map-link');
+            if (mapLink) { mapLink.href = '#'; mapLink.classList.add('hidden'); }
+
+            capturedPhotoData = null;
+            stopCamera();
+            const preview = document.getElementById('photo-preview');
+            const video = document.getElementById('camera-video');
+            const capture = document.getElementById('btn-capture');
+            const recapture = document.getElementById('btn-recapture');
+            if (preview) { preview.src = ''; preview.style.display = 'none'; }
+            if (video) video.style.display = 'block';
+            if (capture) { capture.classList.remove('hidden'); capture.innerText = '📷 Start Camera'; }
+            if (recapture) recapture.classList.add('hidden');
+
+            setTodayDate();
+            updateVisitSubmitState();
+        }
+
         function logout() {
             currentUser = null;
+            clearVisitFormForNewVisit();
 
             // Reset the login screen so a previous failed-login alert
             // never appears automatically after logout.
@@ -1357,6 +1391,7 @@ table{width:100%;max-width:100%}
 
             document.getElementById('search-input').value = String(item[1] ?? '');
             document.getElementById('search-results').style.display = 'none';
+            updateVisitSubmitState();
         }
 
         function setupUddoktaSearch() {
@@ -1699,10 +1734,10 @@ table{width:100%;max-width:100%}
                     await createReviewNotice(reportId, newReport);
                 }
                 showAlert('Visit Report successfully saved to Firebase!', 'success');
-                this.reset();
-                resetLivePhoto();
-                setTodayDate();
-                fetchGPS();
+                // A successful submit always starts a completely fresh Visit form.
+                clearVisitFormForNewVisit();
+                // Get a fresh GPS position for the next visit without restoring old fields.
+                setTimeout(() => { try { fetchGPS(); } catch (e) {} }, 150);
             } catch (err) {
                 showAlert('Error saving data to Firebase: ' + err.message, 'error');
             } finally {
