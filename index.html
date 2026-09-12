@@ -393,6 +393,11 @@ table{width:100%;max-width:100%}
 #osm-map, .osm-map-note { display:none !important; }
 </style>
 
+
+<style id="osm-location-only-hide">
+#osm-map, .osm-map-note, #gps-map-link { display:none !important; }
+</style>
+
 </head>
 <body>
 
@@ -567,7 +572,9 @@ table{width:100%;max-width:100%}
                         <label>GPS Location Name</label>
                         <input type="text" id="gps-location-name" readonly required placeholder="Location name will appear here">
                         <input type="hidden" id="gps-location">
-                        <button type="button" class="btn btn-sec" style="padding:8px; margin-top:4px; font-size:0.8rem;" onclick="fetchGPS()">Refresh Location</button>\n                        <div id="osm-map" aria-label="OpenStreetMap location map"></div>\n                        <div class="osm-map-note">📍 অবস্থান OpenStreetMap থেকে নেওয়া হবে</div>
+                        <button type="button" class="btn btn-sec" style="padding:8px; margin-top:4px; font-size:0.8rem;" onclick="fetchGPS()">Refresh Location</button>
+                        <div id="osm-map" aria-label="OpenStreetMap location map"></div>
+                        <div class="osm-map-note">📍 অবস্থান OpenStreetMap থেকে নেওয়া হবে</div>
                     </div>
 
                     <div id="submit-action-bar" style="position:sticky;bottom:8px;z-index:1000;background:rgba(255,255,255,.96);padding:8px;border-radius:12px;box-shadow:0 -4px 18px rgba(15,23,42,.08);display:block!important;visibility:visible!important;">
@@ -1220,7 +1227,10 @@ table{width:100%;max-width:100%}
                 document.getElementById('uddokta-excel-file').value = '';
                 document.getElementById('excel-upload-preview').classList.add('hidden');
                 pendingUddoktaExcelRows = [];
-                alert(`Uddokta information updated successfully!\nUpdated: ${updated}\nAdded: ${added}\nTotal: ${merged.length}`);
+                alert(`Uddokta information updated successfully!
+Updated: ${updated}
+Added: ${added}
+Total: ${merged.length}`);
             } catch (err) {
                 if (status) status.innerText = 'Upload failed: ' + err.message;
                 alert('Excel upload failed: ' + err.message);
@@ -1621,33 +1631,43 @@ table{width:100%;max-width:100%}
         }
 
         async function reverseGeocodeFallback(lat, lon) {
-            // OpenStreetMap Nominatim only. Retry once if the public endpoint is busy.
-            const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=18&addressdetails=1&accept-language=bn,en`;
-            for (let attempt = 0; attempt < 2; attempt++) {
-                try {
-                    const response = await fetch(url, {
-                        method: 'GET',
-                        mode: 'cors',
-                        cache: 'no-store',
-                        headers: { 'Accept': 'application/json' }
-                    });
-                    if (response.ok) {
-                        const data = await response.json();
-                        const a = data.address || {};
-                        const parts = [
-                            a.amenity, a.building, a.house_number, a.road,
-                            a.neighbourhood || a.suburb,
-                            a.village || a.town || a.city || a.municipality,
-                            a.upazila || a.county, a.district, a.state
-                        ].filter(Boolean);
-                        const name = [...new Set(parts)].join(', ').trim();
-                        if (name) return name;
-                        if (data.display_name) return String(data.display_name).trim();
+            // OpenStreetMap Nominatim only. Try detailed address first, then
+            // progressively broader OSM levels so rural/less-mapped locations
+            // can still resolve to a village, upazila, district or city.
+            const zooms = [18, 16, 14, 12, 10];
+            for (const zoom of zooms) {
+                const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=${zoom}&addressdetails=1&accept-language=bn,en`;
+                for (let attempt = 0; attempt < 2; attempt++) {
+                    try {
+                        const controller = new AbortController();
+                        const timer = setTimeout(() => controller.abort(), 12000);
+                        const response = await fetch(url, {
+                            method: 'GET',
+                            mode: 'cors',
+                            cache: 'no-store',
+                            headers: { 'Accept': 'application/json', 'Accept-Language': 'bn,en' },
+                            signal: controller.signal
+                        });
+                        clearTimeout(timer);
+                        if (response.ok) {
+                            const data = await response.json();
+                            const a = data.address || {};
+                            const parts = [
+                                a.amenity, a.building, a.house_number, a.road,
+                                a.neighbourhood, a.suburb, a.village, a.town,
+                                a.city, a.municipality, a.upazila, a.county,
+                                a.district, a.state
+                            ].filter(Boolean);
+                            const name = [...new Set(parts.map(v => String(v).trim()).filter(Boolean))].join(', ');
+                            if (name) return name;
+                            if (data.name) return String(data.name).trim();
+                            if (data.display_name) return String(data.display_name).trim();
+                        }
+                    } catch (e) {
+                        console.warn('OpenStreetMap reverse geocode failed:', e);
                     }
-                } catch (e) {
-                    console.warn('OpenStreetMap reverse geocode failed:', e);
+                    if (attempt === 0) await new Promise(r => setTimeout(r, 1200));
                 }
-                if (attempt === 0) await new Promise(r => setTimeout(r, 900));
             }
             return '';
         }
@@ -1670,11 +1690,11 @@ table{width:100%;max-width:100%}
             updateVisitSubmitState();
 
             try {
-                let pos = await getPosition({ enableHighAccuracy:true, timeout:45000, maximumAge:0 });
-                // If the first fix is weak, ask the device once more for a fresh high-accuracy fix.
+                let pos = await getPosition({ enableHighAccuracy:true, timeout:30000, maximumAge:0 });
+                // If the first fix is weak, ask once more for a fresh fix.
                 if (Number.isFinite(pos.coords.accuracy) && pos.coords.accuracy > 120) {
                     try {
-                        const retry = await getPosition({ enableHighAccuracy:true, timeout:45000, maximumAge:0 });
+                        const retry = await getPosition({ enableHighAccuracy:true, timeout:30000, maximumAge:0 });
                         if (Number.isFinite(retry.coords.accuracy) && retry.coords.accuracy < pos.coords.accuracy) pos = retry;
                     } catch(e) {}
                 }
@@ -1682,26 +1702,33 @@ table{width:100%;max-width:100%}
                 const lat = Number(pos.coords.latitude);
                 const lon = Number(pos.coords.longitude);
                 const accuracy = Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : 0;
-                gpsInput.value = `${lat.toFixed(7)}, ${lon.toFixed(7)}`;
+                if (!Number.isFinite(lat) || !Number.isFinite(lon)) throw new Error('Invalid GPS coordinates');
 
-                updateOSMMap(lat, lon, accuracy);
-                // Location name is resolved only from OpenStreetMap Nominatim.
+                // Store GPS coordinates, but the visible location name comes only from OSM.
+                gpsInput.value = `${lat.toFixed(7)}, ${lon.toFixed(7)}`;
                 const resolvedName = await reverseGeocodeFallback(lat, lon);
+
                 if (!resolvedName) {
                     gpsInput.value = '';
-                    nameInput.value = 'Location not found';
-                    nameInput.title = 'OpenStreetMap could not resolve this GPS position. Press Refresh Location again.';
+                    nameInput.value = '';
+                    nameInput.placeholder = 'OpenStreetMap location not found — tap Refresh Location';
+                    nameInput.title = 'OpenStreetMap could not resolve this GPS position. Please try Refresh Location again.';
                     updateVisitSubmitState();
                     return;
                 }
+
                 nameInput.value = resolvedName;
-                nameInput.title = accuracy ? `GPS accuracy: ±${Math.round(accuracy)}m` : 'GPS location';
+                nameInput.placeholder = 'Location name will appear here';
+                nameInput.title = accuracy ? `GPS accuracy: ±${Math.round(accuracy)}m` : 'GPS location from OpenStreetMap';
                 updateVisitSubmitState();
             } catch (err) {
                 console.warn('GPS error:', err);
                 gpsInput.value = '';
-                nameInput.value = 'Location permission required';
-                nameInput.title = 'Please allow precise location access and press Refresh Location.';
+                nameInput.value = '';
+                nameInput.placeholder = err && err.code === 1
+                    ? 'Location permission denied — allow GPS and Refresh'
+                    : 'GPS location unavailable — tap Refresh Location';
+                nameInput.title = 'Allow browser location access and try again.';
                 updateVisitSubmitState();
             }
         }
