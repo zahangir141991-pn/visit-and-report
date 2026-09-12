@@ -400,7 +400,7 @@ table{width:100%;max-width:100%}
                 <button type="button" class="btn" onclick="login()">Login</button>
                 <script>
                     document.addEventListener('keydown', function(e){
-                        if(e.key === 'Enter' && document.getElementById('view-login') && !document.getElementById('view-login').classList.contains('hidden')) login();
+                        if(e.key === 'Enter' && document.getElementById('view-login') && !document.getElementById('view-login').classList.contains('hidden')) { e.preventDefault(); login(); }
                     });
                 </script>
             </div>
@@ -693,8 +693,13 @@ table{width:100%;max-width:100%}
             appId: "YOUR_APP_ID"
         };
 
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+        let db = null;
+        try {
+            if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
+        } catch (firebaseInitError) {
+            console.error('Firebase initialization failed; local login/UI will still work:', firebaseInitError);
+        }
 
         // ----------------------------------------------------
         // BROWSER CACHE / REALTIME SYNC
@@ -866,48 +871,76 @@ table{width:100%;max-width:100%}
         }
 
         function login() {
-            const rawUser = document.getElementById('login-user').value;
+            const userEl = document.getElementById('login-user');
+            const passEl = document.getElementById('login-pass');
+            const loginAlert = document.getElementById('login-alert');
+            const loginButton = document.querySelector('#view-login button[onclick="login()"]');
+
+            const rawUser = userEl ? userEl.value : '';
             const user = normalizeLoginUserId(rawUser);
-            const pass = document.getElementById('login-pass').value;
+            const pass = passEl ? String(passEl.value || '') : '';
 
-            if (userPasswords[user] !== undefined && String(userPasswords[user]) === String(pass)) {
-                currentUser = user;
-                // Clear any previous failed-login message before entering the app.
-                const loginAlert = document.getElementById('login-alert');
-                if (loginAlert) {
-                    loginAlert.innerText = '';
-                    loginAlert.style.display = 'none';
-                    loginAlert.className = 'alert';
-                }
-                document.getElementById('view-login').classList.add('hidden');
-                document.getElementById('main-app').classList.remove('hidden');
-                document.getElementById('user-info-bar').classList.remove('hidden');
-                document.getElementById('app-nav').classList.remove('hidden');
+            // Support both the current wallet-based DSO IDs and the old numeric 801-845 keys.
+            const legacyUser = String(rawUser || '').trim().toLowerCase();
+            let passwordOk = false;
+            if (Object.prototype.hasOwnProperty.call(userPasswords, user) && String(userPasswords[user]) === pass) {
+                passwordOk = true;
+            } else if (legacyUser && Object.prototype.hasOwnProperty.call(userPasswords, legacyUser) && String(userPasswords[legacyUser]) === pass) {
+                passwordOk = true;
+            }
 
+            if (!passwordOk) {
+                showLoginAlert('Invalid User ID or Password. Please check your User ID and password.', 'error');
+                if (passEl) { passEl.focus(); passEl.select(); }
+                return false;
+            }
+
+            // Login itself must never depend on Firebase/network/table loading.
+            // Enter the app first, then initialize optional data services safely.
+            currentUser = user;
+            if (loginAlert) {
+                loginAlert.innerText = '';
+                loginAlert.style.display = 'none';
+                loginAlert.className = 'alert';
+            }
+            if (loginButton) loginButton.disabled = true;
+
+            const loginView = document.getElementById('view-login');
+            const mainApp = document.getElementById('main-app');
+            const userBar = document.getElementById('user-info-bar');
+            const appNav = document.getElementById('app-nav');
+            if (loginView) loginView.classList.add('hidden');
+            if (mainApp) mainApp.classList.remove('hidden');
+            if (userBar) userBar.classList.remove('hidden');
+            if (appNav) appNav.classList.remove('hidden');
+
+            try {
                 const roleInfo = getRoleInfo();
-                const dsoUserId = roleInfo.role === 'DSO' ? roleInfo.dsoWallet.slice(-3) : '';
+                const dsoUserId = roleInfo.role === 'DSO' ? String(roleInfo.dsoWallet || '').slice(-3) : '';
                 const displayName = user === 'zahangir' ? 'DM - ZAHANGIR' : (roleInfo.role === 'DSO' ? 'DSO - ' + dsoUserId : user.toUpperCase());
-                document.getElementById('current-user-name').innerText = displayName;
-                document.getElementById('current-user-role').innerText = roleInfo.role;
+                const nameEl = document.getElementById('current-user-name');
+                const roleEl = document.getElementById('current-user-role');
+                if (nameEl) nameEl.innerText = displayName;
+                if (roleEl) roleEl.innerText = roleInfo.role;
 
-                if (user === 'admin') {
-                    document.getElementById('nav-admin').classList.remove('hidden');
-                } else {
-                    document.getElementById('nav-admin').classList.add('hidden');
-                }
+                const adminNav = document.getElementById('nav-admin');
+                if (adminNav) adminNav.classList.toggle('hidden', user !== 'admin');
                 const noticeNav = document.getElementById('nav-notices');
                 if (noticeNav) noticeNav.classList.toggle('hidden', roleInfo.role !== 'DSS');
-                renderNotices();
 
-                setupReportTypeFilter();
-                initApp();
-                switchTab('dashboard');
-                // Start GPS automatically so location validation can complete.
+                // Non-critical UI/data startup: one failure must not log the user back out.
+                try { setupReportTypeFilter(); } catch (e) {}
+                try { renderNotices(); } catch (e) {}
+                try { initApp(); } catch (e) {
+                    console.error('App initialization error after login:', e);
+                }
+                try { switchTab('dashboard'); } catch (e) {}
                 setTimeout(() => { try { fetchGPS(); } catch (e) {} }, 300);
-                setTimeout(updateVisitSubmitState, 500);
-            } else {
-                showLoginAlert('Invalid User ID or Password. Please check your User ID and password.', 'error');
+                setTimeout(() => { try { updateVisitSubmitState(); } catch (e) {} }, 500);
+            } finally {
+                if (loginButton) loginButton.disabled = false;
             }
+            return false;
         }
 
         function logout() {
@@ -1163,6 +1196,7 @@ table{width:100%;max-width:100%}
         }
 
         function listenUddoktaMaster() {
+            if (!db) return;
             // on('value') keeps this browser continuously synced with Firebase.
             db.ref('uddokta_master').on('value', snapshot => {
                 const data = snapshot.val();
@@ -1453,13 +1487,6 @@ table{width:100%;max-width:100%}
                 }
             }
         }
-            if (box) {
-                box.classList.toggle('ready', ready);
-                box.innerHTML = ready
-                    ? '✓ সকল তথ্য সম্পূর্ণ — এখন Submit করা যাবে।'
-                    : '<strong>Submit করার জন্য বাকি:</strong>' + reasons.map(r => `<span class="reason">${r}</span>`).join('');
-            }
-        }
 
         function bindVisitFormCompletionListeners() {
             const form = document.getElementById('visit-form');
@@ -1688,6 +1715,7 @@ table{width:100%;max-width:100%}
         // 3. LISTEN TO REALTIME FIREBASE UPDATES
         // ----------------------------------------------------
         function listenFirebaseData() {
+            if (!db) return;
             db.ref('visit_reports').on('value', (snapshot) => {
                 const data = snapshot.val();
                 reportsData = [];
@@ -1840,6 +1868,7 @@ table{width:100%;max-width:100%}
         }
 
         function listenNotices() {
+            if (!db) return;
             db.ref('visit_notices').on('value', snap => { window.visitNotices = snap.val() || {}; renderNotices(); });
         }
 
