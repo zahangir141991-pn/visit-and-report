@@ -316,6 +316,7 @@
         .visit-check select{padding:9px;font-weight:700}
         .status-ok{color:#047857}.status-not-ok{color:#b91c1c}.status-pending{color:#92400e}
         .notice-badge{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:22px;padding:0 7px;border-radius:999px;background:#fee2e2;color:#b91c1c;font-size:.72rem;font-weight:800}
+        .notice-nav-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#ef4444;color:#fff;font-size:.62rem;font-weight:900;vertical-align:middle;margin-left:3px}.notice-nav-badge.hidden{display:none}
         .notice-card{border-left:4px solid #ef4444}
         .notice-item{padding:12px;border:1px solid var(--border);border-radius:12px;background:#fff;margin-bottom:10px}
         .notice-item.unread{background:#fff7ed;border-color:#fdba74}
@@ -656,7 +657,7 @@ table{width:100%;max-width:100%}
 
             <!-- Notices Page -->
             <div id="view-notices" class="page">
-                <div class="section-head"><div><h2>Notice</h2><small style="color:#64748b">Only assigned DSS receives Not OK notices and can update them</small></div><button class="btn btn-sm btn-sec" onclick="renderNotices()">↻ Refresh</button></div>
+                <div class="section-head"><div><h2>Notice</h2><small style="color:#64748b">DSS review notices and your report update notifications appear here in realtime</small></div><button class="btn btn-sm btn-sec" onclick="renderNotices()">↻ Refresh</button></div>
                 <div id="notice-list"></div>
             </div>
 
@@ -690,7 +691,7 @@ table{width:100%;max-width:100%}
         <div class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')"><span>🏠<br>Dashboard</span></div>
         <div class="nav-item" id="nav-form" onclick="switchTab('form')"><span>➕<br>New Visit</span></div>
         <div class="nav-item" id="nav-daily" onclick="switchTab('daily')"><span>📋<br>Visit Report</span></div>
-        <div class="nav-item hidden" id="nav-notices" onclick="switchTab('notices')"><span>🔔<br>Notice</span></div>
+        <div class="nav-item hidden" id="nav-notices" onclick="switchTab('notices')"><span>🔔<br>Notice <b id="notice-badge" class="notice-nav-badge hidden">0</b></span></div>
         <div class="nav-item hidden" id="nav-admin" onclick="switchTab('admin')"><span>⚙️<br>Admin</span></div>
     </div>
 
@@ -699,13 +700,14 @@ table{width:100%;max-width:100%}
         // 1. FIREBASE INITIALIZATION
         // ----------------------------------------------------
         const firebaseConfig = {
-            apiKey: "YOUR_FIREBASE_API_KEY",
+            apiKey: "AIzaSyDxJ1ntoGQa6QYddVJ14p4T7MkAWHo2hVE",
             authDomain: "visit-report-ea224.firebaseapp.com",
             databaseURL: "https://visit-report-ea224-default-rtdb.firebaseio.com",
             projectId: "visit-report-ea224",
-            storageBucket: "visit-report-ea224.appspot.com",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            storageBucket: "visit-report-ea224.firebasestorage.app",
+            messagingSenderId: "953755598012",
+            appId: "1:953755598012:web:887870ebebb3fb1ab024b9",
+            measurementId: "G-X1P16D5JP2"
         };
 
         let db = null;
@@ -771,6 +773,8 @@ table{width:100%;max-width:100%}
         let currentUser = null;
         let capturedPhotoData = null;
         window.visitNotices = {};
+        window.userUpdateNotices = {};
+        window.__lastUserUpdateKeys = {};
 
 
         // ----------------------------------------------------
@@ -941,7 +945,7 @@ table{width:100%;max-width:100%}
                 const adminNav = document.getElementById('nav-admin');
                 if (adminNav) adminNav.classList.toggle('hidden', user !== 'admin');
                 const noticeNav = document.getElementById('nav-notices');
-                if (noticeNav) noticeNav.classList.toggle('hidden', roleInfo.role !== 'DSS');
+                if (noticeNav) noticeNav.classList.toggle('hidden', !(roleInfo.role === 'DSS' || roleInfo.role === 'DSO'));
 
                 // Non-critical UI/data startup: one failure must not log the user back out.
                 try { setupReportTypeFilter(); } catch (e) {}
@@ -1311,6 +1315,7 @@ table{width:100%;max-width:100%}
             listenFirebaseData();
             listenUddoktaMaster();
             listenNotices();
+            listenUserUpdateNotices();
             populateDsoFilter();
             document.getElementById('today-date-card').innerText = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
             const searchInput = document.getElementById('search-input');
@@ -1944,31 +1949,145 @@ table{width:100%;max-width:100%}
         }
 
         function canHandleNotice(n) {
-            // Only the assigned DSS receives review notices.
-            // DM/Admin can see the notice list only if explicitly opened later;
-            // DSO never receives DM/DSS review notices.
+            // DSS receives only notices assigned to that DSS.
             const role = getRoleInfo();
             if (role.role !== 'DSS') return false;
             return String(n.dssName||'').trim().toUpperCase() === String(role.dssName||'').trim().toUpperCase();
         }
 
+        function canHandleUserUpdate(n) {
+            // DSO receives only updates for its own DSO wallet.
+            const role = getRoleInfo();
+            if (role.role !== 'DSO') return false;
+            return normalizeScopeWallet(n.dsoWallet || n.dsoNumber || '') === normalizeScopeWallet(role.dsoWallet);
+        }
+
         function listenNotices() {
             if (!db) return;
-            db.ref('visit_notices').on('value', snap => { window.visitNotices = snap.val() || {}; renderNotices(); });
+            db.ref('visit_notices').on('value', snap => {
+                window.visitNotices = snap.val() || {};
+                renderNotices();
+            }, err => console.warn('Visit notice sync error:', err));
+        }
+
+        function getUserUpdatePath() {
+            const role = getRoleInfo();
+            if (role.role !== 'DSO') return '';
+            return 'user_updates/' + normalizeScopeWallet(role.dsoWallet);
+        }
+
+        function listenUserUpdateNotices() {
+            if (!db) return;
+            const path = getUserUpdatePath();
+            if (!path) return;
+            db.ref(path).off();
+            db.ref(path).on('value', snap => {
+                const data = snap.val() || {};
+                window.userUpdateNotices = data;
+                renderNotices();
+
+                const items = Object.values(data).sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));
+                const newest = items[0];
+                if (newest && newest.id && !window.__lastUserUpdateKeys[path]) {
+                    window.__lastUserUpdateKeys[path] = newest.id;
+                } else if (newest && newest.id && window.__lastUserUpdateKeys[path] !== newest.id) {
+                    window.__lastUserUpdateKeys[path] = newest.id;
+                    showAlert('আপনার Visit Report update হয়েছে. Notice খুলে বিস্তারিত দেখুন।', 'success');
+                }
+                updateNoticeNavBadge();
+            }, err => console.warn('User update sync error:', err));
+        }
+
+        function updateNoticeNavBadge() {
+            const badge = document.getElementById('notice-badge');
+            if (!badge) return;
+            const role = getRoleInfo();
+            let count = 0;
+            if (role.role === 'DSO') {
+                count = Object.values(window.userUpdateNotices || {}).filter(n => !n.read).length;
+            } else if (role.role === 'DSS') {
+                count = Object.values(window.visitNotices || {}).filter(canHandleNotice).filter(n => !n.resolved).length;
+            }
+            badge.innerText = String(count);
+            badge.classList.toggle('hidden', count < 1);
         }
 
         function renderNotices() {
             const box = document.getElementById('notice-list'); if (!box) return;
+            const role = getRoleInfo();
+            let html = '';
+
+            if (role.role === 'DSO') {
+                const updates = Object.values(window.userUpdateNotices || {})
+                    .filter(canHandleUserUpdate)
+                    .sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));
+                if (!updates.length) {
+                    box.innerHTML='<div class="card empty-state">No update found.</div>';
+                    updateNoticeNavBadge();
+                    return;
+                }
+                html = updates.map(n => {
+                    const changes = Array.isArray(n.changedFields) ? n.changedFields.join(', ') : (n.changedFields || 'Report information');
+                    const when = n.updatedAt || n.createdAtText || '—';
+                    const by = n.updatedBy || 'Admin/DSS';
+                    return '<div class="notice-item '+(n.read?'':'unread')+'"><b>🔔 Visit Report Updated</b>'+
+                        '<div style="margin-top:5px;color:#475569;font-size:.84rem">'+(n.message||'Your Visit Report has been updated.')+'</div>'+
+                        '<div class="review-update">Date: '+(n.date||'—')+' · DSO: '+(n.dsoWallet||'—')+' · Updated: '+when+' · By: '+by+'</div>'+
+                        '<div class="review-update">Changed: '+changes+'</div>'+ 
+                        '<button class="btn btn-sm" style="margin-top:9px" onclick="markUserUpdateRead(\''+String(n.id||'')+'\')">✓ Mark as read</button></div>';
+                }).join('');
+                box.innerHTML = html;
+                updateNoticeNavBadge();
+                return;
+            }
+
             const all = Object.values(window.visitNotices || {}).filter(canHandleNotice).sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));
-            if (!all.length) { box.innerHTML='<div class="card empty-state">No notice found.</div>'; return; }
-            const role = getRoleInfo().role;
-            box.innerHTML = all.map(n => {
+            if (!all.length) { box.innerHTML='<div class="card empty-state">No notice found.</div>'; updateNoticeNavBadge(); return; }
+            html = all.map(n => {
                 const report = reportsData.find(r => String(r.id)===String(n.reportId));
-                const canResolve = role==='DSS' && !n.resolved && report;
+                const canResolve = role.role==='DSS' && !n.resolved && report;
                 const updateInfo = n.resolved ? ' · Updated: ' + (n.resolvedAt||'—') + ' · By: ' + (n.resolvedBy||'—') : '';
                 const action = canResolve ? '<button class="btn btn-sm" style="margin-top:9px" onclick="resolveVisitNotice(\''+n.id+'\')">✓ DSS OK & Update</button>' : '<span class="notice-badge" style="margin-top:8px">'+(n.resolved?'Updated':'Action Required')+'</span>';
                 return '<div class="notice-item '+(n.resolved?'':'unread')+'"><b>'+(n.title||'Visit Notice')+'</b><div style="margin-top:5px;color:#475569;font-size:.84rem">'+(n.message||'')+'</div><div class="review-update">Date: '+(n.date||'—')+' · DSO: '+(n.dsoWallet||'—')+updateInfo+'</div>'+action+'</div>';
             }).join('');
+            box.innerHTML = html;
+            updateNoticeNavBadge();
+        }
+
+        async function markUserUpdateRead(id) {
+            const path = getUserUpdatePath();
+            if (!path || !id || !db) return;
+            try {
+                await db.ref(path + '/' + id).update({read:true, readAt:new Date().toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true})});
+            } catch(e) { console.warn('Could not mark update read:', e); }
+        }
+
+        async function notifyReportOwner(reportId, report, changedFields, actor) {
+            if (!db || !report) return;
+            const dsoWallet = report.dsoWallet || report.dsoNumber || '';
+            const walletKey = normalizeScopeWallet(dsoWallet);
+            if (!walletKey) return;
+            const ref = db.ref('user_updates/' + walletKey).push();
+            const now = new Date();
+            const nowText = now.toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true});
+            const fields = Array.isArray(changedFields) ? changedFields.filter(Boolean) : [];
+            await ref.set({
+                id: ref.key,
+                reportId: String(reportId),
+                dsoWallet: String(dsoWallet),
+                dsoNumber: String(report.dsoNumber || ''),
+                date: String(report.date || ''),
+                uddoktaName: String(report.uddoktaName || ''),
+                uddoktaNumber: String(report.uddoktaNumber || ''),
+                title: 'Visit Report Updated',
+                message: 'আপনার Visit Report-এ update করা হয়েছে। Notice খুলে পরিবর্তনগুলো দেখুন।',
+                changedFields: fields,
+                updatedBy: String(actor || 'Admin/DSS'),
+                updatedAt: nowText,
+                createdAt: firebase.database.ServerValue.TIMESTAMP,
+                read: false,
+                readAt: ''
+            });
         }
 
         async function resolveVisitNotice(noticeId) {
@@ -1983,6 +2102,7 @@ table{width:100%;max-width:100%}
             updates.reviewStatus = 'DSS OK';
             try {
                 await db.ref('visit_reports/'+n.reportId).update(updates);
+                await notifyReportOwner(n.reportId, Object.assign({}, report, updates), Object.keys(updates).filter(k=>k!=='reviewUpdatedAt' && k!=='reviewUpdatedBy'), role.dssName);
                 await db.ref('visit_notices/'+noticeId).update({resolved:true,resolvedAt:now,resolvedBy:role.dssName});
                 showAlert('Not OK itemগুলো OK করে Visit Report update করা হয়েছে.', 'success');
             } catch(e) { showAlert('Update failed: '+e.message,'error'); }
@@ -1998,6 +2118,7 @@ table{width:100%;max-width:100%}
             const next = Object.assign({}, r, updated);
             if (next.festoonStatus==='OK' && next.bannerStatus==='OK' && next.fileStatus==='OK') updated.reviewStatus='DSS OK';
             await db.ref('visit_reports/'+reportId).update(updated);
+            await notifyReportOwner(reportId, Object.assign({}, r, updated), Object.keys(updated).filter(k=>k!=='reviewUpdatedAt' && k!=='reviewUpdatedBy'), role.dssName);
             if (updated.reviewStatus==='DSS OK') {
                 const notices=window.visitNotices||{};
                 const n=Object.values(notices).find(x=>String(x.reportId)===String(reportId));
