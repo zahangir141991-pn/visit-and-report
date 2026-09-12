@@ -330,6 +330,8 @@
         .submit-readiness .reason::before{content:"• ";font-weight:700}
         #btn-submit:disabled{opacity:.55;cursor:not-allowed;display:block!important;visibility:visible!important}
         #btn-submit{display:block!important;visibility:visible!important;position:relative!important;z-index:20!important;min-height:46px!important;margin-top:10px!important;}
+        #submit-action-bar{display:block!important;visibility:visible!important;width:100%!important;}
+        #submit-action-bar #btn-submit{display:block!important;visibility:visible!important;width:100%!important;min-height:50px!important;}
         #submit-readiness{display:block!important;visibility:visible!important;}
 </style>
 
@@ -479,7 +481,7 @@ table{width:100%;max-width:100%}
                 </div>
                 <div id="alert-box" class="alert"></div>
 
-                <form id="visit-form">
+                <form id="visit-form" novalidate>
                     <div class="form-group">
                         <label>Visit Date</label>
                         <input type="date" id="visit-date" required readonly>
@@ -547,7 +549,9 @@ table{width:100%;max-width:100%}
                     </div>
 
                     <div id="submit-readiness" class="submit-readiness" aria-live="polite">Checking required fields...</div>
-                    <button type="submit" class="btn" id="btn-submit">Submit Report to Firebase</button>
+                    <div id="submit-action-bar" style="display:block!important;visibility:visible!important;width:100%!important;position:relative!important;z-index:999!important;margin:12px 0 4px!important;padding:0!important;">
+                        <button type="submit" class="btn" id="btn-submit" style="display:block!important;visibility:visible!important;width:100%!important;min-height:50px!important;opacity:.55;cursor:not-allowed;">Submit Report to Firebase</button>
+                    </div>
                 </form>
             </div>
 
@@ -981,7 +985,6 @@ table{width:100%;max-width:100%}
         function logout() {
             currentUser = null;
             try { clearVisitFormForNewVisit(); } catch (e) { console.warn('Visit form reset on logout skipped:', e); }
-            clearVisitFormForNewVisit();
 
             // Reset the login screen so a previous failed-login alert
             // never appears automatically after logout.
@@ -1503,25 +1506,32 @@ table{width:100%;max-width:100%}
             const reasons = getVisitSubmitReasons();
             const ready = reasons.length === 0;
 
-            // Submit button must ALWAYS remain visible.
-            // It becomes enabled only after every required field is complete.
             if (btn) {
-                btn.style.display = 'block';
-                btn.style.visibility = 'visible';
-                btn.style.opacity = ready ? '1' : '.55';
+                // Never hide the button. Only change enabled/disabled state.
+                btn.hidden = false;
+                btn.removeAttribute('hidden');
+                btn.style.setProperty('display', 'block', 'important');
+                btn.style.setProperty('visibility', 'visible', 'important');
+                btn.style.setProperty('width', '100%', 'important');
+                btn.style.setProperty('min-height', '50px', 'important');
                 btn.disabled = !ready;
-                btn.title = ready ? 'Submit Report' : 'সব তথ্য পূরণ করুন';
+                btn.style.opacity = ready ? '1' : '.55';
+                btn.style.cursor = ready ? 'pointer' : 'not-allowed';
+                btn.title = ready ? 'Submit Report' : 'সব প্রয়োজনীয় তথ্য পূরণ করুন';
                 btn.setAttribute('aria-disabled', String(!ready));
+                btn.innerText = 'Submit Report to Firebase';
             }
 
             if (box) {
+                box.style.display = 'block';
+                box.style.visibility = 'visible';
                 if (ready) {
                     box.className = 'submit-readiness ready';
                     box.innerHTML = '✓ সকল তথ্য সম্পূর্ণ — এখন Submit করা যাবে।';
                 } else {
                     box.className = 'submit-readiness not-ready';
                     box.innerHTML = '<strong>Submit বন্ধ আছে কারণ:</strong> ' +
-                        reasons.map(r => '<span>• ' + r + '</span>').join('');
+                        reasons.map(r => '<span class="reason">' + r + '</span>').join('');
                 }
             }
         }
@@ -1815,6 +1825,7 @@ table{width:100%;max-width:100%}
             if (tab === 'form') {
                 fetchGPS();
                 stopCamera();
+                setTimeout(() => { try { updateVisitSubmitState(); } catch (e) {} }, 50);
             }
             if (tab === 'daily') {
                 populateDsoFilter();
