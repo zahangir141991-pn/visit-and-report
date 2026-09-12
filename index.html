@@ -328,7 +328,7 @@
         .submit-readiness.ready{background:#f0fdf4;border-color:#bbf7d0;color:#166534}
         .submit-readiness .reason{display:block;margin:2px 0}
         .submit-readiness .reason::before{content:"• ";font-weight:700}
-        #btn-submit:disabled{opacity:.55;cursor:not-allowed}
+        #btn-submit:disabled{opacity:.55;cursor:not-allowed;display:block!important;visibility:visible!important}
 </style>
 
 <style id="responsive-fullscreen-ui">
@@ -1431,15 +1431,28 @@ table{width:100%;max-width:100%}
             const reasons = getVisitSubmitReasons();
             const ready = reasons.length === 0;
 
-            // Keep the Submit button visible and clickable. The submit handler
-            // performs the same validation again, so incomplete forms cannot be saved.
+            // Submit button must ALWAYS remain visible.
+            // It becomes enabled only after every required field is complete.
             if (btn) {
-                btn.disabled = false;
                 btn.style.display = 'block';
                 btn.style.visibility = 'visible';
-                btn.style.opacity = '1';
+                btn.style.opacity = ready ? '1' : '.55';
+                btn.disabled = !ready;
                 btn.title = ready ? 'Submit Report' : 'সব তথ্য পূরণ করুন';
+                btn.setAttribute('aria-disabled', String(!ready));
             }
+
+            if (box) {
+                if (ready) {
+                    box.className = 'submit-readiness ready';
+                    box.innerHTML = '✓ সকল তথ্য সম্পূর্ণ — এখন Submit করা যাবে।';
+                } else {
+                    box.className = 'submit-readiness not-ready';
+                    box.innerHTML = '<strong>Submit বন্ধ আছে কারণ:</strong> ' +
+                        reasons.map(r => '<span>• ' + r + '</span>').join('');
+                }
+            }
+        }
             if (box) {
                 box.classList.toggle('ready', ready);
                 box.innerHTML = ready
