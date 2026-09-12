@@ -6,7 +6,9 @@
     <title>DMS-Nagad Manikganj</title>
     
     <!-- Firebase Web SDK (v10.8.0) -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js">bindVisitFormCompletionListeners();
+        updateVisitSubmitState();
+</script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <!-- SheetJS for Admin Excel upload/download -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -464,7 +466,7 @@
 
                     <div class="form-group">
                         <label>DSS Name</label>
-                        <input type="text" id="dss-name" readonly required>
+                        <input type="text" id="dss-name" readonly>
                     </div>
 
                     <div class="form-group">
@@ -498,8 +500,8 @@
                         <label>GPS Location Name</label>
                         <input type="text" id="gps-location-name" readonly required placeholder="Location name will appear here">
                         <input type="hidden" id="gps-location">
-                        <button type="button" class="btn btn-sec" style="padding:8px; margin-top:4px; font-size:0.8rem;" onclick="fetchGPS()">📍 Refresh Accurate GPS</button>
-                        <a id="gps-map-link" class="btn btn-sm hidden" href="#" target="_blank" rel="noopener noreferrer" style="display:block;margin-top:8px;text-align:center;text-decoration:none;">🗺️ Open Location in Google Maps</a>
+                        <button type="button" class="btn btn-sec" style="padding:8px; margin-top:4px; font-size:0.8rem;" onclick="fetchGPS()">Refresh Location</button>
+                        <a id="gps-map-link" class="hidden" href="#" target="_blank" rel="noopener noreferrer" style="display:inline-block; margin-top:6px; font-size:0.82rem;">🗺️ Open in Google Maps</a>
                     </div>
 
                     <button type="submit" class="btn" id="btn-submit">Submit Report to Firebase</button>
@@ -1326,69 +1328,32 @@
         }
 
         function isVisitFormComplete() {
-            const get = id => document.getElementById(id);
-            const value = id => (get(id)?.value || '').trim();
-
-            const requiredValues = [
-                'visit-date',
-                'search-input',
-                'dso-number',
-                'uddokta-number',
-                'uddokta-name',
-                'dss-name',
-                'feedback',
-                'festoon-status',
-                'banner-status',
-                'file-status',
-                'gps-location-name',
-                'gps-location'
+            const ids = [
+                'visit-date', 'search-input', 'dso-number', 'uddokta-number',
+                'uddokta-name', 'dss-name', 'feedback', 'festoon-status',
+                'banner-status', 'file-status', 'gps-location-name', 'gps-location'
             ];
-
-            const allTextFieldsFilled = requiredValues.every(id => {
-                const el = get(id);
-                return el && value(id) !== '';
+            const fieldsOk = ids.every(id => {
+                const el = document.getElementById(id);
+                return el && String(el.value || '').trim() !== '';
             });
-
-            const selectsValid =
-                value('festoon-status') !== '' &&
-                value('banner-status') !== '' &&
-                value('file-status') !== '';
-
-            const locationValid =
-                value('gps-location') !== '' &&
-                value('gps-location-name') !== '' &&
-                value('gps-location-name') !== 'Getting location...' &&
-                value('gps-location-name') !== 'Location permission required' &&
-                value('gps-location-name') !== 'Location unavailable';
-
-            return allTextFieldsFilled && selectsValid && locationValid && !!capturedPhotoData;
+            return fieldsOk && !!capturedPhotoData &&
+                   document.getElementById('gps-location-name').value.trim() !== 'Getting location...' &&
+                   document.getElementById('gps-location-name').value.trim() !== 'Location permission required';
         }
 
         function updateVisitSubmitState() {
             const btn = document.getElementById('btn-submit');
             if (!btn) return;
-
-            const ready = isVisitFormComplete();
-            btn.disabled = !ready;
-            btn.setAttribute('aria-disabled', String(!ready));
-            btn.title = ready
-                ? 'All required fields are complete'
-                : 'Complete all fields, selfie and GPS location first';
+            btn.disabled = !isVisitFormComplete();
         }
 
         function bindVisitFormCompletionListeners() {
-            const ids = [
-                'visit-date','search-input','dso-number','uddokta-number','uddokta-name',
-                'dss-name','feedback','festoon-status','banner-status','file-status',
-                'gps-location-name','gps-location'
-            ];
-            ids.forEach(id => {
-                const el = document.getElementById(id);
-                if (!el || el.dataset.submitStateBound === '1') return;
-                el.addEventListener('input', updateVisitSubmitState);
-                el.addEventListener('change', updateVisitSubmitState);
-                el.dataset.submitStateBound = '1';
-            });
+            const form = document.getElementById('visit-form');
+            if (!form || form.dataset.completionBound === '1') return;
+            form.dataset.completionBound = '1';
+            form.addEventListener('input', updateVisitSubmitState);
+            form.addEventListener('change', updateVisitSubmitState);
             updateVisitSubmitState();
         }
 
@@ -1432,6 +1397,10 @@
             stopCamera();
         }
 
+        // Optional Google Maps Geocoding API key. Use a browser-restricted key.
+        // Leave blank to use the fallback reverse-geocoder.
+        window.GOOGLE_MAPS_API_KEY = window.GOOGLE_MAPS_API_KEY || '';
+
         async function fetchGPS() {
             const gpsInput = document.getElementById('gps-location');
             const nameInput = document.getElementById('gps-location-name');
@@ -1439,65 +1408,72 @@
 
             gpsInput.value = '';
             nameInput.value = 'Getting location...';
-            if (mapLink) {
-                mapLink.href = '#';
-                mapLink.classList.add('hidden');
-            }
+            if (mapLink) { mapLink.href = '#'; mapLink.classList.add('hidden'); }
             updateVisitSubmitState();
 
-            if (!navigator.geolocation) {
+            if (!('geolocation' in navigator)) {
                 nameInput.value = 'Location unavailable';
                 updateVisitSubmitState();
                 return;
             }
 
-            navigator.geolocation.getCurrentPosition(
-                async pos => {
-                    const { latitude: lat, longitude: lon, accuracy } = pos.coords;
+            navigator.geolocation.getCurrentPosition(async pos => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                const accuracy = Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : 0;
+                gpsInput.value = `${lat.toFixed(7)}, ${lon.toFixed(7)}`;
 
-                    // Save the actual high-accuracy browser GPS coordinates.
-                    gpsInput.value = `${lat.toFixed(7)}, ${lon.toFixed(7)}`;
-
-                    // Google Maps location link based on the exact captured coordinates.
-                    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lat + ',' + lon)}`;
-                    if (mapLink) {
-                        mapLink.href = googleMapsUrl;
-                        mapLink.target = '_blank';
-                        mapLink.rel = 'noopener noreferrer';
-                        mapLink.classList.remove('hidden');
-                    }
-
-                    // Use Google Maps for the location destination. Address lookup is
-                    // intentionally not used as the source of the GPS coordinates.
-                    // The coordinates are the authoritative location value.
-                    nameInput.value = `GPS: ${lat.toFixed(7)}, ${lon.toFixed(7)} (±${Math.round(accuracy || 0)}m)`;
-
-                    // If Google Maps/other map naming is unavailable, coordinates remain
-                    // valid and are saved. This prevents an inaccurate guessed address.
-                    updateVisitSubmitState();
-                },
-                err => {
-                    gpsInput.value = '';
-                    if (err && err.code === 1) {
-                        nameInput.value = 'Location permission required';
-                    } else if (err && err.code === 2) {
-                        nameInput.value = 'Location unavailable';
-                    } else {
-                        nameInput.value = 'Unable to get accurate location';
-                    }
-                    if (mapLink) mapLink.classList.add('hidden');
-                    updateVisitSubmitState();
-                },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 30000,
-                    maximumAge: 0
+                const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat.toFixed(7)},${lon.toFixed(7)}`;
+                if (mapLink) {
+                    mapLink.href = mapsUrl;
+                    mapLink.target = '_blank';
+                    mapLink.rel = 'noopener noreferrer';
+                    mapLink.textContent = '🗺️ Open in Google Maps';
+                    mapLink.classList.remove('hidden');
                 }
-            );
-        }
 
-        // Keep Submit disabled until every field is complete.
-        bindVisitFormCompletionListeners();
+                // Google Geocoding API gives the most accurate Google address/name.
+                // Set GOOGLE_MAPS_API_KEY below with a browser-restricted key.
+                const googleKey = (window.GOOGLE_MAPS_API_KEY || '').trim();
+                let resolvedName = '';
+
+                if (googleKey && googleKey !== 'YOUR_GOOGLE_MAPS_API_KEY') {
+                    try {
+                        const response = await fetch(
+                            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${encodeURIComponent(lat + ',' + lon)}&language=bn&key=${encodeURIComponent(googleKey)}`
+                        );
+                        const data = await response.json();
+                        if (data.status === 'OK' && data.results && data.results[0]) {
+                            resolvedName = data.results[0].formatted_address || '';
+                        }
+                    } catch (e) {}
+                }
+
+                // Fallback keeps the form usable when a Google API key is not configured.
+                if (!resolvedName) {
+                    try {
+                        const response = await fetch(
+                            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=18&addressdetails=1`,
+                            { headers: { 'Accept': 'application/json', 'Accept-Language': 'bn,en' } }
+                        );
+                        if (response.ok) {
+                            const data = await response.json();
+                            const a = data.address || {};
+                            const parts = [a.road, a.neighbourhood || a.suburb, a.village || a.town || a.city || a.municipality, a.upazila, a.district].filter(Boolean);
+                            resolvedName = parts.length ? [...new Set(parts)].join(', ') : (data.display_name || '');
+                        }
+                    } catch (e) {}
+                }
+
+                nameInput.value = resolvedName || `GPS ${lat.toFixed(7)}, ${lon.toFixed(7)}`;
+                nameInput.title = accuracy ? `GPS accuracy: ±${Math.round(accuracy)}m` : 'GPS location';
+                updateVisitSubmitState();
+            }, err => {
+                gpsInput.value = '';
+                nameInput.value = 'Location permission required';
+                updateVisitSubmitState();
+            }, { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 });
+        }
 
         // ----------------------------------------------------
         // 2. SUBMIT REPORT TO FIREBASE REALTIME DATABASE
@@ -1505,20 +1481,38 @@
         document.getElementById('visit-form').addEventListener('submit', async function(e) {
             e.preventDefault();
 
-            const locationName = document.getElementById('gps-location-name').value.trim();
-            const gpsValue = document.getElementById('gps-location').value.trim();
-
-            // Final hard validation: Firebase submission is impossible until EVERY
-            // required field, selfie and accurate GPS location is present.
             if (!isVisitFormComplete()) {
-                showAlert('সব তথ্য, Festoon/Banner/File status, Feedback, Selfie এবং Accurate GPS Location সম্পূর্ণ করুন।', 'error');
+                showAlert('সব তথ্য, GPS Location এবং Selfie সম্পূর্ণ না হলে Submit করা যাবে না.', 'error');
                 updateVisitSubmitState();
                 return;
             }
 
-            if (!gpsValue || !locationName) {
-                showAlert('Accurate GPS Location required.', 'error');
-                updateVisitSubmitState();
+            const locationName = document.getElementById('gps-location-name').value.trim();
+
+            if (!capturedPhotoData) {
+                showAlert('Visit Uddokta selfie is required!', 'error');
+                return;
+            }
+
+            if (!locationName || locationName === 'Getting location...') {
+                showAlert('Location Name is required!', 'error');
+                return;
+            }
+
+            if (!capturedPhotoData) {
+                showAlert('Uddokta selfie is required!', 'error');
+                return;
+            }
+            const feedbackValue = document.getElementById('feedback').value.trim();
+            const festoonValue = document.getElementById('festoon-status').value;
+            const bannerValue = document.getElementById('banner-status').value;
+            const fileValue = document.getElementById('file-status').value;
+            if (!feedbackValue) {
+                showAlert('Visit Feedback পূরণ না করলে Submit করা যাবে না.', 'error');
+                return;
+            }
+            if (!festoonValue || !bannerValue || !fileValue) {
+                showAlert('Festoon, Banner এবং File status পূরণ না করলে Submit করা যাবে না.', 'error');
                 return;
             }
 
@@ -1548,12 +1542,7 @@
                 photo: capturedPhotoData,
                 locationName: document.getElementById('gps-location-name').value,
                 gps: document.getElementById('gps-location').value,
-                googleMapsUrl: (() => {
-                    const gps = document.getElementById('gps-location').value.split(',').map(v => v.trim());
-                    return gps.length === 2 && gps[0] && gps[1]
-                        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(gps[0] + ',' + gps[1])}`
-                        : '';
-                })(),
+                googleMapsUrl: document.getElementById('gps-location').value ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(document.getElementById('gps-location').value)}` : '',
                 timestamp: firebase.database.ServerValue.TIMESTAMP
             };
 
@@ -1571,8 +1560,8 @@
             } catch (err) {
                 showAlert('Error saving data to Firebase: ' + err.message, 'error');
             } finally {
-                btnSubmit.innerText = 'Submit Report to Firebase';
                 updateVisitSubmitState();
+                btnSubmit.innerText = 'Submit Report to Firebase';
             }
         });
 
