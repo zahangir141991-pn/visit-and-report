@@ -324,15 +324,22 @@
         .review-update{font-size:.72rem;color:#64748b;margin-top:6px}
         @media(max-width:700px){.visit-check-grid{grid-template-columns:1fr}.review-grid{grid-template-columns:1fr}}
     
-        .submit-readiness{margin:10px 0 8px;padding:10px 12px;border-radius:10px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:.86rem;line-height:1.5}
-        .submit-readiness.ready{background:#f0fdf4;border-color:#bbf7d0;color:#166534}
-        .submit-readiness .reason{display:block;margin:2px 0}
-        .submit-readiness .reason::before{content:"• ";font-weight:700}
+        /* Submit validation: show ONLY incomplete fields in red */
+        .submit-invalid{
+            border-color:#dc2626!important;
+            box-shadow:0 0 0 2px rgba(220,38,38,.10)!important;
+            background:#fffafa!important;
+        }
+        select.submit-invalid,
+        input.submit-invalid,
+        textarea.submit-invalid{color:#991b1b!important;}
+        .camera-box.submit-invalid{
+            border:2px solid #dc2626!important;
+            box-shadow:0 0 0 2px rgba(220,38,38,.10)!important;
+            border-radius:12px;
+        }
         #btn-submit:disabled{opacity:.55;cursor:not-allowed;display:block!important;visibility:visible!important}
-        #btn-submit{display:block!important;visibility:visible!important;position:relative!important;z-index:20!important;min-height:46px!important;margin-top:10px!important;}
-        #submit-action-bar{display:block!important;visibility:visible!important;width:100%!important;}
-        #submit-action-bar #btn-submit{display:block!important;visibility:visible!important;width:100%!important;min-height:50px!important;}
-        #submit-readiness{display:block!important;visibility:visible!important;}
+        #btn-submit{display:block!important;visibility:visible!important;position:relative!important;z-index:20!important;min-height:46px!important;margin-top:10px!important;width:100%!important;}
 </style>
 
 <style id="responsive-fullscreen-ui">
@@ -481,7 +488,7 @@ table{width:100%;max-width:100%}
                 </div>
                 <div id="alert-box" class="alert"></div>
 
-                <form id="visit-form" novalidate>
+                <form id="visit-form">
                     <div class="form-group">
                         <label>Visit Date</label>
                         <input type="date" id="visit-date" required readonly>
@@ -548,10 +555,7 @@ table{width:100%;max-width:100%}
                         <a id="gps-map-link" class="hidden" href="#" target="_blank" rel="noopener noreferrer" style="display:inline-block; margin-top:6px; font-size:0.82rem;">🗺️ Open in Google Maps</a>
                     </div>
 
-                    <div id="submit-readiness" class="submit-readiness" aria-live="polite">Checking required fields...</div>
-                    <div id="submit-action-bar" style="display:block!important;visibility:visible!important;width:100%!important;position:relative!important;z-index:999!important;margin:12px 0 4px!important;padding:0!important;">
-                        <button type="submit" class="btn" id="btn-submit" style="display:block!important;visibility:visible!important;width:100%!important;min-height:50px!important;opacity:.55;cursor:not-allowed;">Submit Report to Firebase</button>
-                    </div>
+                    <button type="submit" class="btn" id="btn-submit">Submit Report to Firebase</button>
                 </form>
             </div>
 
@@ -985,6 +989,7 @@ table{width:100%;max-width:100%}
         function logout() {
             currentUser = null;
             try { clearVisitFormForNewVisit(); } catch (e) { console.warn('Visit form reset on logout skipped:', e); }
+            clearVisitFormForNewVisit();
 
             // Reset the login screen so a previous failed-login alert
             // never appears automatically after logout.
@@ -1457,82 +1462,91 @@ table{width:100%;max-width:100%}
             }
         }
 
-        function isVisitFormComplete() {
-            const ids = [
-                'visit-date', 'search-input', 'dso-number', 'uddokta-number',
-                'uddokta-name', 'dss-name', 'feedback', 'festoon-status',
-                'banner-status', 'file-status', 'gps-location-name', 'gps-location'
+        function getVisitFieldValidity() {
+            const checks = [
+                ['visit-date', true],
+                ['search-input', true],
+                ['dso-number', true],
+                ['uddokta-number', true],
+                ['uddokta-name', true],
+                ['dss-name', true],
+                ['feedback', true],
+                ['festoon-status', true],
+                ['banner-status', true],
+                ['file-status', true],
+                ['gps-location-name', true]
             ];
-            const fieldsOk = ids.every(id => {
+
+            const invalid = [];
+
+            checks.forEach(([id]) => {
                 const el = document.getElementById(id);
-                return el && String(el.value || '').trim() !== '';
+                const value = el ? String(el.value || '').trim() : '';
+                if (!el || !value) {
+                    invalid.push(id);
+                }
             });
-            return fieldsOk && !!capturedPhotoData &&
-                   document.getElementById('gps-location-name').value.trim() !== 'Getting location...' &&
-                   document.getElementById('gps-location-name').value.trim() !== 'Location permission required';
+
+            const locName = document.getElementById('gps-location-name');
+            const locValue = locName ? String(locName.value || '').trim() : '';
+            const gps = document.getElementById('gps-location');
+            const gpsValue = gps ? String(gps.value || '').trim() : '';
+
+            const badLocationName = !locValue ||
+                ['Getting location...', 'Location permission required', 'Location unavailable'].includes(locValue);
+
+            // GPS coordinates are hidden, so visually mark the visible Location Name field.
+            if (badLocationName || !gpsValue) {
+                if (!invalid.includes('gps-location-name')) invalid.push('gps-location-name');
+            }
+
+            return {
+                invalidFields: [...new Set(invalid)],
+                selfieMissing: !capturedPhotoData
+            };
         }
 
-        function getVisitSubmitReasons() {
-            const checks = [
-                ['visit-date', 'Visit Date পূরণ করুন'],
-                ['search-input', 'Uddokta নির্বাচন করুন'],
-                ['dso-number', 'DSO Number পূরণ করুন'],
-                ['uddokta-number', 'Uddokta Number পূরণ করুন'],
-                ['uddokta-name', 'Uddokta Name পূরণ করুন'],
-                ['dss-name', 'DSS Name পূরণ করুন'],
-                ['feedback', 'Visit Feedback পূরণ করুন'],
-                ['festoon-status', 'Festoon status নির্বাচন করুন'],
-                ['banner-status', 'Banner status নির্বাচন করুন'],
-                ['file-status', 'File status নির্বাচন করুন'],
-                ['gps-location', 'Accurate GPS location পাওয়া যায়নি — Refresh Location দিন'],
-                ['gps-location-name', 'Location Name পাওয়া যায়নি — Refresh Location দিন']
-            ];
-            const reasons = [];
-            checks.forEach(([id, msg]) => {
-                const el = document.getElementById(id);
-                if (!el || !String(el.value || '').trim()) reasons.push(msg);
-            });
-            const locName = document.getElementById('gps-location-name');
-            if (locName && ['Getting location...', 'Location permission required', 'Location unavailable'].includes(locName.value.trim())) {
-                if (!reasons.some(r => r.includes('Location'))) reasons.push('Accurate GPS location পাওয়া যায়নি — Refresh Location দিন');
-            }
-            if (!capturedPhotoData) reasons.push('Uddokta selfie নিন');
-            return [...new Set(reasons)];
+        function isVisitFormComplete() {
+            const state = getVisitFieldValidity();
+            return state.invalidFields.length === 0 && !state.selfieMissing;
         }
 
         function updateVisitSubmitState() {
             const btn = document.getElementById('btn-submit');
-            const box = document.getElementById('submit-readiness');
-            const reasons = getVisitSubmitReasons();
-            const ready = reasons.length === 0;
+            const state = getVisitFieldValidity();
 
-            if (btn) {
-                // Never hide the button. Only change enabled/disabled state.
-                btn.hidden = false;
-                btn.removeAttribute('hidden');
-                btn.style.setProperty('display', 'block', 'important');
-                btn.style.setProperty('visibility', 'visible', 'important');
-                btn.style.setProperty('width', '100%', 'important');
-                btn.style.setProperty('min-height', '50px', 'important');
-                btn.disabled = !ready;
-                btn.style.opacity = ready ? '1' : '.55';
-                btn.style.cursor = ready ? 'pointer' : 'not-allowed';
-                btn.title = ready ? 'Submit Report' : 'সব প্রয়োজনীয় তথ্য পূরণ করুন';
-                btn.setAttribute('aria-disabled', String(!ready));
-                btn.innerText = 'Submit Report to Firebase';
+            // Remove previous red state from all fields handled by this validator.
+            [
+                'visit-date', 'search-input', 'dso-number', 'uddokta-number',
+                'uddokta-name', 'dss-name', 'feedback', 'festoon-status',
+                'banner-status', 'file-status', 'gps-location-name'
+            ].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.remove('submit-invalid');
+            });
+
+            // Add red ONLY to fields that are currently incomplete/invalid.
+            state.invalidFields.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('submit-invalid');
+            });
+
+            // Selfie has no normal input field, so mark only its camera area.
+            const cameraBox = document.querySelector('.camera-box');
+            if (cameraBox) {
+                cameraBox.classList.toggle('submit-invalid', state.selfieMissing);
             }
 
-            if (box) {
-                box.style.display = 'block';
-                box.style.visibility = 'visible';
-                if (ready) {
-                    box.className = 'submit-readiness ready';
-                    box.innerHTML = '✓ সকল তথ্য সম্পূর্ণ — এখন Submit করা যাবে।';
-                } else {
-                    box.className = 'submit-readiness not-ready';
-                    box.innerHTML = '<strong>Submit বন্ধ আছে কারণ:</strong> ' +
-                        reasons.map(r => '<span class="reason">' + r + '</span>').join('');
-                }
+            const ready = state.invalidFields.length === 0 && !state.selfieMissing;
+
+            // Submit button always remains visible; it is enabled only when complete.
+            if (btn) {
+                btn.style.display = 'block';
+                btn.style.visibility = 'visible';
+                btn.style.opacity = ready ? '1' : '.55';
+                btn.disabled = !ready;
+                btn.title = ready ? 'Submit Report' : 'প্রয়োজনীয় তথ্য পূরণ করুন';
+                btn.setAttribute('aria-disabled', String(!ready));
             }
         }
 
@@ -1825,7 +1839,6 @@ table{width:100%;max-width:100%}
             if (tab === 'form') {
                 fetchGPS();
                 stopCamera();
-                setTimeout(() => { try { updateVisitSubmitState(); } catch (e) {} }, 50);
             }
             if (tab === 'daily') {
                 populateDsoFilter();
