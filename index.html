@@ -6,9 +6,7 @@
     <title>DMS-Nagad Manikganj</title>
     
     <!-- Firebase Web SDK (v10.8.0) -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js">bindVisitFormCompletionListeners();
-        updateVisitSubmitState();
-</script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <!-- SheetJS for Admin Excel upload/download -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -1429,10 +1427,16 @@ table{width:100%;max-width:100%}
 
         function bindVisitFormCompletionListeners() {
             const form = document.getElementById('visit-form');
-            if (!form || form.dataset.completionBound === '1') return;
-            form.dataset.completionBound = '1';
-            form.addEventListener('input', updateVisitSubmitState);
-            form.addEventListener('change', updateVisitSubmitState);
+            if (!form) return;
+            if (form.dataset.completionBound !== '1') {
+                form.dataset.completionBound = '1';
+                form.addEventListener('input', updateVisitSubmitState);
+                form.addEventListener('change', updateVisitSubmitState);
+                // Uddokta/DSO fields are sometimes filled by JavaScript after selection.
+                // Re-check after clicks/keyboard actions too.
+                form.addEventListener('click', () => setTimeout(updateVisitSubmitState, 0));
+                form.addEventListener('keyup', () => setTimeout(updateVisitSubmitState, 0));
+            }
             updateVisitSubmitState();
         }
 
@@ -2083,6 +2087,12 @@ table{width:100%;max-width:100%}
             box.innerText = msg;
             box.style.display = 'block';
         }
+
+        // IMPORTANT: bind after all form elements/functions are available.
+        // The previous version accidentally placed this call inside the Firebase <script src> tag,
+        // so the readiness listener never ran and the Submit button stayed disabled.
+        document.addEventListener('DOMContentLoaded', bindVisitFormCompletionListeners);
+        setTimeout(bindVisitFormCompletionListeners, 0);
 
         function showAlert(msg, type) {
             const box = document.getElementById('alert-box');
