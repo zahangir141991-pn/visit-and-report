@@ -329,6 +329,8 @@
         .submit-readiness .reason{display:block;margin:2px 0}
         .submit-readiness .reason::before{content:"• ";font-weight:700}
         #btn-submit:disabled{opacity:.55;cursor:not-allowed;display:block!important;visibility:visible!important}
+        #btn-submit{display:block!important;visibility:visible!important;position:relative!important;z-index:20!important;min-height:46px!important;margin-top:10px!important;}
+        #submit-readiness{display:block!important;visibility:visible!important;}
 </style>
 
 <style id="responsive-fullscreen-ui">
@@ -978,6 +980,7 @@ table{width:100%;max-width:100%}
 
         function logout() {
             currentUser = null;
+            try { clearVisitFormForNewVisit(); } catch (e) { console.warn('Visit form reset on logout skipped:', e); }
             clearVisitFormForNewVisit();
 
             // Reset the login screen so a previous failed-login alert
@@ -1698,6 +1701,11 @@ table{width:100%;max-width:100%}
             }
 
             const btnSubmit = document.getElementById('btn-submit');
+            if (!db) {
+                showAlert('Firebase connection is not ready. Please refresh the page and try again.', 'error');
+                updateVisitSubmitState();
+                return;
+            }
             btnSubmit.disabled = true;
             btnSubmit.innerText = 'Saving to Firebase...';
 
@@ -1724,7 +1732,7 @@ table{width:100%;max-width:100%}
                 locationName: document.getElementById('gps-location-name').value,
                 gps: document.getElementById('gps-location').value,
                 googleMapsUrl: document.getElementById('gps-location').value ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(document.getElementById('gps-location').value)}` : '',
-                timestamp: firebase.database.ServerValue.TIMESTAMP
+                timestamp: (firebase.apps && firebase.apps.length && db) ? firebase.database.ServerValue.TIMESTAMP : Date.now()
             };
 
             try {
@@ -1766,11 +1774,13 @@ table{width:100%;max-width:100%}
 
         // Firebase connection status is realtime; when connection returns,
         // the active listeners receive fresh data without a manual hard refresh.
-        db.ref('.info/connected').on('value', snapshot => {
-            if (snapshot.val() === true) {
-                forceRealtimeRefresh();
-            }
-        });
+        if (db) {
+            db.ref('.info/connected').on('value', snapshot => {
+                if (snapshot.val() === true) {
+                    try { forceRealtimeRefresh(); } catch (e) { console.warn('Realtime refresh skipped:', e); }
+                }
+            });
+        }
 
         function switchTab(tab) {
             if (tab === 'admin' && currentUser !== 'admin') return;
