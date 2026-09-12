@@ -2114,7 +2114,13 @@ table{width:100%;max-width:100%}
         // IMPORTANT: bind after all form elements/functions are available.
         // The previous version accidentally placed this call inside the Firebase <script src> tag,
         // so the readiness listener never ran and the Submit button stayed disabled.
-        document.addEventListener('DOMContentLoaded', bindVisitFormCompletionListeners);
+        
+// Keep Submit visible and disabled until every required field is complete.
+window.__submitStateWatcher = setInterval(function(){
+    try { updateVisitSubmitState(); } catch(e) {}
+}, 500);
+
+document.addEventListener('DOMContentLoaded', bindVisitFormCompletionListeners);
         setTimeout(bindVisitFormCompletionListeners, 0);
 
         // Some fields are populated asynchronously by Firebase/search/GPS code.
