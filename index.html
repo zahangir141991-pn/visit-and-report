@@ -325,7 +325,13 @@
         .review-grid select{font-size:.78rem;padding:7px}
         .review-update{font-size:.72rem;color:#64748b;margin-top:6px}
         @media(max-width:700px){.visit-check-grid{grid-template-columns:1fr}.review-grid{grid-template-columns:1fr}}
-    </style>
+    
+        .submit-readiness{margin:10px 0 8px;padding:10px 12px;border-radius:10px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:.86rem;line-height:1.5}
+        .submit-readiness.ready{background:#f0fdf4;border-color:#bbf7d0;color:#166534}
+        .submit-readiness .reason{display:block;margin:2px 0}
+        .submit-readiness .reason::before{content:"• ";font-weight:700}
+        #btn-submit:disabled{opacity:.55;cursor:not-allowed}
+</style>
 
 <style id="responsive-fullscreen-ui">
 html,body{width:100%;min-height:100%;margin:0;padding:0}
@@ -540,7 +546,8 @@ table{width:100%;max-width:100%}
                         <a id="gps-map-link" class="hidden" href="#" target="_blank" rel="noopener noreferrer" style="display:inline-block; margin-top:6px; font-size:0.82rem;">🗺️ Open in Google Maps</a>
                     </div>
 
-                    <button type="submit" class="btn" id="btn-submit">Submit Report to Firebase</button>
+                    <div id="submit-readiness" class="submit-readiness" aria-live="polite">Checking required fields...</div>
+                    <button type="submit" class="btn" id="btn-submit" disabled>Submit Report to Firebase</button>
                 </form>
             </div>
 
@@ -1378,10 +1385,46 @@ table{width:100%;max-width:100%}
                    document.getElementById('gps-location-name').value.trim() !== 'Location permission required';
         }
 
+        function getVisitSubmitReasons() {
+            const checks = [
+                ['visit-date', 'Visit Date পূরণ করুন'],
+                ['search-input', 'Uddokta নির্বাচন করুন'],
+                ['dso-number', 'DSO Number পূরণ করুন'],
+                ['uddokta-number', 'Uddokta Number পূরণ করুন'],
+                ['uddokta-name', 'Uddokta Name পূরণ করুন'],
+                ['dss-name', 'DSS Name পূরণ করুন'],
+                ['feedback', 'Visit Feedback পূরণ করুন'],
+                ['festoon-status', 'Festoon status নির্বাচন করুন'],
+                ['banner-status', 'Banner status নির্বাচন করুন'],
+                ['file-status', 'File status নির্বাচন করুন'],
+                ['gps-location', 'Accurate GPS location পাওয়া যায়নি — Refresh Location দিন'],
+                ['gps-location-name', 'Location Name পাওয়া যায়নি — Refresh Location দিন']
+            ];
+            const reasons = [];
+            checks.forEach(([id, msg]) => {
+                const el = document.getElementById(id);
+                if (!el || !String(el.value || '').trim()) reasons.push(msg);
+            });
+            const locName = document.getElementById('gps-location-name');
+            if (locName && ['Getting location...', 'Location permission required', 'Location unavailable'].includes(locName.value.trim())) {
+                if (!reasons.some(r => r.includes('Location'))) reasons.push('Accurate GPS location পাওয়া যায়নি — Refresh Location দিন');
+            }
+            if (!capturedPhotoData) reasons.push('Uddokta selfie নিন');
+            return [...new Set(reasons)];
+        }
+
         function updateVisitSubmitState() {
             const btn = document.getElementById('btn-submit');
-            if (!btn) return;
-            btn.disabled = !isVisitFormComplete();
+            const box = document.getElementById('submit-readiness');
+            const reasons = getVisitSubmitReasons();
+            const ready = reasons.length === 0;
+            if (btn) btn.disabled = !ready;
+            if (box) {
+                box.classList.toggle('ready', ready);
+                box.innerHTML = ready
+                    ? '✓ সকল তথ্য সম্পূর্ণ — এখন Submit করা যাবে।'
+                    : '<strong>Submit বন্ধ আছে কারণ:</strong>' + reasons.map(r => `<span class="reason">${r}</span>`).join('');
+            }
         }
 
         function bindVisitFormCompletionListeners() {
