@@ -338,8 +338,11 @@
             box-shadow:0 0 0 2px rgba(220,38,38,.10)!important;
             border-radius:12px;
         }
-        #btn-submit:disabled{opacity:.55;cursor:not-allowed;display:block!important;visibility:visible!important}
-        #btn-submit{display:block!important;visibility:visible!important;position:relative!important;z-index:20!important;min-height:46px!important;margin-top:10px!important;width:100%!important;}
+        #btn-submit:disabled{opacity:.55!important;cursor:not-allowed!important;display:block!important;visibility:visible!important;}
+        #btn-submit{display:block!important;visibility:visible!important;position:sticky!important;bottom:10px!important;z-index:1000!important;min-height:52px!important;margin:14px 0 4px!important;width:100%!important;border:2px solid rgba(255,255,255,.65)!important;box-shadow:0 6px 20px rgba(15,23,42,.18)!important;}
+        #btn-submit:disabled{filter:none!important;}
+        .submit-invalid:focus{outline:2px solid rgba(220,38,38,.25)!important;outline-offset:1px!important;}
+        .camera-box.submit-invalid{scroll-margin-top:100px;}
 </style>
 
 <style id="responsive-fullscreen-ui">
@@ -555,7 +558,9 @@ table{width:100%;max-width:100%}
                         <a id="gps-map-link" class="hidden" href="#" target="_blank" rel="noopener noreferrer" style="display:inline-block; margin-top:6px; font-size:0.82rem;">🗺️ Open in Google Maps</a>
                     </div>
 
-                    <button type="submit" class="btn" id="btn-submit">Submit Report to Firebase</button>
+                    <div id="submit-action-bar" style="position:sticky;bottom:8px;z-index:1000;background:rgba(255,255,255,.96);padding:8px;border-radius:12px;box-shadow:0 -4px 18px rgba(15,23,42,.08);display:block!important;visibility:visible!important;">
+                        <button type="submit" class="btn" id="btn-submit" style="display:block!important;visibility:visible!important;width:100%!important;min-height:52px!important;">Submit Report to Firebase</button>
+                    </div>
                 </form>
             </div>
 
@@ -1464,46 +1469,25 @@ table{width:100%;max-width:100%}
 
         function getVisitFieldValidity() {
             const checks = [
-                ['visit-date', true],
-                ['search-input', true],
-                ['dso-number', true],
-                ['uddokta-number', true],
-                ['uddokta-name', true],
-                ['dss-name', true],
-                ['feedback', true],
-                ['festoon-status', true],
-                ['banner-status', true],
-                ['file-status', true],
-                ['gps-location-name', true]
+                ['visit-date'], ['search-input'], ['dso-number'], ['uddokta-number'],
+                ['uddokta-name'], ['dss-name'], ['feedback'], ['festoon-status'],
+                ['banner-status'], ['file-status'], ['gps-location-name']
             ];
-
             const invalid = [];
-
             checks.forEach(([id]) => {
                 const el = document.getElementById(id);
                 const value = el ? String(el.value || '').trim() : '';
-                if (!el || !value) {
-                    invalid.push(id);
-                }
+                if (!el || !value) invalid.push(id);
             });
-
             const locName = document.getElementById('gps-location-name');
             const locValue = locName ? String(locName.value || '').trim() : '';
             const gps = document.getElementById('gps-location');
             const gpsValue = gps ? String(gps.value || '').trim() : '';
-
-            const badLocationName = !locValue ||
-                ['Getting location...', 'Location permission required', 'Location unavailable'].includes(locValue);
-
-            // GPS coordinates are hidden, so visually mark the visible Location Name field.
+            const badLocationName = !locValue || ['Getting location...','Location permission required','Location unavailable'].includes(locValue);
             if (badLocationName || !gpsValue) {
                 if (!invalid.includes('gps-location-name')) invalid.push('gps-location-name');
             }
-
-            return {
-                invalidFields: [...new Set(invalid)],
-                selfieMissing: !capturedPhotoData
-            };
+            return { invalidFields:[...new Set(invalid)], selfieMissing:!capturedPhotoData };
         }
 
         function isVisitFormComplete() {
@@ -1514,39 +1498,30 @@ table{width:100%;max-width:100%}
         function updateVisitSubmitState() {
             const btn = document.getElementById('btn-submit');
             const state = getVisitFieldValidity();
-
-            // Remove previous red state from all fields handled by this validator.
-            [
-                'visit-date', 'search-input', 'dso-number', 'uddokta-number',
-                'uddokta-name', 'dss-name', 'feedback', 'festoon-status',
-                'banner-status', 'file-status', 'gps-location-name'
-            ].forEach(id => {
+            const fieldIds = [
+                'visit-date','search-input','dso-number','uddokta-number','uddokta-name','dss-name',
+                'feedback','festoon-status','banner-status','file-status','gps-location-name'
+            ];
+            fieldIds.forEach(id => {
                 const el = document.getElementById(id);
-                if (el) el.classList.remove('submit-invalid');
+                if (el) el.classList.toggle('submit-invalid', state.invalidFields.includes(id));
             });
-
-            // Add red ONLY to fields that are currently incomplete/invalid.
-            state.invalidFields.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.classList.add('submit-invalid');
-            });
-
-            // Selfie has no normal input field, so mark only its camera area.
             const cameraBox = document.querySelector('.camera-box');
-            if (cameraBox) {
-                cameraBox.classList.toggle('submit-invalid', state.selfieMissing);
-            }
-
+            if (cameraBox) cameraBox.classList.toggle('submit-invalid', state.selfieMissing);
             const ready = state.invalidFields.length === 0 && !state.selfieMissing;
-
-            // Submit button always remains visible; it is enabled only when complete.
             if (btn) {
-                btn.style.display = 'block';
-                btn.style.visibility = 'visible';
-                btn.style.opacity = ready ? '1' : '.55';
+                btn.hidden = false;
+                btn.removeAttribute('hidden');
+                btn.style.setProperty('display','block','important');
+                btn.style.setProperty('visibility','visible','important');
+                btn.style.setProperty('width','100%','important');
+                btn.style.setProperty('min-height','52px','important');
                 btn.disabled = !ready;
-                btn.title = ready ? 'Submit Report' : 'প্রয়োজনীয় তথ্য পূরণ করুন';
+                btn.style.opacity = ready ? '1' : '.55';
+                btn.style.cursor = ready ? 'pointer' : 'not-allowed';
+                btn.title = ready ? 'Submit Report' : 'লাল দেখানো প্রয়োজনীয় field পূরণ করুন';
                 btn.setAttribute('aria-disabled', String(!ready));
+                btn.textContent = 'Submit Report to Firebase';
             }
         }
 
@@ -1605,33 +1580,102 @@ table{width:100%;max-width:100%}
             stopCamera();
         }
 
-        // Optional Google Maps Geocoding API key. Use a browser-restricted key.
-        // Leave blank to use the fallback reverse-geocoder.
+        // Google reverse-geocoding API. Use a browser-restricted key with Geocoding API enabled.
+        // If a dedicated Maps key is not supplied, a non-placeholder Firebase browser key is tried as a fallback.
         window.GOOGLE_MAPS_API_KEY = window.GOOGLE_MAPS_API_KEY || '';
+
+        function buildGoogleAddress(result) {
+            if (!result) return '';
+            const components = result.address_components || [];
+            const pick = types => {
+                const c = components.find(x => (x.types || []).some(t => types.includes(t)));
+                return c ? c.long_name : '';
+            };
+            const ordered = [
+                pick(['premise','subpremise']),
+                pick(['point_of_interest','establishment']),
+                pick(['street_number']) && pick(['route']) ? `${pick(['street_number'])} ${pick(['route'])}` : pick(['route']),
+                pick(['neighborhood','sublocality_level_1','sublocality']),
+                pick(['locality','postal_town']),
+                pick(['administrative_area_level_2']),
+                pick(['administrative_area_level_1']),
+                pick(['country'])
+            ].filter(Boolean);
+            return [...new Set(ordered)].join(', ') || result.formatted_address || '';
+        }
+
+        async function reverseGeocodeGoogle(lat, lon) {
+            let key = String(window.GOOGLE_MAPS_API_KEY || '').trim();
+            if ((!key || key === 'YOUR_GOOGLE_MAPS_API_KEY') && typeof firebaseConfig !== 'undefined') {
+                const fbKey = String(firebaseConfig.apiKey || '').trim();
+                if (fbKey && !/^YOUR_/i.test(fbKey)) key = fbKey;
+            }
+            if (!key || /^YOUR_/i.test(key)) return '';
+            try {
+                const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${encodeURIComponent(lat + ',' + lon)}&language=bn&region=bd&key=${encodeURIComponent(key)}`;
+                const response = await fetch(url, { method:'GET', cache:'no-store' });
+                if (!response.ok) return '';
+                const data = await response.json();
+                if (data.status !== 'OK' || !Array.isArray(data.results) || !data.results.length) return '';
+                return buildGoogleAddress(data.results[0]);
+            } catch (e) {
+                console.warn('Google reverse geocode failed:', e);
+                return '';
+            }
+        }
+
+        async function reverseGeocodeFallback(lat, lon) {
+            // Fallback only if Google cannot resolve the coordinates.
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=18&addressdetails=1`,
+                    { headers:{'Accept':'application/json','Accept-Language':'bn,en'}, cache:'no-store' }
+                );
+                if (response.ok) {
+                    const data = await response.json();
+                    const a = data.address || {};
+                    const parts = [a.amenity,a.building,a.road,a.neighbourhood||a.suburb,a.village||a.town||a.city||a.municipality,a.upazila,a.district].filter(Boolean);
+                    return [...new Set(parts)].join(', ') || data.display_name || '';
+                }
+            } catch(e) { console.warn('Fallback reverse geocode failed:', e); }
+            return '';
+        }
+
+        function getPosition(options) {
+            return new Promise((resolve,reject) => {
+                if (!navigator.geolocation) return reject(new Error('Geolocation is not supported'));
+                navigator.geolocation.getCurrentPosition(resolve,reject,options);
+            });
+        }
 
         async function fetchGPS() {
             const gpsInput = document.getElementById('gps-location');
             const nameInput = document.getElementById('gps-location-name');
             const mapLink = document.getElementById('gps-map-link');
+            if (!gpsInput || !nameInput) return;
 
             gpsInput.value = '';
             nameInput.value = 'Getting location...';
-            if (mapLink) { mapLink.href = '#'; mapLink.classList.add('hidden'); }
+            nameInput.title = '';
+            if (mapLink) { mapLink.href='#'; mapLink.classList.add('hidden'); }
             updateVisitSubmitState();
 
-            if (!('geolocation' in navigator)) {
-                nameInput.value = 'Location unavailable';
-                updateVisitSubmitState();
-                return;
-            }
+            try {
+                let pos = await getPosition({ enableHighAccuracy:true, timeout:45000, maximumAge:0 });
+                // If the first fix is weak, ask the device once more for a fresh high-accuracy fix.
+                if (Number.isFinite(pos.coords.accuracy) && pos.coords.accuracy > 120) {
+                    try {
+                        const retry = await getPosition({ enableHighAccuracy:true, timeout:45000, maximumAge:0 });
+                        if (Number.isFinite(retry.coords.accuracy) && retry.coords.accuracy < pos.coords.accuracy) pos = retry;
+                    } catch(e) {}
+                }
 
-            navigator.geolocation.getCurrentPosition(async pos => {
-                const lat = pos.coords.latitude;
-                const lon = pos.coords.longitude;
+                const lat = Number(pos.coords.latitude);
+                const lon = Number(pos.coords.longitude);
                 const accuracy = Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : 0;
                 gpsInput.value = `${lat.toFixed(7)}, ${lon.toFixed(7)}`;
 
-                const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat.toFixed(7)},${lon.toFixed(7)}`;
+                const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lat.toFixed(7)+','+lon.toFixed(7))}`;
                 if (mapLink) {
                     mapLink.href = mapsUrl;
                     mapLink.target = '_blank';
@@ -1640,47 +1684,19 @@ table{width:100%;max-width:100%}
                     mapLink.classList.remove('hidden');
                 }
 
-                // Google Geocoding API gives the most accurate Google address/name.
-                // Set GOOGLE_MAPS_API_KEY below with a browser-restricted key.
-                const googleKey = (window.GOOGLE_MAPS_API_KEY || '').trim();
-                let resolvedName = '';
-
-                if (googleKey && googleKey !== 'YOUR_GOOGLE_MAPS_API_KEY') {
-                    try {
-                        const response = await fetch(
-                            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${encodeURIComponent(lat + ',' + lon)}&language=bn&key=${encodeURIComponent(googleKey)}`
-                        );
-                        const data = await response.json();
-                        if (data.status === 'OK' && data.results && data.results[0]) {
-                            resolvedName = data.results[0].formatted_address || '';
-                        }
-                    } catch (e) {}
-                }
-
-                // Fallback keeps the form usable when a Google API key is not configured.
-                if (!resolvedName) {
-                    try {
-                        const response = await fetch(
-                            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=18&addressdetails=1`,
-                            { headers: { 'Accept': 'application/json', 'Accept-Language': 'bn,en' } }
-                        );
-                        if (response.ok) {
-                            const data = await response.json();
-                            const a = data.address || {};
-                            const parts = [a.road, a.neighbourhood || a.suburb, a.village || a.town || a.city || a.municipality, a.upazila, a.district].filter(Boolean);
-                            resolvedName = parts.length ? [...new Set(parts)].join(', ') : (data.display_name || '');
-                        }
-                    } catch (e) {}
-                }
-
-                nameInput.value = resolvedName || `GPS ${lat.toFixed(7)}, ${lon.toFixed(7)}`;
+                let resolvedName = await reverseGeocodeGoogle(lat, lon);
+                if (!resolvedName) resolvedName = await reverseGeocodeFallback(lat, lon);
+                if (!resolvedName) resolvedName = `GPS ${lat.toFixed(7)}, ${lon.toFixed(7)}`;
+                nameInput.value = resolvedName;
                 nameInput.title = accuracy ? `GPS accuracy: ±${Math.round(accuracy)}m` : 'GPS location';
                 updateVisitSubmitState();
-            }, err => {
+            } catch (err) {
+                console.warn('GPS error:', err);
                 gpsInput.value = '';
                 nameInput.value = 'Location permission required';
+                nameInput.title = 'Please allow precise location access and press Refresh Location.';
                 updateVisitSubmitState();
-            }, { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 });
+            }
         }
 
         // ----------------------------------------------------
@@ -2238,7 +2254,7 @@ document.addEventListener('DOMContentLoaded', bindVisitFormCompletionListeners);
         // Re-check while the form is open so the button state never gets stuck.
         setInterval(() => {
             const form = document.getElementById('visit-form');
-            if (form && !document.getElementById('main-app')?.classList.contains('hidden')) {
+            if (form && !document.getElementById('view-form')?.classList.contains('hidden')) {
                 updateVisitSubmitState();
             }
         }, 500);
