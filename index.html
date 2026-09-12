@@ -326,6 +326,42 @@
         .review-update{font-size:.72rem;color:#64748b;margin-top:6px}
         @media(max-width:700px){.visit-check-grid{grid-template-columns:1fr}.review-grid{grid-template-columns:1fr}}
     </style>
+
+<style id="responsive-fullscreen-ui">
+html,body{width:100%;min-height:100%;margin:0;padding:0}
+body{overflow-x:hidden}
+*,*::before,*::after{box-sizing:border-box}
+.container,.main-container,.page-container,.content-container{width:100%;max-width:100%;margin-left:auto;margin-right:auto}
+main{width:100%}
+img,video,canvas{max-width:100%;height:auto}
+input,select,textarea,button{max-width:100%}
+.table-responsive{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;max-width:100%}
+@media (min-width:1920px){
+  .container,.main-container,.page-container,.content-container{padding-left:32px;padding-right:32px}
+  body{font-size:16px}
+}
+@media (min-width:2560px){
+  .container,.main-container,.page-container,.content-container{padding-left:48px;padding-right:48px}
+  body{font-size:17px}
+}
+@media (max-width:1199px){
+  .container,.main-container,.page-container,.content-container{padding-left:20px;padding-right:20px}
+}
+@media (max-width:767px){
+  .container,.main-container,.page-container,.content-container{padding-left:12px;padding-right:12px}
+  .grid,.form-grid,.row{grid-template-columns:1fr!important}
+  .card{width:100%!important}
+  table{min-width:720px}
+}
+@media (min-width:768px) and (max-width:1399px){
+  .grid,.form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (min-width:1400px){
+  .grid,.form-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+</style>
+
 </head>
 <body>
 
