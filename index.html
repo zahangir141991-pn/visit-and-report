@@ -246,7 +246,14 @@
         }
 
         .nav-item.active { color: var(--primary); }
-        .hidden { display: none !important; }
+        
+        .duplicate-uddokta-card{margin-top:10px;padding:12px 14px;border:1px solid #f59e0b;border-left:5px solid #f59e0b;border-radius:12px;background:#fffbeb;color:#92400e;font-size:.84rem;font-weight:700;line-height:1.45;box-shadow:0 4px 12px rgba(245,158,11,.08)}
+        .duplicate-uddokta-card b{color:#b45309}
+        table.reports-table tr.duplicate-uddokta-row td{background:#fff7ed!important;border-bottom-color:#fed7aa!important}
+        table.reports-table tr.duplicate-uddokta-row td:nth-child(3){font-weight:800;color:#b45309}
+        table.reports-table tr.duplicate-uddokta-row td:nth-child(4){font-weight:800;color:#b45309}
+
+.hidden { display: none !important; }
 
         .alert {
             padding: 12px;
@@ -277,11 +284,19 @@
         .nav-scroll{overflow-x:auto;justify-content:flex-start!important}
         .nav-scroll .nav-item{min-width:92px;flex:0 0 auto}
 
-        /* Polished single-page navigation + report details */
-        .nav-bar{gap:6px;padding:7px 10px;box-shadow:0 -4px 18px rgba(15,23,42,.08)}
-        .nav-item{border-radius:12px;padding:8px 10px;transition:.2s;line-height:1.15}
-        .nav-item:hover{background:#f1f5f9}
-        .nav-item.active{background:#e8f0ff;font-weight:800}
+        /* Polished left navigation on desktop; bottom navigation on mobile */
+        .nav-bar{position:fixed;left:14px;top:86px;bottom:14px;width:190px;height:auto;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;gap:8px;padding:12px;background:rgba(255,255,255,.97);border:1px solid var(--border);border-radius:18px;box-shadow:0 14px 35px rgba(15,23,42,.12);overflow-y:auto;z-index:100}
+        .nav-item{flex:0 0 auto!important;width:100%;border-radius:12px;padding:13px 12px;transition:.2s;line-height:1.2;text-align:left;color:var(--text-light);font-size:.8rem;font-weight:700}
+        .nav-item span{display:block}
+        .nav-item:hover{background:#f1f5f9;transform:translateX(2px)}
+        .nav-item.active{background:#e8f0ff;color:var(--primary);font-weight:900;box-shadow:inset 3px 0 0 var(--primary)}
+        #main-app{margin-left:218px}
+        @media(max-width:800px){
+            .nav-bar{left:8px;right:8px;bottom:8px;top:auto;width:auto;height:68px;flex-direction:row;justify-content:space-around;align-items:center;padding:6px;gap:4px;border-radius:16px;overflow-x:auto;overflow-y:hidden}
+            .nav-item{width:auto;min-width:76px!important;flex:1 0 auto!important;padding:8px 6px;text-align:center;font-size:.7rem}
+            .nav-item.active{box-shadow:inset 0 -3px 0 var(--primary)}
+            #main-app{margin-left:0;padding-bottom:84px}
+        }
         .details-modal{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:300;display:flex;align-items:center;justify-content:center;padding:16px}
         .details-card{width:min(720px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:18px;padding:18px;box-shadow:0 20px 60px rgba(15,23,42,.25)}
         .details-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;position:sticky;top:0;background:#fff;padding-bottom:8px;border-bottom:1px solid var(--border)}
@@ -519,6 +534,7 @@ table{width:100%;max-width:100%}
                         <label>Search Uddokta Number</label>
                         <input type="text" id="search-input" placeholder="Type last 4 / last 6 / full Uddokta Number..." autocomplete="off" required>
                         <div id="search-results" class="search-results"></div>
+                        <div id="duplicate-uddokta-card" class="duplicate-uddokta-card hidden"></div>
                     </div>
 
                     <div class="form-group">
@@ -742,7 +758,7 @@ table{width:100%;max-width:100%}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-11-v2';
+        const APP_CACHE_VERSION = '2026-09-13-v3';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
         const UDDOKTA_CACHE_META_KEY = 'dms_uddokta_master_meta';
         const UDDOKTA_CACHE_TTL = 5 * 60 * 1000; // 5 minutes fallback only
@@ -859,17 +875,38 @@ table{width:100%;max-width:100%}
             return set;
         }
 
-        function canSeeReport(r) {
+        function canSeeReport(r, options) {
             const info = getRoleInfo();
-            if (info.role === 'Admin' || info.role === 'DM') return true;
+            const opts = (options && typeof options === 'object') ? options : {};
+            const selectedDss = String(opts.selectedDss || '').trim().toUpperCase();
+            const selectedDso = normalizeScopeWallet(opts.selectedDso || '');
+            const assignedMode = !!opts.assignedMode;
+            const reportDso = normalizeScopeWallet(r.dsoWallet || r.dsoNumber);
+            const reportDss = String(r.dssName || '').trim().toUpperCase();
+            const owner = String(r.user || '').trim().toLowerCase();
+            const me = String(currentUser || '').trim().toLowerCase();
+
+            if (info.role === 'Admin') return true;
+            if (info.role === 'DSO') return reportDso === normalizeScopeWallet(info.dsoWallet);
+
             if (info.role === 'DSS') {
-                const a = String(r.dssName || '').trim().toUpperCase();
+                // Default: DSS sees only reports submitted by that DSS.
+                // Selecting a DSO switches to that DSS's assigned DSO reports only.
+                if (!assignedMode || !selectedDso) return owner === me;
                 const allowed = String(info.dssName || '').trim().toUpperCase();
-                if (!a || !allowed || !(a === allowed || a.includes(allowed) || allowed.includes(a))) return false;
-                // DSS can see only visits of DSO(s) assigned to that DSS.
-                return dssHasAssignedDso(allowed, r.dsoWallet || r.dsoNumber);
+                return dssHasAssignedDso(allowed, reportDso) &&
+                    reportDso === selectedDso &&
+                    (!reportDss || reportDss === allowed || reportDss.includes(allowed) || allowed.includes(reportDss));
             }
-            if (info.role === 'DSO') return normalizeScopeWallet(r.dsoWallet || r.dsoNumber) === normalizeScopeWallet(info.dsoWallet);
+
+            if (info.role === 'DM') {
+                // Default: DM sees only the DM's own reports.
+                // Selecting DSS/DSO switches to the selected DSS's reports.
+                if (!assignedMode) return owner === me;
+                if (selectedDss && (!reportDss || !(reportDss === selectedDss || reportDss.includes(selectedDss) || selectedDss.includes(reportDss)))) return false;
+                if (selectedDso && reportDso !== selectedDso) return false;
+                return getReportType(r) === 'dss';
+            }
             return false;
         }
 
@@ -888,9 +925,15 @@ table{width:100%;max-width:100%}
             const select = document.getElementById('filter-report-type');
             if (!wrap || !select) return;
             const role = getRoleInfo().role;
-            const showTypeFilter = role === 'Admin' || role === 'DM';
+            const showTypeFilter = role === 'Admin';
             wrap.classList.toggle('hidden', !showTypeFilter);
             if (!showTypeFilter) select.value = 'all';
+            const dssSelect=document.getElementById('filter-dss');
+            if(dssSelect && dssSelect.parentElement){
+                const showDssFilter=(role==='Admin' || role==='DM');
+                dssSelect.parentElement.classList.toggle('hidden',!showDssFilter);
+                if(!showDssFilter) dssSelect.value='';
+            }
         }
 
         function canSeeUddokta(item) {
@@ -981,6 +1024,7 @@ table{width:100%;max-width:100%}
         }
 
         function clearVisitFormForNewVisit() {
+            const dupCard=document.getElementById('duplicate-uddokta-card'); if(dupCard){dupCard.classList.add('hidden'); dupCard.innerHTML='';}
             const form = document.getElementById('visit-form');
             if (form) form.reset();
 
@@ -1420,6 +1464,37 @@ Total: ${merged.length}`);
             }
         }
 
+        function getCurrentSelectedDuplicateReports() {
+            const role=getRoleInfo();
+            const date=(document.getElementById('visit-date')||{}).value||getDhakaToday();
+            const no=normalizeUddoktaNumber((document.getElementById('uddokta-number')||{}).value||'');
+            const name=String((document.getElementById('uddokta-name')||{}).value||'').trim().toUpperCase();
+            if(!date || (!no && !name)) return [];
+            return reportsData.filter(r=>{
+                if(!canSeeReport(r)) return false;
+                if(String(r.date||'')!==String(date)) return false;
+                const sameNo=no && normalizeUddoktaNumber(r.uddoktaNumber||'')===no;
+                const sameName=name && String(r.uddoktaName||'').trim().toUpperCase()===name;
+                if(!(sameNo||sameName)) return false;
+                if(role.role==='DSO') return normalizeScopeWallet(r.dsoWallet||r.dsoNumber)===normalizeScopeWallet(role.dsoWallet);
+                return true;
+            });
+        }
+
+        function updateDuplicateUddoktaCard() {
+            const card=document.getElementById('duplicate-uddokta-card');
+            if(!card) return;
+            const found=getCurrentSelectedDuplicateReports();
+            if(found.length){
+                card.classList.remove('hidden');
+                const latest=found[0];
+                card.innerHTML=`⚠️ <b>Duplicate Uddokta</b><br>${latest.uddoktaName||'This Uddokta'} (${latest.uddoktaNumber||''}) আজকে আগে ${found.length} বার submit হয়েছে।`;
+            } else {
+                card.classList.add('hidden');
+                card.innerHTML='';
+            }
+        }
+
         function selectUddokta(item) {
             // Excel order:
             // [DSO Wallet, Uddokta Number, Uddokta Name, DSS Name]
@@ -1430,6 +1505,7 @@ Total: ${merged.length}`);
 
             document.getElementById('search-input').value = String(item[1] ?? '');
             document.getElementById('search-results').style.display = 'none';
+            updateDuplicateUddoktaCard();
             updateVisitSubmitState();
         }
 
@@ -1519,6 +1595,7 @@ Total: ${merged.length}`);
         }
 
         function updateVisitSubmitState() {
+            try { updateDuplicateUddoktaCard(); } catch(e) {}
             const btn = document.getElementById('btn-submit');
             const state = getVisitFieldValidity();
             const fieldIds = [
@@ -1899,23 +1976,25 @@ Total: ${merged.length}`);
 
         function populateDsoFilter(){
             const sel=document.getElementById('filter-dso'); if(!sel) return;
-            const current=sel.value;
+            const current=normalizeScopeWallet(sel.value);
             const info=getRoleInfo();
+            const selectedDss=String((document.getElementById('filter-dss')||{}).value||'').trim();
             sel.innerHTML='<option value="">All DSO</option>';
             let wallets=[];
             if(info.role==='DSO') {
                 wallets=[normalizeScopeWallet(info.dsoWallet)];
             } else if(info.role==='DSS') {
                 wallets=Array.from(getAssignedDsoWalletsForDss(info.dssName));
+            } else if(info.role==='DM' && selectedDss) {
+                wallets=Array.from(getAssignedDsoWalletsForDss(selectedDss));
             } else {
                 for(let i=801;i<=845;i++) wallets.push('13325178'+String(i-800).padStart(2,'0'));
             }
-            wallets.sort();
+            wallets=[...new Set(wallets.map(normalizeScopeWallet).filter(Boolean))].sort((a,b)=>Number(a)-Number(b));
             wallets.forEach(wallet=>{
-                if(!wallet) return;
                 const suffix=wallet.slice(-2);
                 const dsoNum=String(800+Number(suffix));
-                sel.insertAdjacentHTML('beforeend',`<option value="${wallet}">${dsoNum} - ${wallet}</option>`);
+                sel.insertAdjacentHTML('beforeend',`<option value="${wallet}">DSO ${dsoNum}</option>`);
             });
             if(wallets.includes(current)) sel.value=current;
             else sel.value='';
@@ -1935,31 +2014,45 @@ Total: ${merged.length}`);
             tableBody.innerHTML='';
             const role=getRoleInfo();
             setupReportTypeFilter();
+            const dssEl=document.getElementById('filter-dss');
+            const selectedDss=String((dssEl||{}).value||'').trim().toUpperCase();
             populateDsoFilter();
             const fd=(document.getElementById('filter-date')||{}).value||'';
             const fds=normalizeScopeWallet((document.getElementById('filter-dso')||{}).value||'');
-            let fdss=((document.getElementById('filter-dss')||{}).value||'').toUpperCase();
             const fq=((document.getElementById('filter-search')||{}).value||'').trim().toUpperCase();
             const frt=(document.getElementById('filter-report-type')||{}).value||'all';
-            if(role.role==='DSS') fdss=String(role.dssName||'').toUpperCase();
-            const rows=reportsData.filter(canSeeReport).filter(r=>{
+            const assignedMode=(role.role==='DSS' && !!fds) || (role.role==='DM' && (!!selectedDss || !!fds));
+
+            const rows=reportsData.filter(r=>canSeeReport(r,{assignedMode,selectedDss,selectedDso:fds})).filter(r=>{
                 if(frt !== 'all' && getReportType(r) !== frt) return false;
                 if(fd && r.date!==fd) return false;
                 if(fds && normalizeScopeWallet(r.dsoWallet||r.dsoNumber)!==fds) return false;
-                if(fdss && !String(r.dssName||'').toUpperCase().includes(fdss)) return false;
+                if(selectedDss && role.role==='DM' && !String(r.dssName||'').toUpperCase().includes(selectedDss)) return false;
                 if(fq && !(String(r.uddoktaName||'').toUpperCase().includes(fq)||String(r.uddoktaNumber||'').toUpperCase().includes(fq))) return false;
                 return true;
             });
+
             const reportCount = document.getElementById('report-total-visit-count');
             if(reportCount) reportCount.innerText = rows.length;
             if(!rows.length){ tableBody.innerHTML='<tr><td colspan="11" class="empty-state">No visit data found</td></tr>'; return; }
+
+            // Duplicate = same Uddokta submitted more than once on the same date in the current visible scope.
+            const dupCount=new Map();
+            rows.forEach(r=>{
+                const key=(String(r.date||'')+'|'+normalizeUddoktaNumber(r.uddoktaNumber||'')+'|'+String(r.uddoktaName||'').trim().toUpperCase());
+                dupCount.set(key,(dupCount.get(key)||0)+1);
+            });
+
             rows.forEach(r=>{
                 const tr=document.createElement('tr');
                 const idx=reportsData.indexOf(r);
                 const isDss = role.role === 'DSS';
+                const key=(String(r.date||'')+'|'+normalizeUddoktaNumber(r.uddoktaNumber||'')+'|'+String(r.uddoktaName||'').trim().toUpperCase());
+                const isDuplicate=(dupCount.get(key)||0)>1;
+                if(isDuplicate) tr.classList.add('duplicate-uddokta-row');
                 const reviewHtml = isDss && (r.festoonStatus==='Not OK'||r.bannerStatus==='Not OK'||r.fileStatus==='Not OK') ? `<div class="review-grid">${r.festoonStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${r.id}','OK','festoonStatus')">✓ Festoon OK</button>`:''}${r.bannerStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${r.id}','OK','bannerStatus')">✓ Banner OK</button>`:''}${r.fileStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${r.id}','OK','fileStatus')">✓ File OK</button>`:''}</div>` : `<span>${r.reviewStatus||'Pending'}</span>`;
                 const updatedText = r.reviewUpdatedAt ? `<div class="review-update">Updated: ${r.reviewUpdatedAt}${r.reviewUpdatedBy?' · '+r.reviewUpdatedBy:''}</div>` : '';
-                tr.innerHTML=`<td>${r.visitTime||(r.timestamp?new Date(r.timestamp).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}):'')}</td><td>${r.dsoWallet||r.dsoNumber||''}</td><td>${r.uddoktaName||''}</td><td>${r.uddoktaNumber||''}</td><td>${r.festoonStatus||'Pending'}</td><td>${r.bannerStatus||'Pending'}</td><td>${r.fileStatus||'Pending'}</td><td>${reviewHtml}${updatedText}</td><td><small>${r.locationName||r.gps||''}</small></td><td>${r.photo?`<img src="${r.photo}" class="table-img" alt="Visit Uddokta Photo" onclick="showVisitDetails(${idx})">`:''}</td><td><button class="detail-btn" onclick="showVisitDetails(${idx})">View</button></td>`;
+                tr.innerHTML=`<td>${r.visitTime||(r.timestamp?new Date(r.timestamp).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}):'')}</td><td>${r.dsoWallet||r.dsoNumber||''}</td><td>${r.uddoktaName||''}${isDuplicate?'<div style="font-size:.68rem;color:#b45309;margin-top:3px;font-weight:900">⚠ Duplicate Visit</div>':''}</td><td>${r.uddoktaNumber||''}</td><td>${r.festoonStatus||'Pending'}</td><td>${r.bannerStatus||'Pending'}</td><td>${r.fileStatus||'Pending'}</td><td>${reviewHtml}${updatedText}</td><td><small>${r.locationName||r.gps||''}</small></td><td>${r.photo?`<img src="${r.photo}" class="table-img" alt="Visit Uddokta Photo" onclick="showVisitDetails(${idx})">`:''}</td><td><button class="detail-btn" onclick="showVisitDetails(${idx})">View</button></td>`;
                 tableBody.appendChild(tr);
             });
         }
