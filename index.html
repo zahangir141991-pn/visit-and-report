@@ -344,6 +344,12 @@
 #app-nav .nav-item{position:relative;z-index:5001!important;pointer-events:auto!important;touch-action:manipulation;}
 #main-app{padding-bottom:78px;}
 @media(max-width:767px){#main-app{padding-bottom:86px;}}
+/* Logged-in User ID shown at the top-right only */
+#app-header{position:sticky;}
+#header-user-name{position:absolute;right:18px;top:50%;transform:translateY(-50%);font-size:.78rem;font-weight:800;letter-spacing:.02em;color:#fff;white-space:nowrap;max-width:34vw;overflow:hidden;text-overflow:ellipsis;text-align:right;}
+@media(max-width:767px){#header-user-name{right:10px;font-size:.68rem;max-width:36vw;}#app-header h1{max-width:52vw;margin:0 auto;}}
+.app-author-footer{margin-left:0;padding:14px 16px 92px;text-align:center;color:#64748b;font-size:.76rem;font-weight:700;}
+@media(max-width:767px){.app-author-footer{margin-left:0;padding:12px 12px 92px;}}
 
 /* Polished single-page navigation + report details */
         .nav-bar{gap:6px;padding:7px 10px;box-shadow:0 -4px 18px rgba(15,23,42,.08)}
@@ -710,8 +716,8 @@ table{width:100%;max-width:100%}
                     <div class="filter-grid">
                         <div id="filter-date-wrap"><label>Date</label><input type="date" id="filter-date" onchange="renderReports()"></div>
                         <div id="report-type-wrap" class="hidden"><label>Report Type</label><select id="filter-report-type" onchange="renderReports()"><option value="all">All Visit Reports</option><option value="dm">DM Visit Report</option><option value="dss">DSS Visit Report</option></select></div>
+                        <div id="filter-dss-wrap"><label>DSS</label><select id="filter-dss" onchange="populateDsoFilter();renderReports()"><option value="">All DSS</option><option value="MOHOSIN HOSSAIN SOHAG">Sohag</option><option value="MD. ALAMIN">Alamin</option><option value="MD. IMRAN HOSSAIN">Imran</option><option value="RUBEL">Rubel</option><option value="MD. SHOFIQ">Shofiq</option></select></div>
                         <div id="filter-dso-wrap"><label>DSO</label><select id="filter-dso" onchange="renderReports()"><option value="">All DSO</option></select></div>
-                        <div id="filter-dss-wrap"><label>DSS</label><select id="filter-dss" onchange="renderReports()"><option value="">All DSS</option><option value="MOHOSIN HOSSAIN SOHAG">Sohag</option><option value="MD. ALAMIN">Alamin</option><option value="MD. IMRAN HOSSAIN">Imran</option><option value="RUBEL">Rubel</option><option value="MD. SHOFIQ">Shofiq</option></select></div>
                         <div id="filter-search-wrap"><label>Search Uddokta</label><input type="text" id="filter-search" placeholder="Name / number" oninput="renderReports()"></div>
                     </div>
                 </div>
@@ -811,6 +817,7 @@ table{width:100%;max-width:100%}
                 </div>
             </div>
 
+            <footer class="app-author-footer">Author by Zahangir Kabir 2026</footer>
         </div>
 
     </div>
@@ -869,7 +876,7 @@ table{width:100%;max-width:100%}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-14-responsive-assignment-v1';
+        const APP_CACHE_VERSION = '2026-09-14-visit-controls-v2';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -1211,7 +1218,8 @@ table{width:100%;max-width:100%}
                     (roleInfo.role === 'DSS' ? 'DSS - ' + String(roleInfo.dssName || user).toUpperCase() :
                     (roleInfo.role === 'DSO' ? 'DSO - ' + dsoUserId : user.toUpperCase())));
                 const headerNameEl = document.getElementById('header-user-name');
-                if (headerNameEl) headerNameEl.innerText = displayName;
+                const topUserId = roleInfo.role === 'DSO' ? dsoUserId : String(user || '').toUpperCase();
+                if (headerNameEl) headerNameEl.innerText = 'User ID: ' + topUserId;
                 const nameEl = document.getElementById('current-user-name');
                 const roleEl = document.getElementById('current-user-role');
                 const idEl = document.getElementById('current-user-id');
@@ -1645,7 +1653,8 @@ table{width:100%;max-width:100%}
         }
 
         function setTodayDate() {
-            document.getElementById('visit-date').value = new Date().toISOString().split('T')[0];
+            const dateEl = document.getElementById('visit-date');
+            if (dateEl) dateEl.value = getDhakaToday();
         }
 
         function normalizeUddoktaNumber(value) {
@@ -1979,12 +1988,12 @@ table{width:100%;max-width:100%}
             // Performance-safe reverse geocoding: one fast request first, then one
             // lower-detail fallback. The old version could perform 10 requests and
             // wait for a very long time, which caused visible buffering.
-            const zooms = [18, 14];
+            const zooms = [18, 16];
             for (const zoom of zooms) {
                 const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=${zoom}&addressdetails=1&accept-language=bn,en`;
                 try {
                     const controller = new AbortController();
-                    const timer = setTimeout(() => controller.abort(), 7000);
+                    const timer = setTimeout(() => controller.abort(), 3500);
                     const response = await fetch(url, {
                         method: 'GET',
                         mode: 'cors',
@@ -2138,7 +2147,7 @@ table{width:100%;max-width:100%}
             if (gpsRequestInFlight) return gpsRequestInFlight;
 
             const now = Date.now();
-            if (!fromPermissionButton && lastGpsAt && (now - lastGpsAt) < 120000 && lastGpsCoords) {
+            if (!fromPermissionButton && lastGpsAt && (now - lastGpsAt) < 30000 && lastGpsCoords) {
                 const parts = lastGpsCoords.split(',');
                 if (parts.length === 2) {
                     gpsInput.value = lastGpsCoords;
@@ -2158,11 +2167,14 @@ table{width:100%;max-width:100%}
                 try {
                     if (!navigator.geolocation) throw new Error('Geolocation is not supported');
 
-                    const pos = await getPosition({
-                        enableHighAccuracy: true,
-                        timeout: 12000,
-                        maximumAge: 30000
-                    });
+                    // Fresh high-accuracy fix: avoids stale cached coordinates while keeping timeout short.
+                    let pos;
+                    try {
+                        pos = await getPosition({ enableHighAccuracy: true, timeout: 7000, maximumAge: 0 });
+                    } catch (firstGpsError) {
+                        // Fast fallback for devices where a high-accuracy satellite fix is slow indoors.
+                        pos = await getPosition({ enableHighAccuracy: true, timeout: 4000, maximumAge: 5000 });
+                    }
 
                     const lat = Number(pos.coords.latitude);
                     const lon = Number(pos.coords.longitude);
@@ -2212,6 +2224,40 @@ table{width:100%;max-width:100%}
         }
 
         // ----------------------------------------------------
+        // ONE UDDOKTA = ONE VISIT PER DAY
+        // A Firebase transaction provides a cross-device lock. Historical data is
+        // checked first so older reports created before this rule are also respected.
+        // ----------------------------------------------------
+        async function hasExistingDailyVisit(date, uddoktaNumber) {
+            const normalized = normalizeUddoktaNumber(uddoktaNumber);
+            if (!date || !normalized) return false;
+
+            if ((reportsData || []).some(r => String(r.date || '') === date && normalizeUddoktaNumber(r.uddoktaNumber || '') === normalized)) {
+                return true;
+            }
+            if (!db) return false;
+
+            const snap = await db.ref('visit_reports').orderByChild('date').equalTo(date).once('value');
+            let found = false;
+            snap.forEach(child => {
+                const r = child.val() || {};
+                if (normalizeUddoktaNumber(r.uddoktaNumber || '') === normalized) found = true;
+            });
+            return found;
+        }
+
+        async function reserveDailyVisit(date, uddoktaNumber, token) {
+            const normalized = normalizeUddoktaNumber(uddoktaNumber);
+            const safeKey = normalized.replace(/[^0-9A-Za-z_-]/g, '_');
+            const ref = db.ref(`visit_daily_unique/${date}/${safeKey}`);
+            const result = await ref.transaction(current => {
+                if (current) return;
+                return { token, user: currentUser, uddoktaNumber: normalized, reservedAt: firebase.database.ServerValue.TIMESTAMP };
+            }, undefined, false);
+            return { committed: !!result.committed, ref };
+        }
+
+        // ----------------------------------------------------
         // 2. SUBMIT REPORT TO FIREBASE REALTIME DATABASE
         // ----------------------------------------------------
         document.getElementById('visit-form').addEventListener('submit', async function(e) {
@@ -2258,14 +2304,42 @@ table{width:100%;max-width:100%}
                 updateVisitSubmitState();
                 return;
             }
-            btnSubmit.disabled = true;
-            btnSubmit.innerText = 'Saving to Firebase...';
 
+            const visitDateValue = document.getElementById('visit-date').value || getDhakaToday();
+            const visitUddoktaNumber = document.getElementById('uddokta-number').value;
+            btnSubmit.disabled = true;
+            btnSubmit.innerText = 'Checking duplicate visit...';
+
+            let dailyReservation = null;
+            const reservationToken = `${Date.now()}_${Math.random().toString(36).slice(2,10)}`;
+            try {
+                if (await hasExistingDailyVisit(visitDateValue, visitUddoktaNumber)) {
+                    showAlert('এই Uddokta-কে আজ ইতোমধ্যে Visit করা হয়েছে। একই দিনে একই Uddokta একবারের বেশি Visit করা যাবে না।', 'error');
+                    return;
+                }
+                dailyReservation = await reserveDailyVisit(visitDateValue, visitUddoktaNumber, reservationToken);
+                if (!dailyReservation.committed) {
+                    showAlert('এই Uddokta-কে আজ ইতোমধ্যে Visit করা হয়েছে। একই দিনে একই Uddokta একবারের বেশি Visit করা যাবে না।', 'error');
+                    return;
+                }
+            } catch (duplicateCheckError) {
+                console.error('Duplicate visit check failed:', duplicateCheckError);
+                showAlert('Duplicate visit check করা যায়নি। Internet/Firebase connection দেখে আবার চেষ্টা করুন।', 'error');
+                return;
+            } finally {
+                if (!dailyReservation || !dailyReservation.committed) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerText = 'Submit Report to Firebase';
+                    updateVisitSubmitState();
+                }
+            }
+
+            btnSubmit.innerText = 'Saving to Firebase...';
             const reportId = Date.now();
             const newReport = {
                 id: reportId,
                 user: currentUser,
-                date: document.getElementById('visit-date').value,
+                date: visitDateValue,
                 visitTime: new Date().toLocaleString('en-GB', { timeZone: 'Asia/Dhaka', hour12: true }),
                 visitTimestamp: Date.now(),
                 dsoWallet: document.getElementById('dso-number').value,
@@ -2298,6 +2372,13 @@ table{width:100%;max-width:100%}
                 // Do not immediately start another GPS/reverse-geocode job after submit.
                 // The next Visit page will request location once, avoiding background buffering.
             } catch (err) {
+                try {
+                    if (dailyReservation && dailyReservation.ref) {
+                        const lockSnap = await dailyReservation.ref.once('value');
+                        const lock = lockSnap.val();
+                        if (lock && lock.token === reservationToken) await dailyReservation.ref.remove();
+                    }
+                } catch (cleanupError) { console.warn('Daily visit reservation cleanup failed:', cleanupError); }
                 showAlert('Error saving data to Firebase: ' + err.message, 'error');
             } finally {
                 updateVisitSubmitState();
@@ -2368,6 +2449,8 @@ table{width:100%;max-width:100%}
             closeVisitMenu();
             if(mode==='new'){ switchTab('form'); return; }
             visitReportMode=mode;
+            const reportDate = document.getElementById('filter-date');
+            if (reportDate) reportDate.value = getDhakaToday();
             switchTab('daily');
         }
 
@@ -2523,7 +2606,7 @@ table{width:100%;max-width:100%}
                 const dsoNum = String(800 + Number(suffix));
                 sel.insertAdjacentHTML(
                     'beforeend',
-                    `<option value="${wallet}">${dsoNum} - ${wallet}</option>`
+                    `<option value="${wallet}">${dsoNum}</option>`
                 );
             });
 
@@ -2533,7 +2616,7 @@ table{width:100%;max-width:100%}
 
         function resetDailyFilters(){
             const d=document.getElementById('filter-date'), s=document.getElementById('filter-dso'), ds=document.getElementById('filter-dss'), q=document.getElementById('filter-search'), rt=document.getElementById('filter-report-type');
-            if(d) d.value=''; if(s) s.value=''; if(q) q.value=''; if(rt) rt.value='all';
+            if(d) d.value=getDhakaToday(); if(s) s.value=''; if(q) q.value=''; if(rt) rt.value='all';
             const role=getRoleInfo();
             if(ds) ds.value = role.role === 'DSS' ? String(role.dssName || '') : '';
             renderReports();
