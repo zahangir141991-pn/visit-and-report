@@ -286,7 +286,13 @@
         .nav-scroll{overflow-x:auto;justify-content:flex-start!important}
         .nav-scroll .nav-item{min-width:92px;flex:0 0 auto}
 
-        /* Polished single-page navigation + report details */
+        /* Navigation must remain clickable above the New Visit sticky submit bar. */
+#app-nav{z-index:5000!important;pointer-events:auto!important;}
+#app-nav .nav-item{position:relative;z-index:5001!important;pointer-events:auto!important;touch-action:manipulation;}
+#main-app{padding-bottom:78px;}
+@media(max-width:767px){#main-app{padding-bottom:86px;}}
+
+/* Polished single-page navigation + report details */
         .nav-bar{gap:6px;padding:7px 10px;box-shadow:0 -4px 18px rgba(15,23,42,.08)}
         .nav-item{border-radius:12px;padding:8px 10px;transition:.2s;line-height:1.15}
         .nav-item:hover{background:#f1f5f9}
@@ -502,6 +508,7 @@ table{width:100%;max-width:100%}
             <div id="view-form" class="page">
                 <div class="section-head">
                     <div><h2>New Visit</h2><small style="color:#64748b">Create a new Uddokta visit report</small></div>
+                    <button type="button" class="btn btn-sec" id="btn-new-visit-back" onclick="switchTab('dashboard')" style="white-space:nowrap;">← Back</button>
                 </div>
                 <div class="quick-grid visit-summary-grid">
                     <div class="card visit-count-card">
@@ -2085,8 +2092,9 @@ table{width:100%;max-width:100%}
             if (tab !== 'form') stopCamera();
 
             if (tab === 'form') {
-                fetchGPS();
+                // New Visit opens with camera OFF; GPS runs in the background and never blocks navigation.
                 stopCamera();
+                try { fetchGPS(); } catch (e) { console.warn('GPS request skipped:', e); }
             }
             if (tab === 'daily') {
                 populateDsoFilter();
@@ -2634,5 +2642,23 @@ document.addEventListener('DOMContentLoaded', function(){
             setTimeout(() => { box.style.display = 'none'; }, 3000);
         }
     </script>
+
+<script>
+// Navigation safety: delegated click handling keeps every nav item usable from New Visit.
+document.addEventListener('click', function(e){
+    const item = e.target.closest && e.target.closest('#app-nav .nav-item');
+    if(!item) return;
+    const id = item.id || '';
+    const map = {
+        'nav-dashboard':'dashboard', 'nav-form':'form', 'nav-daily':'daily',
+        'nav-settings':'change-pass', 'nav-notices':'notices', 'nav-admin':'admin'
+    };
+    const tab = map[id];
+    if(!tab) return;
+    e.preventDefault();
+    e.stopPropagation();
+    try { switchTab(tab); } catch(err) { console.error('Navigation error:', err); }
+}, true);
+</script>
 </body>
 </html>
