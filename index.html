@@ -627,7 +627,7 @@ table{width:100%;max-width:100%}
 
                     <div class="form-group">
                         <label>Search Uddokta Number</label>
-                        <div class="assigned-only-note">Only Uddokta assigned to the logged-in user will be shown.</div>
+                        
                         <input type="text" id="search-input" placeholder="Type last 4 / last 6 / full Uddokta Number..." autocomplete="off" required>
                         <div id="search-results" class="search-results"></div>
                     </div>
@@ -1295,6 +1295,7 @@ table{width:100%;max-width:100%}
             if (recapture) recapture.classList.add('hidden');
 
             setTodayDate();
+            visitSubmitValidationAttempted = false;
             updateVisitSubmitState();
         }
 
@@ -1855,6 +1856,8 @@ table{width:100%;max-width:100%}
             }
         }
 
+        let visitSubmitValidationAttempted = false;
+
         function getVisitFieldValidity() {
             const checks = [
                 ['visit-date'], ['search-input'], ['dso-number'], ['uddokta-number'],
@@ -1890,13 +1893,14 @@ table{width:100%;max-width:100%}
                 'visit-date','search-input','dso-number','uddokta-number','uddokta-name','dss-name',
                 'feedback','festoon-status','banner-status','file-status','gps-location-name'
             ];
+            // Do not show red outlines while the user is filling the form.
+            // Validation highlighting starts only after Submit is clicked.
             fieldIds.forEach(id => {
                 const el = document.getElementById(id);
-                if (el) el.classList.toggle('submit-invalid', state.invalidFields.includes(id));
+                if (el) el.classList.toggle('submit-invalid', visitSubmitValidationAttempted && state.invalidFields.includes(id));
             });
             const cameraBox = document.querySelector('.camera-box');
-            if (cameraBox) cameraBox.classList.toggle('submit-invalid', state.selfieMissing);
-            const ready = state.invalidFields.length === 0 && !state.selfieMissing;
+            if (cameraBox) cameraBox.classList.toggle('submit-invalid', visitSubmitValidationAttempted && state.selfieMissing);
             if (btn) {
                 btn.hidden = false;
                 btn.removeAttribute('hidden');
@@ -1904,13 +1908,32 @@ table{width:100%;max-width:100%}
                 btn.style.setProperty('visibility','visible','important');
                 btn.style.setProperty('width','100%','important');
                 btn.style.setProperty('min-height','52px','important');
-                btn.disabled = !ready;
-                btn.style.opacity = ready ? '1' : '.55';
-                btn.style.cursor = ready ? 'pointer' : 'not-allowed';
-                btn.title = ready ? 'Submit Report' : 'লাল দেখানো প্রয়োজনীয় field পূরণ করুন';
-                btn.setAttribute('aria-disabled', String(!ready));
-                btn.textContent = 'Submit';
+                // Keep Submit clickable so it can identify and take the user to the first missing field.
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.style.cursor = 'pointer';
+                btn.title = 'Submit';
+                btn.setAttribute('aria-disabled', 'false');
             }
+            return state;
+        }
+
+        function focusFirstInvalidVisitField(state) {
+            if (!state) state = getVisitFieldValidity();
+            let target = null;
+            if (state.invalidFields && state.invalidFields.length) {
+                target = document.getElementById(state.invalidFields[0]);
+            } else if (state.selfieMissing) {
+                target = document.querySelector('.camera-box');
+            }
+            if (!target) return;
+            try { target.scrollIntoView({behavior:'smooth', block:'center'}); } catch (e) { target.scrollIntoView(); }
+            setTimeout(() => {
+                try {
+                    const focusEl = target.matches && target.matches('input,select,textarea,button') ? target : target.querySelector('input,select,textarea,button');
+                    if (focusEl && typeof focusEl.focus === 'function') focusEl.focus({preventScroll:true});
+                } catch (e) {}
+            }, 350);
         }
 
         function bindVisitFormCompletionListeners() {
@@ -2293,10 +2316,14 @@ table{width:100%;max-width:100%}
             e.preventDefault();
 
             if (!isVisitFormComplete()) {
-                showAlert('সব তথ্য, GPS Location এবং Selfie সম্পূর্ণ না হলে Submit করা যাবে না.', 'error');
-                updateVisitSubmitState();
+                visitSubmitValidationAttempted = true;
+                const invalidState = updateVisitSubmitState();
+                showAlert('যে field পূরণ হয়নি সেটি লাল করে দেখানো হয়েছে।', 'error');
+                focusFirstInvalidVisitField(invalidState);
                 return;
             }
+            visitSubmitValidationAttempted = false;
+            updateVisitSubmitState();
 
             const locationName = document.getElementById('gps-location-name').value.trim();
 
