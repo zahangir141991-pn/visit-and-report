@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DMS-Nagad Manikganj</title>
+    <title>DMS</title>
     
     <!-- OpenStreetMap + Leaflet map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
@@ -507,7 +507,7 @@ table{width:100%;max-width:100%}
 
 <header id="app-header">
   <button type="button" id="mobile-menu-btn" aria-label="Open navigation" aria-expanded="false" onclick="toggleMobileNav()">☰</button>
-  <h1>DMS-Nagad Manikganj</h1>
+  <h1>DMS</h1>
   <div id="header-user-name" aria-live="polite"></div>
 </header>
 <div id="mobile-nav-overlay" onclick="closeMobileNav()" aria-hidden="true"></div>
@@ -518,7 +518,7 @@ table{width:100%;max-width:100%}
       <div style="text-align:center;margin-bottom:20px;">
         <div style="font-size:2.5rem;">🔐</div>
         <h2 style="font-size:1.3rem;margin-top:8px;">Login</h2>
-        <p style="color:#64748b;font-size:.85rem;margin-top:5px;">DMS-Nagad Manikganj</p>
+        <p style="color:#64748b;font-size:.85rem;margin-top:5px;">DMS</p>
       </div>
       <div id="login-alert" class="alert"></div>
       <div class="form-group">
@@ -567,7 +567,7 @@ table{width:100%;max-width:100%}
             <!-- Dashboard Page -->
             <div id="view-dashboard" class="page active">
                 <div class="section-head">
-                    <div><h2>Dashboard</h2><small style="color:#64748b">DMS-Nagad Manikganj</small></div>
+                    <div><h2>Dashboard</h2><small style="color:#64748b">DMS</small></div>
                 </div>
                 <div class="quick-grid dashboard-summary-grid">
                     <div class="card"><div class="card-lbl">Total Visits</div><div class="card-val" id="total-visit-count">0</div></div>
@@ -615,10 +615,6 @@ table{width:100%;max-width:100%}
                     <div class="card visit-count-card">
                         <div class="card-lbl">Total Uddokta</div>
                         <div class="card-val" id="new-visit-total-uddokta-count">0</div>
-                    </div>
-                    <div class="card visit-count-card">
-                        <div class="card-lbl">Visit Uddokta</div>
-                        <div class="card-val" id="new-visit-unique-uddokta-count">0</div>
                     </div>
                 </div>
                 <div id="alert-box" class="alert"></div>
@@ -844,7 +840,7 @@ table{width:100%;max-width:100%}
         <div class="nav-item hidden" id="nav-admin" onclick="switchTab('admin')"><span>🛠️</span><span>Admin</span></div>
         <div class="sidebar-spacer"></div>
         <button type="button" id="sidebar-logout" class="sidebar-logout">🚪 <span>Logout</span></button>
-        <div class="sidebar-hint">DMS-Nagad Manikganj</div>
+        <div class="sidebar-hint">DMS</div>
     </aside>
 
     <script>
@@ -3097,7 +3093,13 @@ let firebaseListenersStarted = false;
             if(dashboardToday) dashboardToday.innerText = todayCount;
 
             const newVisitCount = document.getElementById('new-visit-today-count');
-            if(newVisitCount) newVisitCount.innerText = todayCount;
+            // New Visit card: count ONLY today's visits submitted by the logged-in user.
+            const currentUserKey = String(currentUser || '').trim().toLowerCase();
+            const myTodayVisitCount = reportsData.filter(r =>
+                r.date === today &&
+                String(r.user || '').trim().toLowerCase() === currentUserKey
+            ).length;
+            if(newVisitCount) newVisitCount.innerText = myTodayVisitCount;
 
             // Total Uddokta always comes from the logged-in user's assigned master data.
             const totalUddoktaCount = getScopedTotalUddoktaCount();
@@ -3106,16 +3108,6 @@ let firebaseListenersStarted = false;
 
             const totalUddoktaEl = document.getElementById('new-visit-total-uddokta-count');
             if(totalUddoktaEl) totalUddoktaEl.innerText = totalUddoktaCount;
-
-            const visitUddoktaKeys = new Set();
-            visibleReports.forEach(r => {
-                const no = String(r.uddoktaNumber || '').trim();
-                const name = String(r.uddoktaName || '').trim().toUpperCase();
-                const key = no || name;
-                if (key) visitUddoktaKeys.add(key);
-            });
-            const visitUddoktaEl = document.getElementById('new-visit-unique-uddokta-count');
-            if(visitUddoktaEl) visitUddoktaEl.innerText = visitUddoktaKeys.size;
 
             const reportCount = document.getElementById('report-total-visit-count');
             if(reportCount) reportCount.innerText = visibleReports.length;
