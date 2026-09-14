@@ -1391,7 +1391,7 @@ table{width:100%;max-width:100%}
                         preview.classList.remove('hidden');
                         preview.innerHTML = '<b>Sheet:</b> ' + String(sheetName).replace(/</g,'&lt;') + ' &nbsp; | &nbsp; <b>Rows found:</b> ' + rows.length + ' &nbsp; | &nbsp; <b>Valid Uddokta:</b> ' + pendingUddoktaExcelRows.length;
                     }
-                    if (status) status.innerText = pendingUddoktaExcelRows.length ? 'Ready to upload. Existing Uddokta Number will be updated; new numbers will be added.' : 'No valid Uddokta rows found. Please check the Excel headers/data.';
+                    if (status) status.innerText = pendingUddoktaExcelRows.length ? 'Ready to upload. This Excel file will completely replace the previous Uddokta master data.' : 'No valid Uddokta rows found. Please check the Excel headers/data.';
                     if (btn) btn.disabled = pendingUddoktaExcelRows.length === 0;
                 } catch (err) {
                     if (preview) preview.classList.add('hidden');
