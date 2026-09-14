@@ -396,7 +396,7 @@ table{width:100%;max-width:100%}
   <h1>DMS-Nagad Manikganj</h1>
 </header>
 
-<div id="view-login" class="page active" style="display:block!important;">
+<div id="view-login" class="page hidden">
   <div class="container">
     <div class="card" style="max-width:420px;margin:60px auto 20px;text-align:left;padding:24px;">
       <div style="text-align:center;margin-bottom:20px;">
@@ -425,6 +425,14 @@ table{width:100%;max-width:100%}
     <button type="button" class="btn btn-sm btn-danger" onclick="logout()">Logout</button>
   </div>
 </div>
+
+<style id="login-panel-fix">
+/* Login panel is visible only before authentication. */
+#view-login.hidden{display:none!important}
+#main-app.hidden{display:none!important}
+#user-info-bar.hidden{display:none!important}
+#app-nav.hidden{display:none!important}
+</style>
 
 <!-- Main App Section -->
         <div id="main-app" class="hidden">
@@ -1003,7 +1011,6 @@ table{width:100%;max-width:100%}
         function logout() {
             currentUser = null;
             try { clearVisitFormForNewVisit(); } catch (e) { console.warn('Visit form reset on logout skipped:', e); }
-            clearVisitFormForNewVisit();
 
             // Reset the login screen so a previous failed-login alert
             // never appears automatically after logout.
