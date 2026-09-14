@@ -529,6 +529,7 @@ table{width:100%;max-width:100%}
                         <input type="hidden" id="gps-location">
                         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
                             <button type="button" class="btn btn-primary" id="btn-location-permission" style="padding:9px 12px;font-size:0.82rem;" onclick="requestLocationPermission()">📍 Allow Location Permission</button>
+                            <button type="button" class="btn btn-sec" id="btn-device-location" style="display:none;padding:9px 12px;font-size:0.82rem;" onclick="openDeviceLocationSettings()">⚙️ Turn On Location</button>
                             <button type="button" class="btn btn-sec" style="padding:9px 12px;font-size:0.82rem;" onclick="fetchGPS()">🔄 Refresh Location</button>
                         </div>
 </div>
@@ -1583,6 +1584,18 @@ table{width:100%;max-width:100%}
             setTimeout(() => osmMap.invalidateSize(), 150);
         }
 
+        let locationAutoRetryTimer = null;
+        function scheduleLocationRetry() {
+            if (locationAutoRetryTimer) clearTimeout(locationAutoRetryTimer);
+            locationAutoRetryTimer = setTimeout(async () => {
+                const page = document.getElementById('view-new');
+                if (!page || !page.classList.contains('active')) return;
+                try { if (await getLocationPermissionState() === 'granted') await fetchGPS(false); } catch (e) {}
+            }, 1000);
+        }
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduleLocationRetry(); });
+        window.addEventListener('focus', scheduleLocationRetry);
+
         async function reverseGeocodeFallback(lat, lon) {
             // OpenStreetMap Nominatim only. No map is shown.
             // Try several zoom levels because some Bangladesh locations have
@@ -1664,9 +1677,12 @@ table{width:100%;max-width:100%}
             }
         }
 
+        function openDeviceLocationSettings() { try { if (/Android/i.test(navigator.userAgent || '')) { window.location.href = 'intent:#Intent;action=android.settings.LOCATION_SOURCE_SETTINGS;end'; return; } } catch(e) {} showAlert('Phone Settings → Location/GPS → ON করুন, তারপর আবার Location চেষ্টা করুন.', 'info'); }
+
         function showLocationError(err) {
             const nameInput = document.getElementById('gps-location-name');
             const btn = document.getElementById('btn-location-permission');
+            const deviceBtn = document.getElementById('btn-device-location');
             if (!nameInput) return;
 
             nameInput.value = '';
@@ -1682,7 +1698,8 @@ table{width:100%;max-width:100%}
                 nameInput.placeholder = 'Location unavailable — turn on Device Location';
                 nameInput.title = 'Turn on Windows/Android Location Services and try again.';
                 setLocationPermissionButton('prompt');
-                showAlert('Device Location/GPS ON করুন, তারপর আবার Allow Location চাপুন.', 'error');
+                if (deviceBtn) deviceBtn.style.display = /Android/i.test(navigator.userAgent || '') ? 'inline-flex' : 'none';
+                showAlert('Phone-এর Location/GPS OFF থাকলে website নিজে ON করতে পারে না। Turn On Location চাপুন; ফিরে এলে app আবার location নেবে.', 'error');
             } else if (err && err.code === 3) {
                 nameInput.placeholder = 'GPS timeout — press Refresh Location';
                 nameInput.title = 'The device took too long to determine the location.';
@@ -1810,6 +1827,8 @@ table{width:100%;max-width:100%}
                 nameInput.value = cleanName;
                 nameInput.title = accuracy ? `GPS accuracy: ±${Math.round(accuracy)}m` : 'GPS location';
                 setLocationPermissionButton('granted');
+                const deviceBtn = document.getElementById('btn-device-location');
+                if (deviceBtn) deviceBtn.style.display = 'none';
                 updateVisitSubmitState();
                 return true;
 
