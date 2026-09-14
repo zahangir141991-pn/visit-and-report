@@ -415,6 +415,13 @@ table{width:100%;max-width:100%}
 
 <style id="camera-switch-ui">
 .camera-box .btn{margin:3px 2px;min-width:96px;}
+.camera-switch-icon{width:42px;height:42px;border:1px solid #cbd5e1;border-radius:50%;background:#fff;color:#334155;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:9px;margin:3px 2px;box-shadow:0 2px 6px rgba(15,23,42,.10);transition:transform .15s,background .15s,border-color .15s;color .15s;}
+.camera-switch-icon:hover{background:#f1f5f9;border-color:#94a3b8;transform:scale(1.05);}
+.camera-switch-icon:active{transform:scale(.94);}
+.camera-switch-icon svg{width:22px;height:22px;fill:currentColor;}
+.camera-switch-icon.active{background:#e8f0ff;border-color:#2563eb;color:#1d4ed8;}
+@media(max-width:600px){.camera-switch-icon{width:40px;height:40px;padding:8px;}}
+
 @media(max-width:600px){.camera-box .btn{min-width:88px;font-size:.78rem;padding:8px 9px;}}
 </style>
 </head>
@@ -583,8 +590,12 @@ table{width:100%;max-width:100%}
                             <img id="photo-preview" alt="Preview">
                             <div style="margin-top: 10px;">
                                 <button type="button" class="btn btn-sm" id="btn-capture" onclick="captureLivePhoto()">📷 Start Camera</button>
-                                <button type="button" class="btn btn-sm btn-sec" id="btn-front-camera" onclick="switchCamera('user')" title="Front Camera">🤳 Front</button>
-                                <button type="button" class="btn btn-sm btn-sec" id="btn-back-camera" onclick="switchCamera('environment')" title="Back Camera">📷 Back</button>
+                                <button type="button" class="camera-switch-icon" id="btn-front-camera" onclick="switchCamera('user')" title="Front camera" aria-label="Switch to front camera">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h2l1.2-2h3.6L15 5h2a4 4 0 0 1 4 4v7a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a4 4 0 0 1 4-4Zm5 4.2A3.8 3.8 0 1 0 12 16.8 3.8 3.8 0 0 0 12 9.2Zm0 1.8a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z"/><path d="M5.2 9.1 2.8 7.7l.9-1.5 2.4 1.4-.9 1.5Zm13.6 0 .9-1.5 2.4-1.4.9 1.5-2.4 1.4-.9-1.5Z"/></svg>
+                                </button>
+                                <button type="button" class="camera-switch-icon" id="btn-back-camera" onclick="switchCamera('environment')" title="Back camera" aria-label="Switch to back camera">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h2l1.2-2h3.6L15 5h2a4 4 0 0 1 4 4v7a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a4 4 0 0 1 4-4Zm5 4.2A3.8 3.8 0 1 0 12 16.8 3.8 3.8 0 0 0 12 9.2Zm0 1.8a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z"/><path d="M5.2 9.1 2.8 7.7l.9-1.5 2.4 1.4-.9 1.5Zm13.6 0 .9-1.5 2.4-1.4.9 1.5-2.4 1.4-.9-1.5Z"/></svg>
+                                </button>
                                 <button type="button" class="btn btn-sm btn-sec hidden" id="btn-recapture" onclick="resetLivePhoto()">🔄 Retake Selfie</button>
                             </div>
                         </div>
@@ -1054,7 +1065,11 @@ table{width:100%;max-width:100%}
             const recapture = document.getElementById('btn-recapture');
             if (preview) { preview.src = ''; preview.style.display = 'none'; }
             if (video) video.style.display = 'block';
-            if (capture) { capture.classList.remove('hidden'); capture.innerText = currentCameraFacing === 'user' ? '📷 Start Camera' : '📷 Start Camera'; }
+            if (capture) { capture.classList.remove('hidden'); capture.innerText = '📷 Start Camera'; }
+            const frontBtn = document.getElementById('btn-front-camera');
+            const backBtn = document.getElementById('btn-back-camera');
+            if (frontBtn) frontBtn.classList.toggle('active', currentCameraFacing === 'user');
+            if (backBtn) backBtn.classList.toggle('active', currentCameraFacing === 'environment');
             if (recapture) recapture.classList.add('hidden');
 
             setTodayDate();
@@ -1618,6 +1633,8 @@ Total: ${merged.length}`);
         async function switchCamera(facingMode) {
             if (capturedPhotoData) return;
             currentCameraFacing = facingMode === 'environment' ? 'environment' : 'user';
+            document.getElementById('btn-front-camera')?.classList.toggle('active', currentCameraFacing === 'user');
+            document.getElementById('btn-back-camera')?.classList.toggle('active', currentCameraFacing === 'environment');
             const video = document.getElementById('camera-video');
             // If camera is already running, restart it with the selected camera.
             if (video && video.srcObject) {
