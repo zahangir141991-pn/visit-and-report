@@ -7,7 +7,7 @@
     
     <!-- OpenStreetMap + Leaflet map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=m8f9x1S_w8ZXdyXyph0njCohjBfML4mNma2APitWnnSI9RpGsQluwhNdfdzpiQnon5mr-JH1VkqmoPR_QymrEnnVb9K1SO4M1h8kvBzLELF2Uzg0SblCfsI1W0oJk5cz5A7dT16Cwb5a7pBrzU7dVAIzVYyUNGjQNepQYMJeZTErSqDGVkjU1qBxx6BJ_7AlbqpARmmumrPxdyKGMDCj9FxPDUSVT9X-bv1DSBk2dZ9U0YX2zbQ5M3z4jGD4WNz34b9nBDePae8nlNWTB_OSrv71I0E532msOZ20EODPUtScm3Xhu-yp0uBzgHQwDNjOcZYQlkBTWHk3cPwd-Y3b9ypQzV9pucRyPJkP6kuG70s" charset="UTF-8"></script><link rel="stylesheet" crossorigin="anonymous" href="https://gc.kis.v2.scr.kaspersky-labs.com/E3E8934C-235A-4B0E-825A-35A08381A191/abn/main.css?attr=aHR0cHM6Ly9jaGF0Z3B0LmNvbS9iYWNrZW5kLWFwaS9lc3R1YXJ5L2NvbnRlbnQ_aWQ9ZmlsZV8wMDAwMDAwMDZmMWM4MWY4YTE2NWQ1NTQ3MjExODc3ZSZmbj1ETVMtTmFnYWQtTWFuaWtnYW5qX0RNX0FkbWluX0ZpbHRlcnNfVXBkYXRlZC5odG1sJmNkPWF0dGFjaG1lbnQmdHM9NDk3MDUwJnA9ZnMmY2lkPTEmc2lnPTkxMDA4YTU4NjA0NjU0YzA0YjliODAyZmNkYjUxYzdhZDFlMTJmZTdkZTMzYTJhM2I1N2Q3MzM4NGI4NzdmZjMmdj0w"/><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <!-- Firebase Web SDK (v10.8.0) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
@@ -67,6 +67,31 @@
             justify-content: space-between;
             align-items: center;
         }
+        /* Logged-in user information */
+        #user-info-bar.user-visible{
+             position:sticky;
+             top:69px;
+             z-index:90;
+             min-height:38px;
+             background:#0f172a;
+             color:#f8fafc;
+             border-bottom:1px solid rgba(255,255,255,.12);
+             box-shadow:0 2px 8px rgba(15,23,42,.10);
+        }
+        #user-info-bar.user-visible span{
+             display:block;
+             width:100%;
+             text-align:center;
+             font-size:.84rem;
+             line-height:1.35;
+             font-weight:600;
+        }
+        #current-user-name,#current-user-role,#current-user-id{color:#fff;}
+        @media(max-width:767px){
+             #user-info-bar.user-visible{top:59px;padding:7px 10px;}
+             #user-info-bar.user-visible span{font-size:.74rem;}
+        }
+
 
         .container {
             max-width: 800px;
@@ -255,6 +280,33 @@
         }
 
         .nav-item.active { color: var(--primary); }
+/* Left sidebar navigation - deterministic order and fixed logout */
+.nav-sidebar{position:fixed;top:0;left:0;bottom:0;width:230px;height:100vh;background:var(--card-bg);border-right:1px solid var(--border);box-shadow:4px 0 18px rgba(15,23,42,.07);display:flex;flex-direction:column;align-items:stretch;padding:14px 10px;z-index:5000;overflow-y:auto;overflow-x:visible;}
+.nav-sidebar .sidebar-brand{order:0;flex:none;font-weight:800;font-size:.92rem;padding:12px 12px 18px;color:var(--primary);border-bottom:1px solid var(--border);margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.nav-sidebar #sidebar-user-name{display:inline-block;max-width:165px;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+@media(max-width:767px){.nav-sidebar #sidebar-user-name{max-width:145px;}}
+.nav-sidebar .nav-item{flex:none;display:flex;align-items:center;gap:11px;text-align:left;padding:12px 13px;margin:3px 0;border-radius:10px;color:var(--text-light);font-size:.86rem;font-weight:700;cursor:pointer;touch-action:manipulation;width:100%;box-sizing:border-box;}
+.nav-sidebar .nav-item span:first-child{width:22px;min-width:22px;text-align:center;font-size:1rem;}
+.nav-sidebar .nav-item.active,.nav-sidebar .nav-item:hover{background:#eff6ff;color:var(--primary);}
+.nav-sidebar #nav-dashboard{order:1;}
+.nav-sidebar #nav-visit{order:2;}
+.nav-sidebar .visit-parent{justify-content:flex-start;}
+.nav-sidebar .menu-arrow{margin-left:auto;}
+.nav-sidebar .visit-menu-panel{order:2;position:static;transform:none;width:100%;box-sizing:border-box;background:transparent;border:0;border-radius:0;padding:0 0 6px 33px;box-shadow:none;display:none;z-index:auto;}
+.nav-sidebar .visit-menu-panel.open{display:block;}
+.nav-sidebar .visit-menu-title{font-size:.7rem;color:#64748b;font-weight:800;padding:5px 8px;}
+.nav-sidebar .visit-menu-btn{display:block;width:100%;border:0;background:transparent;color:#475569;text-align:left;padding:9px 9px;border-radius:8px;margin:2px 0;font-size:.78rem;font-weight:700;cursor:pointer;}
+.nav-sidebar .visit-menu-btn:hover{background:#f1f5f9;color:var(--primary);}
+.nav-sidebar #nav-settings{order:3!important;display:flex!important;justify-content:flex-start!important;align-items:center!important;text-align:left!important;margin-top:5px;}
+.nav-sidebar #nav-notices{order:4!important;}
+.nav-sidebar #nav-admin{order:5!important;}
+.nav-sidebar .sidebar-spacer{order:6;flex:1 1 auto;min-height:12px;}
+.nav-sidebar #sidebar-logout{order:7;width:100%;flex:none;border:0;background:#fef2f2;color:#b91c1c;border-radius:10px;padding:12px 13px;margin:4px 0;display:flex;align-items:center;gap:11px;font-size:.86rem;font-weight:800;cursor:pointer;text-align:left;box-sizing:border-box;}
+.nav-sidebar #sidebar-logout:hover{background:#fee2e2;}
+.nav-sidebar .sidebar-hint{order:8;flex:none;font-size:.68rem;color:#94a3b8;text-align:center;padding:10px 4px;}
+#main-app{margin-left:230px;padding-bottom:20px;min-width:0;}
+@media(max-width:767px){.nav-sidebar{width:205px;transform:translateX(-100%);transition:transform .2s ease;}.nav-sidebar.mobile-open{transform:translateX(0);}#main-app{margin-left:0;padding-bottom:20px;}.nav-sidebar .sidebar-brand{font-size:.9rem;}}
+
         .hidden { display: none !important; }
 
         .alert {
@@ -297,6 +349,17 @@
         .nav-item{border-radius:12px;padding:8px 10px;transition:.2s;line-height:1.15}
         .nav-item:hover{background:#f1f5f9}
         .nav-item.active{background:#e8f0ff;font-weight:800}
+        .visit-menu-wrap{position:relative;flex:1;display:flex;justify-content:center;}
+        .visit-menu-panel{position:absolute;bottom:58px;left:50%;transform:translateX(-50%);width:min(300px,92vw);background:#fff;border:1px solid var(--border);border-radius:14px;padding:8px;box-shadow:0 16px 40px rgba(15,23,42,.18);display:none;z-index:6000;}
+        .visit-menu-panel.open{display:block;}
+        .visit-menu-title{font-size:.75rem;color:#64748b;font-weight:800;padding:7px 9px 5px;}
+        .visit-menu-btn{display:block;width:100%;border:0;background:#f8fafc;color:#0f172a;text-align:left;padding:10px 12px;border-radius:10px;margin:3px 0;font-size:.82rem;font-weight:700;cursor:pointer;}
+        .visit-menu-btn:hover{background:#e8f0ff;color:#1d4ed8;}
+        .report-summary-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px;}
+        .report-kpi{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;box-shadow:0 2px 8px rgba(15,23,42,.05);}
+        .report-kpi span{display:block;color:#64748b;font-size:.72rem;font-weight:700;}
+        .report-kpi b{display:block;color:#2563eb;font-size:1.45rem;margin-top:3px;}
+        @media(max-width:700px){.report-summary-cards{grid-template-columns:1fr 1fr}.visit-menu-panel{bottom:57px;}}
         .details-modal{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:300;display:flex;align-items:center;justify-content:center;padding:16px}
         .details-card{width:min(720px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:18px;padding:18px;box-shadow:0 20px 60px rgba(15,23,42,.25)}
         .details-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;position:sticky;top:0;background:#fff;padding-bottom:8px;border-bottom:1px solid var(--border)}
@@ -364,6 +427,10 @@
         .camera-box.submit-invalid{scroll-margin-top:100px;}
 
         @media(max-width:600px){}
+/* Logged-in user information - hidden; username is shown in sidebar */
+#user-info-bar, #user-info-bar.user-visible {
+    display: none !important;
+}
 </style>
 
 <style id="responsive-fullscreen-ui">
@@ -434,10 +501,8 @@ table{width:100%;max-width:100%}
 </div>
 
 <div id="user-info-bar" class="user-bar hidden">
-  <span><b id="current-user-name"></b> · <span id="current-user-role"></span></span>
-  <div style="display:flex;gap:6px;">
-    <button type="button" class="btn btn-sm btn-danger" onclick="logout()">Logout</button>
-  </div>
+  <span>👤 <b id="current-user-name"></b> · <span id="current-user-role"></span> · User ID: <b id="current-user-id"></b></span>
+
 </div>
 
 <style id="login-panel-fix">
@@ -606,22 +671,22 @@ table{width:100%;max-width:100%}
             <!-- Visit Report Page -->
             <div id="view-daily" class="page">
                 <div class="section-head">
-                    <div><h2>Visit Report</h2><small style="color:#64748b">Date-wise visit report & details</small></div>
+                    <div><h2 id="visit-report-title">Visit Report</h2><small id="visit-report-subtitle" style="color:#64748b">Date-wise visit report & details</small></div>
                     <button class="btn btn-sm btn-sec" onclick="resetDailyFilters()">↺ Reset Filter</button>
                 </div>
-                <div class="quick-grid report-summary-grid">
-                    <div class="card visit-count-card">
-                        <div class="card-lbl">Total Visit Count</div>
-                        <div class="card-val" id="report-total-visit-count">0</div>
-                    </div>
+                <div class="report-summary-cards">
+                    <div class="report-kpi"><span>Total Uddokta</span><b id="report-total-uddokta">0</b></div>
+                    <div class="report-kpi"><span>Total Visit</span><b id="report-total-visit-count">0</b></div>
+                    <div class="report-kpi"><span>Unique Visit</span><b id="report-unique-visit">0</b></div>
+                    <div class="report-kpi"><span>Repeated Visit</span><b id="report-repeated-visit">0</b></div>
                 </div>
                 <div class="card" style="text-align:left;margin-bottom:14px">
                     <div class="filter-grid">
-                        <div><label>Date</label><input type="date" id="filter-date" onchange="renderReports()"></div>
+                        <div id="filter-date-wrap"><label>Date</label><input type="date" id="filter-date" onchange="renderReports()"></div>
                         <div id="report-type-wrap" class="hidden"><label>Report Type</label><select id="filter-report-type" onchange="renderReports()"><option value="all">All Visit Reports</option><option value="dm">DM Visit Report</option><option value="dss">DSS Visit Report</option></select></div>
-                        <div><label>DSO</label><select id="filter-dso" onchange="renderReports()"><option value="">All DSO</option></select></div>
-                        <div><label>DSS</label><select id="filter-dss" onchange="renderReports()"><option value="">All DSS</option><option value="MOHOSIN HOSSAIN SOHAG">Sohag</option><option value="MD. ALAMIN">Alamin</option><option value="MD. IMRAN HOSSAIN">Imran</option><option value="RUBEL">Rubel</option><option value="MD. SHOFIQ">Shofiq</option></select></div>
-                        <div><label>Search Uddokta</label><input type="text" id="filter-search" placeholder="Name / number" oninput="renderReports()"></div>
+                        <div id="filter-dso-wrap"><label>DSO</label><select id="filter-dso" onchange="renderReports()"><option value="">All DSO</option></select></div>
+                        <div id="filter-dss-wrap"><label>DSS</label><select id="filter-dss" onchange="renderReports()"><option value="">All DSS</option><option value="MOHOSIN HOSSAIN SOHAG">Sohag</option><option value="MD. ALAMIN">Alamin</option><option value="MD. IMRAN HOSSAIN">Imran</option><option value="RUBEL">Rubel</option><option value="MD. SHOFIQ">Shofiq</option></select></div>
+                        <div id="filter-search-wrap"><label>Search Uddokta</label><input type="text" id="filter-search" placeholder="Name / number" oninput="renderReports()"></div>
                     </div>
                 </div>
                 <div class="table-wrap"><div class="table-responsive"><table class="reports-table"><thead><tr><th>Visit Time</th><th>DSO</th><th>Uddokta Name</th><th>Uddokta Number</th><th>Festoon</th><th>Banner</th><th>File</th><th>Review</th><th>Location</th><th>Photo</th><th>Details</th></tr></thead><tbody id="reports-table-body"></tbody></table></div></div>
@@ -724,15 +789,31 @@ table{width:100%;max-width:100%}
 
     </div>
 
-    <!-- Bottom Navigation Bar -->
-    <div id="app-nav" class="nav-bar nav-scroll hidden">
-        <div class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')"><span>🏠<br>Dashboard</span></div>
-        <div class="nav-item" id="nav-form" onclick="switchTab('form')"><span>➕<br>New Visit</span></div>
-        <div class="nav-item" id="nav-daily" onclick="switchTab('daily')"><span>📋<br>Visit Report</span></div>
-        <div class="nav-item" id="nav-settings" onclick="switchTab('change-pass')"><span>⚙️<br>Settings</span></div>
-        <div class="nav-item hidden" id="nav-notices" onclick="switchTab('notices')"><span>🔔<br>Notice <b id="notice-badge" class="notice-nav-badge hidden">0</b></span></div>
-        <div class="nav-item hidden" id="nav-admin" onclick="switchTab('admin')"><span>⚙️<br>Admin</span></div>
-    </div>
+    <!-- Left Navigation Sidebar -->
+    <aside id="app-nav" class="nav-bar nav-sidebar hidden">
+        <div class="sidebar-brand" id="sidebar-user-display">👤 <span id="sidebar-user-name">User</span></div>
+        <div class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')"><span>🏠</span><span>Dashboard</span></div>
+        <div class="nav-item visit-parent" id="nav-visit" onclick="toggleVisitMenu(event)"><span>📋</span><span>Visit <b class="menu-arrow">▾</b></span></div>
+        <div id="visit-menu-panel" class="visit-menu-panel">
+            <div class="visit-menu-title">Visit Menu</div>
+            <button type="button" class="visit-menu-btn" onclick="visitMenuAction('new')">➕ New Visit</button>
+            <button type="button" class="visit-menu-btn" onclick="visitMenuAction('my')">👤 Amar Visit Report</button>
+            <button type="button" class="visit-menu-btn role-dss-option hidden" onclick="visitMenuAction('dso')">👥 DSO Visit Report</button>
+            <button type="button" class="visit-menu-btn role-dm-option hidden" onclick="visitMenuAction('dss')">📊 DSS Visit Report</button>
+            <button type="button" class="visit-menu-btn role-dm-option hidden" onclick="visitMenuAction('dso')">👥 DSO Visit Report</button>
+            <button type="button" class="visit-menu-btn role-dm-option hidden" onclick="visitMenuAction('dso-wise')">🗂️ DSO Visit Report — DSS Wise</button>
+            <button type="button" class="visit-menu-btn role-admin-option hidden" onclick="visitMenuAction('dss')">📊 DSS Visit Report</button>
+            <button type="button" class="visit-menu-btn role-admin-option hidden" onclick="visitMenuAction('dso')">👥 DSO Visit Report</button>
+            <button type="button" class="visit-menu-btn role-admin-option hidden" onclick="visitMenuAction('dso-wise')">🗂️ DSO Visit Report — DSS Wise</button>
+            <button type="button" class="visit-menu-btn role-admin-option hidden" onclick="visitMenuAction('all')">📋 All Visit Report</button>
+        </div>
+        <div class="nav-item" id="nav-settings" onclick="switchTab('change-pass')"><span>⚙️</span><span>Settings</span></div>
+        <div class="nav-item hidden" id="nav-notices" onclick="switchTab('notices')"><span>🔔</span><span>Notice <b id="notice-badge" class="notice-nav-badge hidden">0</b></span></div>
+        <div class="nav-item hidden" id="nav-admin" onclick="switchTab('admin')"><span>🛠️</span><span>Admin</span></div>
+        <div class="sidebar-spacer"></div>
+        <button type="button" id="sidebar-logout" class="sidebar-logout" onclick="logout()">🚪 <span>Logout</span></button>
+        <div class="sidebar-hint">DMS-Nagad Manikganj</div>
+    </aside>
 
     <script>
         // ----------------------------------------------------
@@ -896,23 +977,69 @@ table{width:100%;max-width:100%}
         }
 
         // Report ownership/type helpers.
-        // DM report = report submitted by the DM login (zahangir).
-        // DSS report = report belonging to a DSS (identified by dssName).
+        // IMPORTANT: DM -> DSS Visit Report means ONLY reports actually submitted
+        // from a DSS login ID. A DSO report that merely contains dssName is NOT a DSS report.
+        const DSS_LOGIN_IDS = {
+            sohag: 'MOHOSIN HOSSAIN SOHAG',
+            alamin: 'MD. ALAMIN',
+            imran: 'MD. IMRAN HOSSAIN',
+            rubel: 'RUBEL',
+            shofiq: 'MD. SHOFIQ'
+        };
+        function isDssLoginUser(user){
+            return Object.prototype.hasOwnProperty.call(DSS_LOGIN_IDS, String(user||'').trim().toLowerCase());
+        }
+        function dssLoginMatchesName(user, dssName){
+            const expected=String(DSS_LOGIN_IDS[String(user||'').trim().toLowerCase()]||'').trim().toUpperCase();
+            const actual=String(dssName||'').trim().toUpperCase();
+            return !!expected && !!actual && (expected===actual || expected.includes(actual) || actual.includes(expected));
+        }
         function getReportType(r) {
             const owner = String(r.user || '').trim().toLowerCase();
             if (owner === 'zahangir' || owner === 'dm-zahangir') return 'dm';
-            if (String(r.dssName || '').trim()) return 'dss';
+            if (isDssLoginUser(owner)) return 'dss';
             return 'other';
         }
 
         function setupReportTypeFilter() {
             const wrap = document.getElementById('report-type-wrap');
             const select = document.getElementById('filter-report-type');
-            if (!wrap || !select) return;
+            const dw = document.getElementById('filter-dso-wrap');
+            const dssw = document.getElementById('filter-dss-wrap');
+            const sw = document.getElementById('filter-search-wrap');
+            const dtw = document.getElementById('filter-date-wrap');
+            if (!wrap) return;
+
             const role = getRoleInfo().role;
-            const showTypeFilter = role === 'Admin' || role === 'DM';
-            wrap.classList.toggle('hidden', !showTypeFilter);
-            if (!showTypeFilter) select.value = 'all';
+            const mode = visitReportMode;
+
+            // DM / Admin:
+            // DSS Visit Report = Date + DSS
+            // DSO Visit Report = Date + DSS + DSO
+            // Amar Visit Report = Date + Uddokta search
+            // All Visit Report (Admin) = Date + DSS
+            if (dtw) dtw.classList.toggle('hidden',
+                !(mode === 'my' || mode === 'dss' || mode === 'dso' || mode === 'dso-wise' || (mode === 'all' && role === 'Admin'))
+            );
+            if (sw) sw.classList.toggle('hidden', mode !== 'my');
+            if (dssw) dssw.classList.toggle('hidden',
+                !(mode === 'dss' || mode === 'dso' || mode === 'dso-wise' || (mode === 'all' && role === 'Admin'))
+            );
+
+            // DSO filter is visible ONLY in DSO Visit Report.
+            if (dw) dw.classList.toggle('hidden', !(mode === 'dso' || mode === 'dso-wise'));
+
+            // Report Type selector is not needed in these role-specific Visit pages.
+            if (wrap) wrap.classList.add('hidden');
+            if (select) select.value = 'all';
+
+            // A DSS user has one fixed DSS scope; no DSS selector for that user.
+            if (role === 'DSS' && (mode === 'dso' || mode === 'dso-wise')) {
+                if (dssw) dssw.classList.add('hidden');
+            }
+            if (role === 'DSS' && mode === 'dss') {
+                if (dssw) dssw.classList.add('hidden');
+            }
         }
 
         function canSeeUddokta(item) {
@@ -976,16 +1103,24 @@ table{width:100%;max-width:100%}
             try {
                 const roleInfo = getRoleInfo();
                 const dsoUserId = roleInfo.role === 'DSO' ? String(roleInfo.dsoWallet || '').slice(-3) : '';
-                const displayName = user === 'zahangir' ? 'DM - ZAHANGIR' : (roleInfo.role === 'DSO' ? 'DSO - ' + dsoUserId : user.toUpperCase());
+                const displayName = roleInfo.role === 'Admin' ? 'ADMIN' :
+                    (roleInfo.role === 'DM' ? 'DM - ZAHANGIR' :
+                    (roleInfo.role === 'DSS' ? 'DSS - ' + String(roleInfo.dssName || user).toUpperCase() :
+                    (roleInfo.role === 'DSO' ? 'DSO - ' + dsoUserId : user.toUpperCase())));
                 const nameEl = document.getElementById('current-user-name');
                 const roleEl = document.getElementById('current-user-role');
+                const idEl = document.getElementById('current-user-id');
+                const sidebarNameEl = document.getElementById('sidebar-user-name');
                 if (nameEl) nameEl.innerText = displayName;
                 if (roleEl) roleEl.innerText = roleInfo.role;
+                if (idEl) idEl.innerText = user;
+                if (sidebarNameEl) sidebarNameEl.innerText = displayName;
 
                 const adminNav = document.getElementById('nav-admin');
                 if (adminNav) adminNav.classList.toggle('hidden', user !== 'admin');
                 const noticeNav = document.getElementById('nav-notices');
                 if (noticeNav) noticeNav.classList.toggle('hidden', !(roleInfo.role === 'DSS' || roleInfo.role === 'DSO'));
+                updateVisitMenuForRole();
 
                 // Non-critical UI/data startup: one failure must not log the user back out.
                 try { setupReportTypeFilter(); } catch (e) {}
@@ -1053,6 +1188,8 @@ table{width:100%;max-width:100%}
             if (ma) { ma.classList.add('hidden'); ma.classList.remove('app-visible'); }
             if (ub) { ub.classList.add('hidden'); ub.classList.remove('user-visible'); }
             if (an) { an.classList.add('hidden'); an.classList.remove('nav-visible'); }
+            const sidebarNameEl = document.getElementById('sidebar-user-name');
+            if (sidebarNameEl) sidebarNameEl.innerText = 'User';
             document.getElementById('login-pass').value = '';
             document.getElementById('login-user').focus();
         }
@@ -2047,8 +2184,64 @@ table{width:100%;max-width:100%}
             });
         }
 
+        let visitReportMode = 'my';
+
+        function closeVisitMenu(){
+            const panel=document.getElementById('visit-menu-panel');
+            if(panel) panel.classList.remove('open');
+        }
+
+        function toggleVisitMenu(e){
+            if(e){ e.preventDefault(); e.stopPropagation(); }
+            const panel=document.getElementById('visit-menu-panel');
+            if(!panel) return;
+            panel.classList.toggle('open');
+        }
+
+        function visitMenuAction(mode){
+            closeVisitMenu();
+            if(mode==='new'){ switchTab('form'); return; }
+            visitReportMode=mode;
+            switchTab('daily');
+        }
+
+        function updateVisitMenuForRole(){
+            const role=getRoleInfo().role;
+            document.querySelectorAll('.role-dss-option').forEach(el=>el.classList.toggle('hidden',role!=='DSS'));
+            document.querySelectorAll('.role-dm-option').forEach(el=>el.classList.toggle('hidden',role!=='DM'));
+            document.querySelectorAll('.role-admin-option').forEach(el=>el.classList.toggle('hidden',role!=='Admin'));
+            const newBtn=document.querySelector('.visit-menu-btn[onclick="visitMenuAction(\'new\')"]');
+            if(newBtn) newBtn.classList.toggle('hidden',role==='Admin');
+        }
+
+        function getMyVisitRows(){
+            const me=String(currentUser||'').trim().toLowerCase();
+            return reportsData.filter(r=>String(r.user||'').trim().toLowerCase()===me);
+        }
+
+        function getVisitRowsForMode(){
+            const role=getRoleInfo();
+            if(visitReportMode==='my') return getMyVisitRows();
+            if(visitReportMode==='dss') return reportsData.filter(r=>getReportType(r)==='dss' && (role.role!=='DSS' || String(r.user||'').trim().toLowerCase()===String(currentUser||'').trim().toLowerCase()));
+            if(visitReportMode==='dso' || visitReportMode==='dso-wise') return reportsData.filter(r=>{
+                const w=normalizeScopeWallet(r.dsoWallet||r.dsoNumber);
+                return !!w && (role.role==='DM' || role.role==='Admin' || (role.role==='DSS' && getAssignedDsoWalletsForDss(role.dssName).has(w)));
+            });
+            return reportsData.filter(canSeeReport);
+        }
+
+        function getVisitModeLabel(){
+            const role=getRoleInfo().role;
+            if(visitReportMode==='my') return ['Amar Visit Report','শুধু আপনার নিজের login ID দিয়ে submit করা Visit Report'];
+            if(visitReportMode==='dss') return ['DSS Visit Report','Date + DSS filter • DSS select করলে শুধু ওই DSS login ID-এর Visit Report'];
+            if(visitReportMode==='dso-wise') return ['DSO Visit Report — DSS Wise','Date + DSS + DSO filter • selected DSS-এর assigned DSO Visit Report'];
+            if(visitReportMode==='dso') return ['DSO Visit Report','Date + DSS + DSO filter • DSS select করলে assigned DSO-দের report'];
+            return ['Visit Report','সব অনুমোদিত Visit Report'];
+        }
+
         function switchTab(tab) {
             if (tab === 'settings') tab = 'change-pass';
+            closeVisitMenu();
             // Never allow app navigation before successful login.
             if (!currentUser) {
                 const lv = document.getElementById('view-login');
@@ -2084,7 +2277,7 @@ table{width:100%;max-width:100%}
                 page.setAttribute('aria-hidden', 'false');
             }
 
-            const navId = tab === 'change-pass' ? 'nav-settings' : 'nav-' + tab;
+            const navId = tab === 'change-pass' ? 'nav-settings' : (tab === 'daily' || tab === 'form' ? 'nav-visit' : 'nav-' + tab);
             const nav = document.getElementById(navId);
             if (nav) nav.classList.add('active');
 
@@ -2105,27 +2298,52 @@ table{width:100%;max-width:100%}
         }
 
         function populateDsoFilter(){
-            const sel=document.getElementById('filter-dso'); if(!sel) return;
-            const current=sel.value;
-            const info=getRoleInfo();
-            sel.innerHTML='<option value="">All DSO</option>';
-            let wallets=[];
-            if(info.role==='DSO') {
-                wallets=[normalizeScopeWallet(info.dsoWallet)];
-            } else if(info.role==='DSS') {
-                wallets=Array.from(getAssignedDsoWalletsForDss(info.dssName));
+            const sel = document.getElementById('filter-dso');
+            if (!sel) return;
+
+            const current = normalizeScopeWallet(sel.value || '');
+            const info = getRoleInfo();
+            const mode = visitReportMode;
+            const selectedDss = String((document.getElementById('filter-dss') || {}).value || '').trim();
+
+            sel.innerHTML = '<option value="">All DSO</option>';
+
+            let wallets = [];
+
+            if (info.role === 'DSO') {
+                wallets = [normalizeScopeWallet(info.dsoWallet)];
+            } else if (info.role === 'DSS') {
+                // DSS user can only see its own assigned DSO list.
+                wallets = Array.from(getAssignedDsoWalletsForDss(info.dssName));
+            } else if (mode === 'dso' || mode === 'dso-wise') {
+                // DM/Admin: when a DSS is selected, show ONLY that DSS's assigned DSOs.
+                if (selectedDss) {
+                    wallets = Array.from(getAssignedDsoWalletsForDss(selectedDss));
+                } else {
+                    for (let i = 801; i <= 845; i++) {
+                        wallets.push('13325178' + String(i - 800).padStart(2, '0'));
+                    }
+                }
             } else {
-                for(let i=801;i<=845;i++) wallets.push('13325178'+String(i-800).padStart(2,'0'));
+                for (let i = 801; i <= 845; i++) {
+                    wallets.push('13325178' + String(i - 800).padStart(2, '0'));
+                }
             }
-            wallets.sort();
-            wallets.forEach(wallet=>{
-                if(!wallet) return;
-                const suffix=wallet.slice(-2);
-                const dsoNum=String(800+Number(suffix));
-                sel.insertAdjacentHTML('beforeend',`<option value="${wallet}">${dsoNum} - ${wallet}</option>`);
+
+            wallets = [...new Set(wallets.map(normalizeScopeWallet).filter(Boolean))]
+                .sort((a,b) => Number(a) - Number(b));
+
+            wallets.forEach(wallet => {
+                const suffix = wallet.slice(-2);
+                const dsoNum = String(800 + Number(suffix));
+                sel.insertAdjacentHTML(
+                    'beforeend',
+                    `<option value="${wallet}">${dsoNum} - ${wallet}</option>`
+                );
             });
-            if(wallets.includes(current)) sel.value=current;
-            else sel.value='';
+
+            if (wallets.includes(current)) sel.value = current;
+            else sel.value = '';
         }
 
         function resetDailyFilters(){
@@ -2143,23 +2361,59 @@ table{width:100%;max-width:100%}
             const role=getRoleInfo();
             setupReportTypeFilter();
             populateDsoFilter();
+            updateVisitMenuForRole();
+            const labels=getVisitModeLabel();
+            const title=document.getElementById('visit-report-title');
+            const sub=document.getElementById('visit-report-subtitle');
+            if(title) title.innerText=labels[0];
+            if(sub) sub.innerText=labels[1];
             const fd=(document.getElementById('filter-date')||{}).value||'';
             const fds=normalizeScopeWallet((document.getElementById('filter-dso')||{}).value||'');
             let fdss=((document.getElementById('filter-dss')||{}).value||'').toUpperCase();
+            if(visitReportMode==='dss' && role.role==='DSS') fdss=String(role.dssName||'').toUpperCase();
             const fq=((document.getElementById('filter-search')||{}).value||'').trim().toUpperCase();
             const frt=(document.getElementById('filter-report-type')||{}).value||'all';
             if(role.role==='DSS') fdss=String(role.dssName||'').toUpperCase();
-            const rows=reportsData.filter(canSeeReport).filter(r=>{
+            let base=getVisitRowsForMode();
+            const rows=base.filter(r=>{
+                if(visitReportMode==='dss' && getReportType(r)!=='dss') return false;
+                if(visitReportMode==='dss' && role.role==='DM' && fdss && !dssLoginMatchesName(r.user, fdss)) return false;
+                if(visitReportMode==='dso-wise' && !String(r.dssName||'').trim()) return false;
+                if(visitReportMode==='my' && String(r.user||'').trim().toLowerCase()!==String(currentUser||'').trim().toLowerCase()) return false;
                 if(frt !== 'all' && getReportType(r) !== frt) return false;
-                if(fd && r.date!==fd) return false;
-                if(fds && normalizeScopeWallet(r.dsoWallet||r.dsoNumber)!==fds) return false;
-                if(fdss && !String(r.dssName||'').toUpperCase().includes(fdss)) return false;
+                // Date filter:
+                // DSS Visit, DSO Visit, Amar Visit and Admin All Visit.
+                if(fd && (visitReportMode==='my' || visitReportMode==='dss' || visitReportMode==='dso' || visitReportMode==='dso-wise' || (visitReportMode==='all' && role.role==='Admin')) && r.date!==fd) return false;
+
+                // DSO filter is only meaningful in DSO Visit.
+                if((visitReportMode==='dso' || visitReportMode==='dso-wise') && fds && normalizeScopeWallet(r.dsoWallet||r.dsoNumber)!==fds) return false;
+
+                // DSS Visit Report:
+                // Selecting a DSS means ONLY reports submitted from that DSS's login ID.
+                if(visitReportMode==='dss' && fdss && !dssLoginMatchesName(r.user, fdss)) return false;
+
+                // DSO Visit Report:
+                // Selecting a DSS means ONLY that DSS's assigned DSO reports.
+                if((visitReportMode==='dso' || visitReportMode==='dso-wise') && fdss){
+                    const assigned = getAssignedDsoWalletsForDss(fdss);
+                    const rw = normalizeScopeWallet(r.dsoWallet || r.dsoNumber);
+                    if(!assigned.has(rw)) return false;
+                }
+
+                // Admin All Visit Report keeps the DSS filter.
+                if(visitReportMode==='all' && role.role==='Admin' && fdss && !String(r.dssName||'').toUpperCase().includes(fdss)) return false;
                 if(fq && !(String(r.uddoktaName||'').toUpperCase().includes(fq)||String(r.uddoktaNumber||'').toUpperCase().includes(fq))) return false;
                 return true;
             });
-            const reportCount = document.getElementById('report-total-visit-count');
-            if(reportCount) reportCount.innerText = rows.length;
+            const keys=new Set();
+            const visitCounts=new Map();
+            rows.forEach(r=>{ const k=normalizeUddoktaNumber(r.uddoktaNumber||'')||String(r.uddoktaName||'').trim().toUpperCase(); if(k){keys.add(k);visitCounts.set(k,(visitCounts.get(k)||0)+1);} });
+            const totalU=document.getElementById('report-total-uddokta'); if(totalU) totalU.innerText=keys.size;
+            const reportCount=document.getElementById('report-total-visit-count'); if(reportCount) reportCount.innerText=rows.length;
+            const unique=document.getElementById('report-unique-visit'); if(unique) unique.innerText=keys.size;
+            const repeated=document.getElementById('report-repeated-visit'); if(repeated) repeated.innerText=Array.from(visitCounts.values()).filter(v=>v>1).reduce((a,v)=>a+(v-1),0);
             if(!rows.length){ tableBody.innerHTML='<tr><td colspan="11" class="empty-state">No visit data found</td></tr>'; return; }
+            rows.sort((a,b)=>Number(b.timestamp||0)-Number(a.timestamp||0));
             rows.forEach(r=>{
                 const tr=document.createElement('tr');
                 const idx=reportsData.indexOf(r);
@@ -2660,5 +2914,32 @@ document.addEventListener('click', function(e){
     try { switchTab(tab); } catch(err) { console.error('Navigation error:', err); }
 }, true);
 </script>
+<script>
+document.addEventListener('click',function(e){
+    const panel=document.getElementById('visit-menu-panel');
+    const wrap=e.target.closest && e.target.closest('.visit-menu-wrap');
+    if(panel && !wrap) panel.classList.remove('open');
+});
+</script>
+
+<style id="final-hide-user-info-bar">
+/* Hide the top logged-in user information bar completely.
+   User name remains available in the left sidebar. */
+#user-info-bar,
+#user-info-bar.user-visible,
+#user-info-bar.hidden {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
+}
+</style>
+
 </body>
 </html>
