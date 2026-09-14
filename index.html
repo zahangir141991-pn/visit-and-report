@@ -1084,21 +1084,71 @@ table{width:100%;max-width:100%}
             return false;
         }
 
-        // Total Uddokta = UNIQUE valid Uddokta Numbers in the logged-in user's master-data scope.
-        // It is NOT based on visit reports and repeated visits never increase this number.
-        function getScopedTotalUddoktaCount() {
-            // ONLY the latest Firebase master uploaded by Admin is counted.
-            // Embedded seed data, old browser cache and visit reports are ignored.
+        // Total Uddokta is ALWAYS calculated from the latest Firebase master only.
+        // Visit reports, embedded seed data and old cache NEVER increase this count.
+        function countUniqueMasterUddokta(predicate) {
             if (!uddoktaMasterSynced) return 0;
-            const seenNumbers = new Set();
+            const seen = new Set();
             const rows = Array.isArray(authoritativeUddoktaDB) ? authoritativeUddoktaDB : [];
-
             rows.forEach(item => {
-                if (!canSeeUddokta(item)) return;
-                const number = normalizeUddoktaNumber(item && item[1]);
-                if (number) seenNumbers.add(number);
+                if (predicate && !predicate(item)) return;
+                const n = normalizeUddoktaNumber(item && item[1]);
+                if (n) seen.add(n);
             });
-            return seenNumbers.size;
+            return seen.size;
+        }
+
+        function namesMatch(a, b) {
+            const x = String(a || '').trim().toUpperCase();
+            const y = String(b || '').trim().toUpperCase();
+            return !!x && !!y && (x === y || x.includes(y) || y.includes(x));
+        }
+
+        // Report KPI count: when a DSS is selected, show ONLY that DSS's assigned
+        // Uddokta from the current Excel/Firebase master. This is independent of
+        // how many visits have been submitted.
+        function getReportMasterUddoktaCount() {
+            const info = getRoleInfo();
+            const mode = visitReportMode;
+            const selectedDss = String((document.getElementById('filter-dss') || {}).value || '').trim();
+            const selectedDso = normalizeScopeWallet((document.getElementById('filter-dso') || {}).value || '');
+
+            if (!uddoktaMasterSynced) return 0;
+
+            // A logged-in DSS is permanently limited to its own assigned Uddokta.
+            if (info.role === 'DSS') {
+                return countUniqueMasterUddokta(item =>
+                    namesMatch(item && item[3], info.dssName) && canSeeUddokta(item)
+                );
+            }
+
+            // DSS Visit Report: selected DSS controls the Total Uddokta KPI.
+            if (mode === 'dss' && selectedDss) {
+                return countUniqueMasterUddokta(item => namesMatch(item && item[3], selectedDss));
+            }
+
+            // DSO Visit Report / DSS-wise DSO Visit Report: apply DSO first,
+            // otherwise DSS scope, otherwise all master records.
+            if ((mode === 'dso' || mode === 'dso-wise') && selectedDso) {
+                return countUniqueMasterUddokta(item =>
+                    normalizeScopeWallet(item && item[0]) === selectedDso
+                );
+            }
+            if ((mode === 'dso' || mode === 'dso-wise') && selectedDss) {
+                return countUniqueMasterUddokta(item => namesMatch(item && item[3], selectedDss));
+            }
+
+            // Admin All Visit Report: DSS selection also scopes the KPI.
+            if (mode === 'all' && selectedDss) {
+                return countUniqueMasterUddokta(item => namesMatch(item && item[3], selectedDss));
+            }
+
+            return getScopedTotalUddoktaCount();
+        }
+
+        function getScopedTotalUddoktaCount() {
+            if (!uddoktaMasterSynced) return 0;
+            return countUniqueMasterUddokta(item => canSeeUddokta(item));
         }
 
         function savePasswords() {
@@ -2493,7 +2543,7 @@ table{width:100%;max-width:100%}
             const keys=new Set();
             const visitCounts=new Map();
             rows.forEach(r=>{ const k=normalizeUddoktaNumber(r.uddoktaNumber||'')||String(r.uddoktaName||'').trim().toUpperCase(); if(k){keys.add(k);visitCounts.set(k,(visitCounts.get(k)||0)+1);} });
-            const totalU=document.getElementById('report-total-uddokta'); if(totalU) totalU.innerText=getScopedTotalUddoktaCount();
+            const totalU=document.getElementById('report-total-uddokta'); if(totalU) totalU.innerText=getReportMasterUddoktaCount();
             const reportCount=document.getElementById('report-total-visit-count'); if(reportCount) reportCount.innerText=rows.length;
             const unique=document.getElementById('report-unique-visit'); if(unique) unique.innerText=keys.size;
             const repeated=document.getElementById('report-repeated-visit'); if(repeated) repeated.innerText=Array.from(visitCounts.values()).filter(v=>v>1).reduce((a,v)=>a+(v-1),0);
