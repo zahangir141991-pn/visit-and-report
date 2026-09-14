@@ -1476,16 +1476,21 @@ Total: ${merged.length}`);
             const date=(document.getElementById('visit-date')||{}).value||getDhakaToday();
             const no=normalizeUddoktaNumber((document.getElementById('uddokta-number')||{}).value||'');
             const name=String((document.getElementById('uddokta-name')||{}).value||'').trim().toUpperCase();
+            const selectedDso=normalizeScopeWallet((document.getElementById('dso-number')||{}).value||role.dsoWallet||'');
             if(!date || (!no && !name)) return [];
             return reportsData.filter(r=>{
-                if(!canSeeReport(r)) return false;
                 if(String(r.date||'')!==String(date)) return false;
+                // One Uddokta can be visited only once per day by the same DSO.
+                const reportDso=normalizeScopeWallet(r.dsoWallet||r.dsoNumber||'');
+                if(selectedDso && reportDso !== selectedDso) return false;
                 const sameNo=no && normalizeUddoktaNumber(r.uddoktaNumber||'')===no;
                 const sameName=name && String(r.uddoktaName||'').trim().toUpperCase()===name;
-                if(!(sameNo||sameName)) return false;
-                if(role.role==='DSO') return normalizeScopeWallet(r.dsoWallet||r.dsoNumber)===normalizeScopeWallet(role.dsoWallet);
-                return true;
+                return !!(sameNo || sameName);
             });
+        }
+
+        function hasDuplicateUddoktaToday() {
+            return getCurrentSelectedDuplicateReports().length > 0;
         }
 
         function updateDuplicateUddoktaCard() {
@@ -1495,7 +1500,7 @@ Total: ${merged.length}`);
             if(found.length){
                 card.classList.remove('hidden');
                 const latest=found[0];
-                card.innerHTML=`⚠️ <b>Duplicate Uddokta</b><br>${latest.uddoktaName||'This Uddokta'} (${latest.uddoktaNumber||''}) আজকে আগে ${found.length} বার submit হয়েছে।`;
+                card.innerHTML=`🚫 <b>Duplicate Uddokta — Submit বন্ধ</b><br>${latest.uddoktaName||'এই Uddokta'} (${latest.uddoktaNumber||''}) আজকে ইতিমধ্যে visit হয়েছে। একই দিনে একই Uddokta-কে দ্বিতীয়বার visit করা যাবে না।`;
             } else {
                 card.classList.add('hidden');
                 card.innerHTML='';
@@ -1672,7 +1677,8 @@ Total: ${merged.length}`);
             });
             const cameraBox = document.querySelector('.camera-box');
             if (cameraBox) cameraBox.classList.toggle('submit-invalid', state.selfieMissing);
-            const ready = state.invalidFields.length === 0 && !state.selfieMissing;
+            const duplicateToday = hasDuplicateUddoktaToday();
+            const ready = state.invalidFields.length === 0 && !state.selfieMissing && !duplicateToday;
             if (btn) {
                 btn.hidden = false;
                 btn.removeAttribute('hidden');
@@ -1683,7 +1689,7 @@ Total: ${merged.length}`);
                 btn.disabled = !ready;
                 btn.style.opacity = ready ? '1' : '.55';
                 btn.style.cursor = ready ? 'pointer' : 'not-allowed';
-                btn.title = ready ? 'Submit Report' : 'লাল দেখানো প্রয়োজনীয় field পূরণ করুন';
+                btn.title = duplicateToday ? 'এই Uddokta আজকে ইতিমধ্যে visit হয়েছে' : (ready ? 'Submit Report' : 'লাল দেখানো প্রয়োজনীয় field পূরণ করুন');
                 btn.setAttribute('aria-disabled', String(!ready));
                 btn.textContent = 'Submit Report to Firebase';
             }
@@ -1880,6 +1886,13 @@ Total: ${merged.length}`);
         document.getElementById('visit-form').addEventListener('submit', async function(e) {
             e.preventDefault();
 
+            if (hasDuplicateUddoktaToday()) {
+                showAlert('এই Uddokta আজকে ইতিমধ্যে visit হয়েছে। একই দিনে একই Uddokta-কে দ্বিতীয়বার Submit করা যাবে না.', 'error');
+                updateDuplicateUddoktaCard();
+                updateVisitSubmitState();
+                return;
+            }
+
             if (!isVisitFormComplete()) {
                 showAlert('সব তথ্য, GPS Location এবং Selfie সম্পূর্ণ না হলে Submit করা যাবে না.', 'error');
                 updateVisitSubmitState();
@@ -1950,6 +1963,24 @@ Total: ${merged.length}`);
             };
 
             try {
+                // Re-check immediately before writing so a realtime update cannot create a second visit.
+                const latestSnap = await db.ref('visit_reports').once('value');
+                const latestReports = latestSnap.val() || {};
+                const newNo = normalizeUddoktaNumber(newReport.uddoktaNumber || '');
+                const newName = String(newReport.uddoktaName || '').trim().toUpperCase();
+                const newDso = normalizeScopeWallet(newReport.dsoWallet || newReport.dsoNumber || '');
+                const duplicateInFirebase = Object.values(latestReports).some(r => {
+                    if (!r || String(r.date || '') !== String(newReport.date || '')) return false;
+                    if (normalizeScopeWallet(r.dsoWallet || r.dsoNumber || '') !== newDso) return false;
+                    const rn = normalizeUddoktaNumber(r.uddoktaNumber || '');
+                    const rname = String(r.uddoktaName || '').trim().toUpperCase();
+                    return !!((newNo && rn === newNo) || (newName && rname === newName));
+                });
+                if (duplicateInFirebase) {
+                    showAlert('এই Uddokta আজকে ইতিমধ্যে visit হয়েছে। দ্বিতীয়বার Submit করা যাবে না.', 'error');
+                    updateDuplicateUddoktaCard();
+                    return;
+                }
                 await db.ref('visit_reports/' + reportId).set(newReport);
                 const anyNotOk = [newReport.festoonStatus,newReport.bannerStatus,newReport.fileStatus].includes('Not OK');
                 if (String(newReport.user||'').toLowerCase()==='zahangir' && anyNotOk) {
