@@ -329,6 +329,7 @@
         .section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
         .section-head h2{font-size:1.15rem}
         .quick-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
+        .dashboard-summary-grid{grid-template-columns:repeat(5,minmax(0,1fr));}
         .filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
         .filter-grid .btn{height:44px}
         .table-wrap{overflow:visible;border:1px solid var(--border);border-radius:12px;background:#fff}
@@ -370,7 +371,7 @@
         .detail-photo{width:100%;max-height:320px;object-fit:contain;border-radius:12px;border:1px solid var(--border);background:#f8fafc;margin-top:12px}
         .detail-btn{padding:6px 10px;border:0;border-radius:8px;background:#e8f0ff;color:#1d4ed8;font-weight:700;cursor:pointer}
         @media(max-width:600px){.details-grid{grid-template-columns:1fr}.details-card{padding:14px}.nav-item{min-width:0!important}}
-        @media(max-width:900px){.quick-grid{grid-template-columns:repeat(2,1fr)}.filter-grid{grid-template-columns:repeat(2,1fr)}}
+        @media(max-width:900px){.quick-grid{grid-template-columns:repeat(2,1fr)}.dashboard-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.filter-grid{grid-template-columns:repeat(2,1fr)}}
         @media(max-width:600px){body{padding-bottom:72px}.container{padding:12px}.cards-grid{grid-template-columns:1fr 1fr}.quick-grid{grid-template-columns:1fr 1fr}.filter-grid{grid-template-columns:1fr}.section-head{align-items:flex-start}.table-responsive{border-radius:8px}table.reports-table{min-width:850px}.nav-item{font-size:.68rem}.nav-scroll .nav-item{min-width:78px}header{padding:14px 12px}header h1{font-size:1.08rem}.user-bar{font-size:.76rem;padding:7px 10px}.user-bar .btn{padding:5px 8px}}
 
         .dashboard-chart-card{margin-top:14px;text-align:left;}
@@ -538,8 +539,9 @@ table{width:100%;max-width:100%}
                 <div class="section-head">
                     <div><h2>Dashboard</h2><small style="color:#64748b">DMS-Nagad Manikganj</small></div>
                 </div>
-                <div class="quick-grid">
+                <div class="quick-grid dashboard-summary-grid">
                     <div class="card"><div class="card-lbl">Total Visits</div><div class="card-val" id="total-visit-count">0</div></div>
+                    <div class="card"><div class="card-lbl">Total Uddokta</div><div class="card-val" id="dashboard-total-uddokta-count">0</div></div>
                     <div class="card"><div class="card-lbl">Today Visits</div><div class="card-val" id="unique-visit-count">0</div></div>
                     <div class="card"><div class="card-lbl">Today</div><div class="card-val" id="today-date-card" style="font-size:1rem"></div></div>
                     <div class="card"><div class="card-lbl">Access</div><div class="card-val" id="access-card" style="font-size:1rem"></div></div>
@@ -1048,8 +1050,22 @@ table{width:100%;max-width:100%}
             const dsoWallet = String(item[0] || '');
             const dssName = String(item[3] || '').trim().toUpperCase();
             if (info.role === 'DSS') { const allowed = String(info.dssName || '').trim().toUpperCase(); return !!dssName && (dssName === allowed || dssName.includes(allowed) || allowed.includes(dssName)); }
-            if (info.role === 'DSO') return dsoWallet.replace(/^0+/, '') === String(info.dsoWallet || '').replace(/^0+/, '');
+            if (info.role === 'DSO') return normalizeScopeWallet(dsoWallet) === normalizeScopeWallet(info.dsoWallet);
             return false;
+        }
+
+        // Total Uddokta for the logged-in user's assigned scope.
+        // Admin/DM = all; DSS = assigned to that DSS; DSO = own Uddokta only.
+        function getScopedTotalUddoktaCount() {
+            const seen = new Set();
+            (Array.isArray(uddoktaDB) ? uddoktaDB : []).forEach(item => {
+                if (!canSeeUddokta(item)) return;
+                const no = normalizeUddoktaNumber(item[1] || '');
+                const name = String(item[2] || '').trim().toUpperCase();
+                const key = no || name;
+                if (key) seen.add(key);
+            });
+            return seen.size;
         }
 
         function savePasswords() {
@@ -2408,7 +2424,7 @@ table{width:100%;max-width:100%}
             const keys=new Set();
             const visitCounts=new Map();
             rows.forEach(r=>{ const k=normalizeUddoktaNumber(r.uddoktaNumber||'')||String(r.uddoktaName||'').trim().toUpperCase(); if(k){keys.add(k);visitCounts.set(k,(visitCounts.get(k)||0)+1);} });
-            const totalU=document.getElementById('report-total-uddokta'); if(totalU) totalU.innerText=keys.size;
+            const totalU=document.getElementById('report-total-uddokta'); if(totalU) totalU.innerText=getScopedTotalUddoktaCount();
             const reportCount=document.getElementById('report-total-visit-count'); if(reportCount) reportCount.innerText=rows.length;
             const unique=document.getElementById('report-unique-visit'); if(unique) unique.innerText=keys.size;
             const repeated=document.getElementById('report-repeated-visit'); if(repeated) repeated.innerText=Array.from(visitCounts.values()).filter(v=>v>1).reduce((a,v)=>a+(v-1),0);
@@ -2798,32 +2814,13 @@ table{width:100%;max-width:100%}
             const newVisitCount = document.getElementById('new-visit-today-count');
             if(newVisitCount) newVisitCount.innerText = todayCount;
 
-            // Total Uddokta = master Uddokta assigned to the logged-in scope.
-            // Visit Uddokta = only unique Uddokta who actually have a visible visit.
-            const roleInfo = getRoleInfo();
-            const masterRows = Array.isArray(uddoktaDB) ? uddoktaDB : [];
-            const scopedMaster = masterRows.filter(row => {
-                const dsoWallet = String(row[0] || '').replace(/^0+/, '');
-                const dssName = String(row[3] || '').trim().toUpperCase();
-                if (roleInfo.role === 'Admin' || roleInfo.role === 'DM') return true;
-                if (roleInfo.role === 'DSS') {
-                    const allowed = String(roleInfo.dssName || '').trim().toUpperCase();
-                    return !!dssName && (dssName === allowed || dssName.includes(allowed) || allowed.includes(dssName));
-                }
-                if (roleInfo.role === 'DSO') {
-                    return dsoWallet === String(roleInfo.dsoWallet || '').replace(/^0+/, '');
-                }
-                return false;
-            });
-            const totalUddoktaKeys = new Set();
-            scopedMaster.forEach(row => {
-                const no = String(row[1] || '').trim();
-                const name = String(row[2] || '').trim().toUpperCase();
-                const key = no || name;
-                if (key) totalUddoktaKeys.add(key);
-            });
+            // Total Uddokta always comes from the logged-in user's assigned master data.
+            const totalUddoktaCount = getScopedTotalUddoktaCount();
+            const dashboardTotalUddoktaEl = document.getElementById('dashboard-total-uddokta-count');
+            if (dashboardTotalUddoktaEl) dashboardTotalUddoktaEl.innerText = totalUddoktaCount;
+
             const totalUddoktaEl = document.getElementById('new-visit-total-uddokta-count');
-            if(totalUddoktaEl) totalUddoktaEl.innerText = totalUddoktaKeys.size;
+            if(totalUddoktaEl) totalUddoktaEl.innerText = totalUddoktaCount;
 
             const visitUddoktaKeys = new Set();
             visibleReports.forEach(r => {
@@ -2921,25 +2918,5 @@ document.addEventListener('click',function(e){
     if(panel && !wrap) panel.classList.remove('open');
 });
 </script>
-
-<style id="final-hide-user-info-bar">
-/* Hide the top logged-in user information bar completely.
-   User name remains available in the left sidebar. */
-#user-info-bar,
-#user-info-bar.user-visible,
-#user-info-bar.hidden {
-    display: none !important;
-    visibility: hidden !important;
-    height: 0 !important;
-    min-height: 0 !important;
-    max-height: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    border: 0 !important;
-    box-shadow: none !important;
-    overflow: hidden !important;
-}
-</style>
-
 </body>
 </html>
