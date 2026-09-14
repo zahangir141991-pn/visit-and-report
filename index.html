@@ -436,6 +436,27 @@
         .reports-table tbody tr{contain:layout paint;}
 </style>
 
+<style id="mobile-navigation-and-assignment-ui">
+/* Mobile-first navigation */
+#mobile-menu-btn{display:none;position:fixed;top:10px;left:10px;width:44px;height:44px;border:0;border-radius:12px;background:#fff;color:#1d4ed8;box-shadow:0 6px 20px rgba(15,23,42,.16);z-index:7000;font-size:1.25rem;cursor:pointer;align-items:center;justify-content:center;touch-action:manipulation}
+#mobile-nav-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.42);z-index:4900}
+#mobile-nav-overlay.open{display:block}
+@media(max-width:767px){
+  #mobile-menu-btn{display:flex}
+  #app-header{padding-left:64px!important;padding-right:12px!important;min-height:58px;display:flex;align-items:center}
+  #app-header h1{font-size:1rem!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .nav-sidebar{width:min(286px,86vw)!important;transform:translateX(-105%)!important;box-shadow:12px 0 35px rgba(15,23,42,.2)!important;padding:12px 10px!important}
+  .nav-sidebar.mobile-open{transform:translateX(0)!important}
+  .nav-sidebar .nav-item{font-size:.9rem!important;padding:13px 14px!important;min-height:46px}
+  .nav-sidebar .visit-menu-panel{padding-left:30px!important}
+  #main-app{padding-top:4px!important}
+  #user-info-bar{display:none!important}
+}
+@media(min-width:768px){#app-header{padding-left:230px!important}}
+/* Prevent hidden/unauthorized Uddokta from appearing through stale UI */
+#search-results{max-height:42vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.assigned-only-note{font-size:.72rem;color:#64748b;margin-top:5px}
+</style>
 <style id="responsive-fullscreen-ui">
 html,body{width:100%;min-height:100%;margin:0;padding:0}
 body{overflow-x:hidden}
@@ -478,8 +499,10 @@ table{width:100%;max-width:100%}
 </style>
 
 <header id="app-header">
+  <button type="button" id="mobile-menu-btn" aria-label="Open navigation" aria-expanded="false" onclick="toggleMobileNav()">☰</button>
   <h1>DMS-Nagad Manikganj</h1>
 </header>
+<div id="mobile-nav-overlay" onclick="closeMobileNav()" aria-hidden="true"></div>
 
 <div id="view-login" class="page login-visible active">
   <div class="container">
@@ -603,6 +626,7 @@ table{width:100%;max-width:100%}
 
                     <div class="form-group">
                         <label>Search Uddokta Number</label>
+                        <div class="assigned-only-note">Only Uddokta assigned to the logged-in user will be shown.</div>
                         <input type="text" id="search-input" placeholder="Type last 4 / last 6 / full Uddokta Number..." autocomplete="off" required>
                         <div id="search-results" class="search-results"></div>
                     </div>
@@ -848,7 +872,7 @@ table{width:100%;max-width:100%}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-14-master-fix-v3';
+        const APP_CACHE_VERSION = '2026-09-14-responsive-assignment-v1';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -1085,9 +1109,11 @@ table{width:100%;max-width:100%}
             }
 
             if (info.role === 'DSO') {
+                // DSO can ONLY see Uddokta records assigned to that logged-in DSO wallet.
                 return !!dsoWallet && dsoWallet === normalizeScopeWallet(info.dsoWallet);
             }
 
+            // Any ordinary/field user has no Uddokta access unless an explicit scope exists.
             return false;
         }
 
@@ -1247,6 +1273,7 @@ table{width:100%;max-width:100%}
         }
 
         function logout() {
+            closeMobileNav();
             currentUser = null;
             try { clearVisitFormForNewVisit(); } catch (e) { console.warn('Visit form reset on logout skipped:', e); }
 
@@ -1637,6 +1664,11 @@ table{width:100%;max-width:100%}
                 .replace(/[^0-9]/g, '');
         }
 
+
+        function getVisibleUddoktaMaster() {
+            return (Array.isArray(uddoktaDB) ? uddoktaDB : []).filter(canSeeUddokta);
+        }
+
         function handleUddoktaSearch(e) {
             const raw = e.target.value || '';
             const query = normalizeUddoktaNumber(raw);
@@ -1649,8 +1681,7 @@ table{width:100%;max-width:100%}
             // Supports last 4, last 6, or the complete Uddokta Number.
             if (query.length < 4) return;
 
-            const matches = uddoktaDB.filter(item => {
-                if (!canSeeUddokta(item)) return false;
+            const matches = getVisibleUddoktaMaster().filter(item => {
                 // IMPORTANT:
                 // item[0] = DSO Wallet
                 // item[1] = Uddokta Number
@@ -1698,6 +1729,10 @@ table{width:100%;max-width:100%}
         }
 
         function selectUddokta(item) {
+            if (!canSeeUddokta(item)) {
+                showAlert('This Uddokta is not assigned to your login ID.', 'error');
+                return;
+            }
             // Excel order:
             // [DSO Wallet, Uddokta Number, Uddokta Name, DSS Name]
             document.getElementById('uddokta-number').value = String(item[1] ?? '');
@@ -2371,9 +2406,24 @@ table{width:100%;max-width:100%}
             return ['Visit Report','সব অনুমোদিত Visit Report'];
         }
 
+        function toggleMobileNav(force) {
+            const nav = document.getElementById('app-nav');
+            const overlay = document.getElementById('mobile-nav-overlay');
+            const btn = document.getElementById('mobile-menu-btn');
+            if (!nav) return;
+            const shouldOpen = typeof force === 'boolean' ? force : !nav.classList.contains('mobile-open');
+            nav.classList.toggle('mobile-open', shouldOpen);
+            if (overlay) overlay.classList.toggle('open', shouldOpen);
+            if (btn) { btn.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false'); btn.textContent = shouldOpen ? '✕' : '☰'; }
+            document.body.classList.toggle('mobile-nav-open', shouldOpen);
+        }
+        function closeMobileNav() { toggleMobileNav(false); }
+        window.addEventListener('resize', () => { if (window.innerWidth > 767) closeMobileNav(); });
+
         function switchTab(tab) {
             if (tab === 'settings') tab = 'change-pass';
             closeVisitMenu();
+            closeMobileNav();
             // Never allow app navigation before successful login.
             if (!currentUser) {
                 const lv = document.getElementById('view-login');
@@ -2981,6 +3031,7 @@ let firebaseListenersStarted = false;
 
             // Fresh page = login screen only.
             if (!currentUser) {
+                closeMobileNav();
                 if (loginView) {
                     loginView.classList.add('login-visible','active');
                     loginView.classList.remove('hidden');
