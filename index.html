@@ -448,7 +448,8 @@
 #mobile-nav-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.42);z-index:4900}
 #mobile-nav-overlay.open{display:block}
 @media(max-width:767px){
-  #mobile-menu-btn{display:flex}
+  #mobile-menu-btn{display:none!important}
+  body.app-logged-in #mobile-menu-btn{display:flex!important}
   #app-header{padding-left:64px!important;padding-right:12px!important;min-height:58px;display:flex;align-items:center}
   #app-header h1{font-size:1rem!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .nav-sidebar{width:min(286px,86vw)!important;transform:translateX(-105%)!important;box-shadow:12px 0 35px rgba(15,23,42,.2)!important;padding:12px 10px!important}
@@ -1217,6 +1218,7 @@ table{width:100%;max-width:100%}
             // Login itself must never depend on Firebase/network/table loading.
             // Enter the app first, then initialize optional data services safely.
             currentUser = user;
+            document.body.classList.add('app-logged-in');
             if (loginAlert) {
                 loginAlert.innerText = '';
                 loginAlert.style.display = 'none';
@@ -1305,6 +1307,7 @@ table{width:100%;max-width:100%}
         function logout() {
             closeMobileNav();
             currentUser = null;
+            document.body.classList.remove('app-logged-in');
             try { clearVisitFormForNewVisit(); } catch (e) { console.warn('Visit form reset on logout skipped:', e); }
 
             // Reset the login screen so a previous failed-login alert
@@ -3174,23 +3177,60 @@ let firebaseListenersStarted = false;
             try { updateVisitSubmitState(); } catch (e) {}
         }
 
-        // Mobile-safe logout: touch/swipe/pointer events never call logout directly.
-        // Logout runs only from a genuine CLICK on the Logout button itself.
+        // Mobile-safe logout. A swipe/drag must never trigger logout.
+        // Logout is accepted only when the interaction starts on the Logout button,
+        // stays within a small movement threshold, and ends as a genuine click/tap.
         function bindSafeLogoutButton() {
             const btn = document.getElementById('sidebar-logout');
             if (!btn || btn.dataset.safeLogoutBound === '1') return;
             btn.dataset.safeLogoutBound = '1';
-            ['touchstart','touchmove','touchend','pointerdown','pointerup'].forEach(type => {
-                btn.addEventListener(type, e => {
-                    // Do not convert mobile touch/pointer gestures into application logout actions.
-                    // Normal browser click is handled below.
-                }, {passive:true});
-            });
+
+            let pressStartedOnButton = false;
+            let moved = false;
+            let startX = 0;
+            let startY = 0;
+            const MOVE_LIMIT = 10;
+
+            const begin = (x, y) => {
+                pressStartedOnButton = true;
+                moved = false;
+                startX = Number(x || 0);
+                startY = Number(y || 0);
+            };
+            const move = (x, y) => {
+                if (!pressStartedOnButton) return;
+                if (Math.abs(Number(x || 0) - startX) > MOVE_LIMIT ||
+                    Math.abs(Number(y || 0) - startY) > MOVE_LIMIT) moved = true;
+            };
+
+            btn.addEventListener('touchstart', function(e) {
+                const t = e.touches && e.touches[0];
+                if (t) begin(t.clientX, t.clientY);
+            }, {passive:true});
+            btn.addEventListener('touchmove', function(e) {
+                const t = e.touches && e.touches[0];
+                if (t) move(t.clientX, t.clientY);
+            }, {passive:true});
+
+            btn.addEventListener('pointerdown', function(e) {
+                begin(e.clientX, e.clientY);
+            }, {passive:true});
+            btn.addEventListener('pointermove', function(e) {
+                move(e.clientX, e.clientY);
+            }, {passive:true});
+            btn.addEventListener('pointercancel', function() {
+                moved = true;
+                pressStartedOnButton = false;
+            }, {passive:true});
+
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                if (!e.isTrusted) return;
-                if (e.target !== btn && !btn.contains(e.target)) return;
+                const allowed = e.isTrusted && pressStartedOnButton && !moved &&
+                    (e.target === btn || btn.contains(e.target));
+                pressStartedOnButton = false;
+                moved = false;
+                if (!allowed) return;
                 logout();
             });
         }
