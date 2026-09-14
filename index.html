@@ -605,7 +605,7 @@ table{width:100%;max-width:100%}
             <div id="view-form" class="page">
                 <div class="section-head">
                     <div><h2>New Visit</h2><small style="color:#64748b">Create a new Uddokta visit report</small></div>
-                    <button type="button" class="btn btn-sec" id="btn-new-visit-back" onclick="switchTab('dashboard')" style="white-space:nowrap;">← Back</button>
+                    <button type="button" id="btn-new-visit-refresh" onclick="refreshNewVisitForm()" title="Clear New Visit fields" aria-label="Clear New Visit fields" style="width:44px;height:44px;border:1px solid var(--border);border-radius:50%;background:#fff;color:var(--primary);font-size:1.25rem;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(15,23,42,.10);touch-action:manipulation;">↻</button>
                 </div>
                 <div class="quick-grid visit-summary-grid">
                     <div class="card visit-count-card">
@@ -1296,6 +1296,15 @@ table{width:100%;max-width:100%}
 
             setTodayDate();
             updateVisitSubmitState();
+        }
+
+        function refreshNewVisitForm() {
+            // Manual refresh icon clears the current New Visit fields only.
+            clearVisitFormForNewVisit();
+            const alertBox = document.getElementById('alert-box');
+            if (alertBox) { alertBox.innerText = ''; alertBox.style.display = 'none'; alertBox.className = 'alert'; }
+            // Prepare a fresh location automatically for the cleared form.
+            setTimeout(() => { try { fetchGPS(false); } catch (e) {} }, 100);
         }
 
         function logout() {
