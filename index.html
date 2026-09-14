@@ -938,7 +938,14 @@ table{width:100%;max-width:100%}
         }
 
         function normalizeScopeWallet(value) {
-            return String(value || '').replace(/\D/g, '').replace(/^0+/, '');
+            // Normalize every supported DSO identifier to the same 801-845 key.
+            // Master data may contain 801, 01332517801, or 1332517801.
+            const digits = String(value || '').replace(/\D/g, '');
+            if (!digits) return '';
+            if (/^8(?:0[1-9]|[1-3]\d|4[0-5])$/.test(digits)) return String(Number(digits));
+            if (/^013325178(?:0[1-9]|[1-3]\d|4[0-5])$/.test(digits)) return String(800 + Number(digits.slice(-2)));
+            if (/^13325178(?:0[1-9]|[1-3]\d|4[0-5])$/.test(digits)) return String(800 + Number(digits.slice(-2)));
+            return digits.replace(/^0+/, '');
         }
 
         function dssHasAssignedDso(dssName, dsoWallet) {
@@ -1377,35 +1384,45 @@ table{width:100%;max-width:100%}
             btn.disabled = true;
             btn.innerText = 'Uploading...';
             try {
-                const map = new Map();
-                uddoktaDB.forEach(item => {
-                    const n = normalizeExcelNumber(item[1]);
-                    if (n) map.set(n, [String(item[0]||''), n, String(item[2]||''), String(item[3]||'')]);
-                });
-                let updated = 0, added = 0;
+                // REPLACE MODE: the newly uploaded Excel file becomes the complete Uddokta master.
+                // Previous Uddokta information is fully cleared from the master and replaced.
+                const replacement = [];
+                const seen = new Set();
                 pendingUddoktaExcelRows.forEach(item => {
                     const n = normalizeExcelNumber(item[1]);
-                    if (!n) return;
-                    if (map.has(n)) updated++; else added++;
-                    const old = map.get(n) || ['', n, '', ''];
-                    map.set(n, [item[0] || old[0], n, item[2] || old[2], item[3] || old[3]]);
+                    if (!n || seen.has(n)) return;
+                    seen.add(n);
+                    replacement.push([
+                        String(item[0] || '').trim(),
+                        n,
+                        String(item[2] || '').trim(),
+                        String(item[3] || '').trim()
+                    ]);
                 });
-                const merged = Array.from(map.values());
+
+                if (!replacement.length) {
+                    throw new Error('The new Excel file contains no valid Uddokta information. Previous data was not changed.');
+                }
+
                 const masterObj = {};
-                merged.forEach(item => {
-                    masterObj[encodeURIComponent(item[1])] = { dsoWallet:item[0], uddoktaNumber:item[1], uddoktaName:item[2], dssName:item[3] };
+                replacement.forEach(item => {
+                    masterObj[encodeURIComponent(item[1])] = {
+                        dsoWallet: item[0],
+                        uddoktaNumber: item[1],
+                        uddoktaName: item[2],
+                        dssName: item[3]
+                    };
                 });
-                // Local backup makes the updated master immediately available on this browser.
-                saveUddoktaCache(merged);
-                uddoktaDB = merged;
-                // Persistent realtime master copy for all users.
+
+                // Firebase set() replaces the complete uddokta_master node, so old records are removed.
                 await db.ref('uddokta_master').set(masterObj);
+
+                // Replace local cache only after Firebase replacement succeeds.
+                saveUddoktaCache(replacement);
+                uddoktaDB = replacement;
                 renderReports();
-                if (status) status.innerText = `Update successful — ${updated} updated, ${added} added, total ${merged.length}.`;
-                document.getElementById('uddokta-excel-file').value = '';
-                document.getElementById('excel-upload-preview').classList.add('hidden');
-                pendingUddoktaExcelRows = [];
-                alert(`Uddokta information updated successfully!Updated: ${updated}Added: ${added}Total: ${merged.length}`);
+                try { updateDashboard(); } catch (e) {}
+                if (status) status.innerText = `Update successful — previous Uddokta information cleared and ${replacement.length} new Uddokta records replaced.`;
             } catch (err) {
                 if (status) status.innerText = 'Upload failed: ' + err.message;
                 alert('Excel upload failed: ' + err.message);
@@ -1456,6 +1473,7 @@ table{width:100%;max-width:100%}
                     uddoktaDB = arr;
                     saveUddoktaCache(arr);
                     renderReports();
+                    updateDashboard();
                 } else {
                     // Firebase has an intentionally empty master: remove old browser copy.
                     uddoktaDB = [];
@@ -1481,6 +1499,7 @@ table{width:100%;max-width:100%}
                         uddoktaDB = arr;
                         saveUddoktaCache(arr);
                         renderReports();
+                        updateDashboard();
                     }
                 }).catch(() => {});
             } catch (e) {}
@@ -1496,7 +1515,7 @@ table{width:100%;max-width:100%}
             if (event.key === UDDOKTA_CACHE_KEY && event.newValue) {
                 try {
                     const arr = JSON.parse(event.newValue);
-                    if (Array.isArray(arr) && arr.length) { uddoktaDB = arr; renderReports(); }
+                    if (Array.isArray(arr) && arr.length) { uddoktaDB = arr; renderReports(); updateDashboard(); }
                 } catch (e) {}
             }
         });
