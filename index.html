@@ -687,12 +687,12 @@ table{width:100%;max-width:100%}
                         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
                             <button type="button" class="btn btn-primary" id="btn-location-permission" style="padding:9px 12px;font-size:0.82rem;" onclick="requestLocationPermission()">📍 Allow Location Permission</button>
                             <button type="button" class="btn btn-sec" id="btn-device-location" style="display:none;padding:9px 12px;font-size:0.82rem;" onclick="openDeviceLocationSettings()">⚙️ Turn On Location</button>
-                            <button type="button" class="btn btn-sec" style="padding:9px 12px;font-size:0.82rem;" onclick="fetchGPS()">🔄 Refresh Location</button>
+                            <button type="button" class="btn btn-sec" style="display:none!important;padding:9px 12px;font-size:0.82rem;" onclick="fetchGPS()" aria-hidden="true" tabindex="-1">🔄 Refresh Location</button>
                         </div>
 </div>
 
                     <div id="submit-action-bar" style="position:sticky;bottom:8px;z-index:1000;background:rgba(255,255,255,.96);padding:8px;border-radius:12px;box-shadow:0 -4px 18px rgba(15,23,42,.08);display:block!important;visibility:visible!important;">
-                        <button type="submit" class="btn" id="btn-submit" style="display:block!important;visibility:visible!important;width:100%!important;min-height:52px!important;">Submit Report to Firebase</button>
+                        <button type="submit" class="btn" id="btn-submit" style="display:block!important;visibility:visible!important;width:100%!important;min-height:52px!important;">Submit</button>
                     </div>
                 </form>
             </div>
@@ -1900,7 +1900,7 @@ table{width:100%;max-width:100%}
                 btn.style.cursor = ready ? 'pointer' : 'not-allowed';
                 btn.title = ready ? 'Submit Report' : 'লাল দেখানো প্রয়োজনীয় field পূরণ করুন';
                 btn.setAttribute('aria-disabled', String(!ready));
-                btn.textContent = 'Submit Report to Firebase';
+                btn.textContent = 'Submit';
             }
         }
 
@@ -2104,10 +2104,10 @@ table{width:100%;max-width:100%}
                 if (deviceBtn) deviceBtn.style.display = /Android/i.test(navigator.userAgent || '') ? 'inline-flex' : 'none';
                 showAlert('Phone-এর Location/GPS OFF থাকলে website নিজে ON করতে পারে না। Turn On Location চাপুন; ফিরে এলে app আবার location নেবে.', 'error');
             } else if (err && err.code === 3) {
-                nameInput.placeholder = 'GPS timeout — press Refresh Location';
+                nameInput.placeholder = 'GPS timeout — location will retry automatically';
                 nameInput.title = 'The device took too long to determine the location.';
                 setLocationPermissionButton('prompt');
-                showAlert('Location পেতে বেশি সময় লাগছে। আবার Refresh Location চাপুন.', 'error');
+                showAlert('Location পেতে বেশি সময় লাগছে। Location আবার স্বয়ংক্রিয়ভাবে নেওয়ার চেষ্টা হবে।', 'error');
             } else {
                 nameInput.placeholder = 'Location unavailable — try again';
                 nameInput.title = 'The browser could not determine your location.';
@@ -2328,7 +2328,7 @@ table{width:100%;max-width:100%}
             const visitDateValue = document.getElementById('visit-date').value || getDhakaToday();
             const visitUddoktaNumber = document.getElementById('uddokta-number').value;
             btnSubmit.disabled = true;
-            btnSubmit.innerText = 'Checking duplicate visit...';
+            btnSubmit.innerText = 'Submit';
 
             let dailyReservation = null;
             const reservationToken = `${Date.now()}_${Math.random().toString(36).slice(2,10)}`;
@@ -2349,12 +2349,12 @@ table{width:100%;max-width:100%}
             } finally {
                 if (!dailyReservation || !dailyReservation.committed) {
                     btnSubmit.disabled = false;
-                    btnSubmit.innerText = 'Submit Report to Firebase';
+                    btnSubmit.innerText = 'Submit';
                     updateVisitSubmitState();
                 }
             }
 
-            btnSubmit.innerText = 'Saving to Firebase...';
+            btnSubmit.innerText = 'Submit';
             const reportId = Date.now();
             const newReport = {
                 id: reportId,
@@ -2389,8 +2389,10 @@ table{width:100%;max-width:100%}
                 showAlert('Visit Report successfully saved to Firebase!', 'success');
                 // A successful submit always starts a completely fresh Visit form.
                 clearVisitFormForNewVisit();
-                // Do not immediately start another GPS/reverse-geocode job after submit.
-                // The next Visit page will request location once, avoiding background buffering.
+                // Automatically prepare a fresh GPS location for the next visit after every successful submit.
+                setTimeout(() => {
+                    try { fetchGPS(); } catch (gpsError) { console.warn('Auto location refresh after submit failed:', gpsError); }
+                }, 250);
             } catch (err) {
                 try {
                     if (dailyReservation && dailyReservation.ref) {
@@ -2402,7 +2404,7 @@ table{width:100%;max-width:100%}
                 showAlert('Error saving data to Firebase: ' + err.message, 'error');
             } finally {
                 updateVisitSubmitState();
-                btnSubmit.innerText = 'Submit Report to Firebase';
+                btnSubmit.innerText = 'Submit';
             }
         });
 
