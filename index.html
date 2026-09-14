@@ -842,7 +842,7 @@ table{width:100%;max-width:100%}
         <div class="nav-item hidden" id="nav-notices" onclick="switchTab('notices')"><span>🔔</span><span>Notice <b id="notice-badge" class="notice-nav-badge hidden">0</b></span></div>
         <div class="nav-item hidden" id="nav-admin" onclick="switchTab('admin')"><span>🛠️</span><span>Admin</span></div>
         <div class="sidebar-spacer"></div>
-        <button type="button" id="sidebar-logout" class="sidebar-logout" onclick="logout()">🚪 <span>Logout</span></button>
+        <button type="button" id="sidebar-logout" class="sidebar-logout">🚪 <span>Logout</span></button>
         <div class="sidebar-hint">DMS-Nagad Manikganj</div>
     </aside>
 
@@ -875,7 +875,7 @@ table{width:100%;max-width:100%}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-14-visit-controls-v2';
+        const APP_CACHE_VERSION = '2026-09-14-login-refresh-logout-v3';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -1165,7 +1165,31 @@ table{width:100%;max-width:100%}
             try { localStorage.setItem('dm_app_passwords', JSON.stringify(userPasswords)); } catch (e) {}
         }
 
+        // On every new login attempt, check the hosted HTML with cache disabled.
+        // If a newer deployed app version exists, reload that version before continuing.
+        let loginUpdateCheckDone = false;
+        async function checkForHostedAppUpdate() {
+            if (loginUpdateCheckDone || location.protocol === 'file:') return false;
+            loginUpdateCheckDone = true;
+            try {
+                const url = new URL(location.href);
+                url.searchParams.set('_appcheck', Date.now().toString());
+                const res = await fetch(url.toString(), {cache:'no-store', credentials:'same-origin'});
+                if (!res.ok) return false;
+                const html = await res.text();
+                const m = html.match(/const\s+APP_CACHE_VERSION\s*=\s*['\"]([^'\"]+)['\"]/);
+                if (m && m[1] && m[1] !== APP_CACHE_VERSION) {
+                    location.replace(url.toString());
+                    return true;
+                }
+            } catch (e) {
+                console.warn('App update check skipped:', e);
+            }
+            return false;
+        }
+
         function login() {
+            checkForHostedAppUpdate();
             const userEl = document.getElementById('login-user');
             const passEl = document.getElementById('login-pass');
             const loginAlert = document.getElementById('login-alert');
@@ -3150,6 +3174,27 @@ let firebaseListenersStarted = false;
             try { updateVisitSubmitState(); } catch (e) {}
         }
 
+        // Mobile-safe logout: touch/swipe/pointer events never call logout directly.
+        // Logout runs only from a genuine CLICK on the Logout button itself.
+        function bindSafeLogoutButton() {
+            const btn = document.getElementById('sidebar-logout');
+            if (!btn || btn.dataset.safeLogoutBound === '1') return;
+            btn.dataset.safeLogoutBound = '1';
+            ['touchstart','touchmove','touchend','pointerdown','pointerup'].forEach(type => {
+                btn.addEventListener(type, e => {
+                    // Do not convert mobile touch/pointer gestures into application logout actions.
+                    // Normal browser click is handled below.
+                }, {passive:true});
+            });
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!e.isTrusted) return;
+                if (e.target !== btn && !btn.contains(e.target)) return;
+                logout();
+            });
+        }
+
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initializeAuthAndFormUI, { once:true });
         } else {
@@ -3195,5 +3240,15 @@ document.addEventListener('click',function(e){
 </script>
 
 <footer id="app-copyright" style="text-align:center;padding:18px 12px 90px;color:#64748b;font-size:.78rem;">Copyright © 2026 <strong>Zahangir Kabir</strong>. All rights reserved</footer>
+
+<script id="safe-logout-finalizer">
+document.addEventListener('DOMContentLoaded', function(){
+    try { bindSafeLogoutButton(); } catch(e) { console.warn('Safe logout binding skipped:', e); }
+}, {once:true});
+if (document.readyState !== 'loading') {
+    try { bindSafeLogoutButton(); } catch(e) {}
+}
+</script>
+
 </body>
 </html>
