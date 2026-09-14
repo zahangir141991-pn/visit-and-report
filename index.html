@@ -348,9 +348,7 @@
         .submit-invalid:focus{outline:2px solid rgba(220,38,38,.25)!important;outline-offset:1px!important;}
         .camera-box.submit-invalid{scroll-margin-top:100px;}
 
-        #osm-map{width:100%;height:260px;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-top:10px;z-index:1;}
-        .osm-map-note{font-size:.74rem;color:#64748b;margin-top:6px;}
-        @media(max-width:600px){#osm-map{height:230px}}
+        @media(max-width:600px){}
 </style>
 
 <style id="responsive-fullscreen-ui">
@@ -390,45 +388,7 @@ table{width:100%;max-width:100%}
 
 
 <style id="hide-osm-map">
-#osm-map, .osm-map-note { display:none !important; }
-</style>
-
-</head>
-<body>
-
-    <header>
-        <h1>DMS-Nagad Manikganj</h1>
-    </header>
-
-    <div id="user-info-bar" class="user-bar hidden">
-        <div>User: <strong id="current-user-name">Guest</strong> (<span id="current-user-role">Role</span>)</div>
-        <div>
-            <button class="btn btn-sm btn-sec" onclick="openChangePassModal()">Password</button>
-            <button class="btn btn-sm btn-danger" onclick="logout()">Logout</button>
-        </div>
-    </div>
-
-    <div class="container">
-
-        <!-- Login Section -->
-        <div id="view-login">
-            <div class="card" style="max-width: 400px; margin: 40px auto; text-align: left;">
-                <h2 style="font-size: 1.2rem; margin-bottom: 16px; text-align: center;">Login to Portal</h2>
-                <div id="login-alert" class="alert"></div>
-                <div class="form-group">
-                    <label>User ID</label>
-                    <input type="text" id="login-user" autocomplete="username" placeholder="Enter User ID (e.g. 801)">
-
-                </div>
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" id="login-pass" autocomplete="current-password" placeholder="Enter password">
-                </div>
-                <button type="button" class="btn" onclick="login()">Login</button>
-                <script>
-                    document.addEventListener('keydown', function(e){
-                        if(e.key === 'Enter' && document.getElementById('view-login') && !document.getElementById('view-login').classList.contains('hidden')) { e.preventDefault(); login(); }
-                    });
+});
                 </script>
             </div>
         </div>
@@ -570,8 +530,8 @@ table{width:100%;max-width:100%}
                         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
                             <button type="button" class="btn btn-primary" id="btn-location-permission" style="padding:9px 12px;font-size:0.82rem;" onclick="requestLocationPermission()">📍 Allow Location Permission</button>
                             <button type="button" class="btn btn-sec" style="padding:9px 12px;font-size:0.82rem;" onclick="fetchGPS()">🔄 Refresh Location</button>
-                        </div>\n                        <div id="osm-map" aria-label="OpenStreetMap location map"></div>\n                        <div class="osm-map-note">📍 অবস্থান OpenStreetMap থেকে নেওয়া হবে</div>
-                    </div>
+                        </div>
+</div>
 
                     <div id="submit-action-bar" style="position:sticky;bottom:8px;z-index:1000;background:rgba(255,255,255,.96);padding:8px;border-radius:12px;box-shadow:0 -4px 18px rgba(15,23,42,.08);display:block!important;visibility:visible!important;">
                         <button type="submit" class="btn" id="btn-submit" style="display:block!important;visibility:visible!important;width:100%!important;min-height:52px!important;">Submit Report to Firebase</button>
@@ -1223,7 +1183,7 @@ table{width:100%;max-width:100%}
                 document.getElementById('uddokta-excel-file').value = '';
                 document.getElementById('excel-upload-preview').classList.add('hidden');
                 pendingUddoktaExcelRows = [];
-                alert(`Uddokta information updated successfully!\nUpdated: ${updated}\nAdded: ${added}\nTotal: ${merged.length}`);
+                alert(`Uddokta information updated successfully!Updated: ${updated}Added: ${added}Total: ${merged.length}`);
             } catch (err) {
                 if (status) status.innerText = 'Upload failed: ' + err.message;
                 alert('Excel upload failed: ' + err.message);
@@ -1624,33 +1584,48 @@ table{width:100%;max-width:100%}
         }
 
         async function reverseGeocodeFallback(lat, lon) {
-            // OpenStreetMap Nominatim only. Retry once if the public endpoint is busy.
-            const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=18&addressdetails=1&accept-language=bn,en`;
-            for (let attempt = 0; attempt < 2; attempt++) {
-                try {
-                    const response = await fetch(url, {
-                        method: 'GET',
-                        mode: 'cors',
-                        cache: 'no-store',
-                        headers: { 'Accept': 'application/json' }
-                    });
-                    if (response.ok) {
-                        const data = await response.json();
-                        const a = data.address || {};
-                        const parts = [
-                            a.amenity, a.building, a.house_number, a.road,
-                            a.neighbourhood || a.suburb,
-                            a.village || a.town || a.city || a.municipality,
-                            a.upazila || a.county, a.district, a.state
-                        ].filter(Boolean);
-                        const name = [...new Set(parts)].join(', ').trim();
-                        if (name) return name;
-                        if (data.display_name) return String(data.display_name).trim();
+            // OpenStreetMap Nominatim only. No map is shown.
+            // Try several zoom levels because some Bangladesh locations have
+            // incomplete address data at street/building level.
+            const zooms = [18, 16, 14, 12, 10];
+            for (const zoom of zooms) {
+                const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=${zoom}&addressdetails=1&accept-language=bn,en`;
+                for (let attempt = 0; attempt < 2; attempt++) {
+                    try {
+                        const controller = new AbortController();
+                        const timer = setTimeout(() => controller.abort(), 15000);
+                        const response = await fetch(url, {
+                            method: 'GET',
+                            mode: 'cors',
+                            cache: 'no-store',
+                            signal: controller.signal
+                        });
+                        clearTimeout(timer);
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            const a = data.address || {};
+                            const parts = [
+                                a.amenity, a.building, a.house_number, a.road,
+                                a.neighbourhood, a.suburb, a.quarter,
+                                a.village, a.town, a.city, a.municipality,
+                                a.upazila, a.county, a.district, a.state
+                            ]
+                            .map(v => String(v || '').replace(/\\s+/g, ' ').trim())
+                            .filter(Boolean);
+
+                            const unique = [...new Set(parts)];
+                            if (unique.length) return unique.join(', ');
+
+                            const fallback = String(data.name || data.display_name || '')
+                                .replace(/\\s+/g, ' ').trim();
+                            if (fallback) return fallback;
+                        }
+                    } catch (e) {
+                        console.warn('OpenStreetMap reverse geocode failed:', e);
                     }
-                } catch (e) {
-                    console.warn('OpenStreetMap reverse geocode failed:', e);
+                    if (attempt === 0) await new Promise(r => setTimeout(r, 1000));
                 }
-                if (attempt === 0) await new Promise(r => setTimeout(r, 900));
             }
             return '';
         }
@@ -1679,136 +1654,169 @@ table{width:100%;max-width:100%}
             btn.classList.remove('btn-primary','btn-sec');
             if (state === 'granted') {
                 btn.classList.add('btn-sec');
-                btn.textContent = '✅ Location Permission Granted';
+                btn.textContent = '✅ Location Ready';
             } else if (state === 'denied') {
                 btn.classList.add('btn-primary');
-                btn.textContent = '📍 Allow Location Permission Again';
+                btn.textContent = '📍 Allow Location';
             } else {
                 btn.classList.add('btn-primary');
-                btn.textContent = '📍 Allow Location Permission';
+                btn.textContent = '📍 Allow Location';
             }
+        }
+
+        function showLocationError(err) {
+            const nameInput = document.getElementById('gps-location-name');
+            const btn = document.getElementById('btn-location-permission');
+            if (!nameInput) return;
+
+            nameInput.value = '';
+            if (err && err.code === 1) {
+                nameInput.placeholder = 'Location permission blocked — allow it in browser settings';
+                nameInput.title = 'Chrome: lock icon → Site settings → Location → Allow → Reload.';
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = '📍 Allow Location';
+                }
+                showAlert('Location Block করা আছে। Chrome-এর 🔒 Lock icon → Site settings → Location → Allow করুন, তারপর page Reload করুন.', 'error');
+            } else if (err && err.code === 2) {
+                nameInput.placeholder = 'Location unavailable — turn on Device Location';
+                nameInput.title = 'Turn on Windows/Android Location Services and try again.';
+                setLocationPermissionButton('prompt');
+                showAlert('Device Location/GPS ON করুন, তারপর আবার Allow Location চাপুন.', 'error');
+            } else if (err && err.code === 3) {
+                nameInput.placeholder = 'GPS timeout — press Refresh Location';
+                nameInput.title = 'The device took too long to determine the location.';
+                setLocationPermissionButton('prompt');
+                showAlert('Location পেতে বেশি সময় লাগছে। আবার Refresh Location চাপুন.', 'error');
+            } else {
+                nameInput.placeholder = 'Location unavailable — try again';
+                nameInput.title = 'The browser could not determine your location.';
+                setLocationPermissionButton('prompt');
+                showAlert('Location পাওয়া যায়নি। Device Location ON করে আবার চেষ্টা করুন.', 'error');
+            }
+            updateVisitSubmitState();
         }
 
         async function requestLocationPermission() {
             const btn = document.getElementById('btn-location-permission');
-            if (btn) { btn.disabled = true; btn.textContent = '📍 Requesting Permission...'; }
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = '📍 Getting Location...';
+            }
+
             try {
                 if (!window.isSecureContext && location.hostname !== 'localhost') {
                     throw new Error('Location requires HTTPS');
                 }
-                if (!navigator.geolocation) throw new Error('Geolocation is not supported');
-
-                const state = await getLocationPermissionState();
-                if (state === 'denied') {
-                    const nameInput = document.getElementById('gps-location-name');
-                    if (nameInput) {
-                        nameInput.value = '';
-                        nameInput.placeholder = 'Location blocked — allow Location for this site in browser settings';
-                        nameInput.title = 'Chrome: lock icon → Site settings → Location → Allow, then reload.';
-                    }
-                    setLocationPermissionButton('denied');
-                    updateVisitSubmitState();
-                    showAlert('Location permission আগে Block করা আছে। Browser Site Settings থেকে Location = Allow করে page Reload করুন.', 'error');
-                    return false;
+                if (!navigator.geolocation) {
+                    throw new Error('Geolocation is not supported');
                 }
 
-                await getPosition({ enableHighAccuracy:true, timeout:30000, maximumAge:0 });
-                setLocationPermissionButton('granted');
-                await fetchGPS();
+                // IMPORTANT: request permission directly from the user's click.
+                // Do not block the request just because Permissions API says "denied";
+                // browser/OS permission state can be stale until a new geolocation call.
+                await fetchGPS(true);
                 return true;
             } catch (err) {
                 console.warn('Location permission request:', err);
-                const nameInput = document.getElementById('gps-location-name');
-                if (nameInput) {
-                    nameInput.value = '';
-                    if (err && err.code === 1) {
-                        nameInput.placeholder = 'Location blocked — allow Location for this site';
-                        nameInput.title = 'Chrome: lock icon → Site settings → Location → Allow, then reload.';
-                        setLocationPermissionButton('denied');
-                        showAlert('Location permission denied. Browser Site Settings থেকে Location = Allow করে Reload করুন.', 'error');
-                    } else {
-                        nameInput.placeholder = 'Location not available — try Refresh Location';
-                        nameInput.title = 'GPS could not get a position. Check phone/PC Location and try again.';
-                        setLocationPermissionButton('prompt');
-                        showAlert('GPS location পাওয়া যায়নি। Device Location ON করে আবার চেষ্টা করুন.', 'error');
+                if (err && err.message === 'Location requires HTTPS') {
+                    const nameInput = document.getElementById('gps-location-name');
+                    if (nameInput) {
+                        nameInput.value = '';
+                        nameInput.placeholder = 'HTTPS required for location';
+                        nameInput.title = 'Open this app using HTTPS or localhost.';
                     }
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.textContent = '📍 Allow Location';
+                    }
+                    showAlert('Location-এর জন্য HTTPS connection প্রয়োজন.', 'error');
+                } else {
+                    showLocationError(err);
                 }
-                updateVisitSubmitState();
                 return false;
             }
         }
 
-        async function fetchGPS() {
+        async function fetchGPS(fromPermissionButton = false) {
             const gpsInput = document.getElementById('gps-location');
             const nameInput = document.getElementById('gps-location-name');
             if (!gpsInput || !nameInput) return false;
 
             gpsInput.value = '';
-            nameInput.value = 'Getting location...';
+            nameInput.value = '';
+            nameInput.placeholder = 'Getting GPS location...';
             nameInput.title = '';
             updateVisitSubmitState();
 
             try {
-                const permission = await getLocationPermissionState();
-                if (permission === 'denied') {
-                    nameInput.value = '';
-                    nameInput.placeholder = 'Location blocked — allow Location for this site';
-                    nameInput.title = 'Chrome: lock icon → Site settings → Location → Allow, then reload.';
-                    setLocationPermissionButton('denied');
-                    updateVisitSubmitState();
-                    return false;
-                }
+                if (!navigator.geolocation) throw new Error('Geolocation is not supported');
 
-                let pos = await getPosition({ enableHighAccuracy:true, timeout:45000, maximumAge:0 });
-                if (Number.isFinite(pos.coords.accuracy) && pos.coords.accuracy > 120) {
+                // A fresh call with maximumAge: 0 is required to trigger the
+                // browser permission prompt after a user click.
+                let pos = await getPosition({
+                    enableHighAccuracy: true,
+                    timeout: 30000,
+                    maximumAge: 0
+                });
+
+                // If the first reading is weak, make one more high-accuracy reading.
+                if (Number.isFinite(pos.coords.accuracy) && pos.coords.accuracy > 100) {
                     try {
-                        const retry = await getPosition({ enableHighAccuracy:true, timeout:45000, maximumAge:0 });
-                        if (Number.isFinite(retry.coords.accuracy) && retry.coords.accuracy < pos.coords.accuracy) pos = retry;
-                    } catch(e) {}
+                        const retry = await getPosition({
+                            enableHighAccuracy: true,
+                            timeout: 25000,
+                            maximumAge: 0
+                        });
+                        if (Number.isFinite(retry.coords.accuracy) &&
+                            retry.coords.accuracy < pos.coords.accuracy) {
+                            pos = retry;
+                        }
+                    } catch (e) {}
                 }
 
                 const lat = Number(pos.coords.latitude);
                 const lon = Number(pos.coords.longitude);
                 const accuracy = Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : 0;
+
+                if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+                    throw new Error('Invalid GPS coordinates');
+                }
+
                 gpsInput.value = `${lat.toFixed(7)}, ${lon.toFixed(7)}`;
-                updateOSMMap(lat, lon, accuracy);
+                nameInput.placeholder = 'Finding location name from OpenStreetMap...';
 
                 const resolvedName = await reverseGeocodeFallback(lat, lon);
+
                 if (!resolvedName) {
                     gpsInput.value = '';
                     nameInput.value = '';
-                    nameInput.placeholder = 'Location name not found — Refresh Location';
-                    nameInput.title = 'OpenStreetMap could not resolve this GPS position.';
+                    nameInput.placeholder = 'OpenStreetMap location name not found — Refresh Location';
+                    nameInput.title = 'GPS worked, but OpenStreetMap did not return an address.';
                     setLocationPermissionButton('granted');
                     updateVisitSubmitState();
+                    showAlert('GPS পাওয়া গেছে, কিন্তু OpenStreetMap থেকে location name পাওয়া যায়নি। আবার Refresh Location দিন.', 'error');
                     return false;
                 }
-                nameInput.value = resolvedName;
+
+                // Clean all accidental newline/whitespace artifacts before display.
+                const cleanName = resolvedName
+                    .replace(/\\r?\\n/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .replace(/,\s*,+/g, ', ')
+                    .replace(/^[,\s]+|[,\s]+$/g, '')
+                    .trim();
+
+                nameInput.value = cleanName;
                 nameInput.title = accuracy ? `GPS accuracy: ±${Math.round(accuracy)}m` : 'GPS location';
                 setLocationPermissionButton('granted');
                 updateVisitSubmitState();
                 return true;
+
             } catch (err) {
                 console.warn('GPS error:', err);
                 gpsInput.value = '';
-                nameInput.value = '';
-                if (err && err.code === 1) {
-                    nameInput.placeholder = 'Location blocked — allow Location for this site';
-                    nameInput.title = 'Chrome: lock icon → Site settings → Location → Allow, then reload.';
-                    setLocationPermissionButton('denied');
-                } else if (err && err.code === 2) {
-                    nameInput.placeholder = 'Location unavailable — turn on Device Location';
-                    nameInput.title = 'Device could not determine your position.';
-                    setLocationPermissionButton('prompt');
-                } else if (err && err.code === 3) {
-                    nameInput.placeholder = 'GPS timeout — press Refresh Location';
-                    nameInput.title = 'GPS took too long to respond.';
-                    setLocationPermissionButton('prompt');
-                } else {
-                    nameInput.placeholder = 'Location unavailable — press Refresh Location';
-                    setLocationPermissionButton('prompt');
-                }
-                updateVisitSubmitState();
+                showLocationError(err);
                 return false;
             }
         }
