@@ -825,15 +825,13 @@ table{width:100%;max-width:100%}
         <div id="visit-menu-panel" class="visit-menu-panel">
             <div class="visit-menu-title">Visit Menu</div>
             <button type="button" class="visit-menu-btn" onclick="visitMenuAction('new')">➕ New Visit</button>
-            <button type="button" class="visit-menu-btn" onclick="visitMenuAction('my')">👤 Amar Visit Report</button>
+            <button type="button" id="visit-menu-my" class="visit-menu-btn" onclick="visitMenuAction('my')">👤 Amar Visit Report</button>
             <button type="button" class="visit-menu-btn role-dss-option hidden" onclick="visitMenuAction('dso')">👥 DSO Visit Report</button>
             <button type="button" class="visit-menu-btn role-dm-option hidden" onclick="visitMenuAction('dss')">📊 DSS Visit Report</button>
             <button type="button" class="visit-menu-btn role-dm-option hidden" onclick="visitMenuAction('dso')">👥 DSO Visit Report</button>
             <button type="button" class="visit-menu-btn role-dm-option hidden" onclick="visitMenuAction('dso-wise')">🗂️ DSO Visit Report — DSS Wise</button>
             <button type="button" class="visit-menu-btn role-admin-option hidden" onclick="visitMenuAction('dss')">📊 DSS Visit Report</button>
             <button type="button" class="visit-menu-btn role-admin-option hidden" onclick="visitMenuAction('dso')">👥 DSO Visit Report</button>
-            <button type="button" class="visit-menu-btn role-admin-option hidden" onclick="visitMenuAction('dso-wise')">🗂️ DSO Visit Report — DSS Wise</button>
-            <button type="button" class="visit-menu-btn role-admin-option hidden" onclick="visitMenuAction('all')">📋 All Visit Report</button>
         </div>
         <div class="nav-item" id="nav-settings" onclick="switchTab('change-pass')"><span>⚙️</span><span>Settings</span></div>
         <div class="nav-item hidden" id="nav-notices" onclick="switchTab('notices')"><span>🔔</span><span>Notice <b id="notice-badge" class="notice-nav-badge hidden">0</b></span></div>
@@ -2483,6 +2481,8 @@ table{width:100%;max-width:100%}
             document.querySelectorAll('.role-admin-option').forEach(el=>el.classList.toggle('hidden',role!=='Admin'));
             const newBtn=document.querySelector('.visit-menu-btn[onclick="visitMenuAction(\'new\')"]');
             if(newBtn) newBtn.classList.toggle('hidden',role==='Admin');
+            const myBtn=document.getElementById('visit-menu-my');
+            if(myBtn) myBtn.classList.toggle('hidden',role==='Admin');
         }
 
         function getMyVisitRows(){
