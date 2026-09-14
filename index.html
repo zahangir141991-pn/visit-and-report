@@ -246,14 +246,7 @@
         }
 
         .nav-item.active { color: var(--primary); }
-        
-        .duplicate-uddokta-card{margin-top:10px;padding:12px 14px;border:1px solid #f59e0b;border-left:5px solid #f59e0b;border-radius:12px;background:#fffbeb;color:#92400e;font-size:.84rem;font-weight:700;line-height:1.45;box-shadow:0 4px 12px rgba(245,158,11,.08)}
-        .duplicate-uddokta-card b{color:#b45309}
-        table.reports-table tr.duplicate-uddokta-row td{background:#fff7ed!important;border-bottom-color:#fed7aa!important}
-        table.reports-table tr.duplicate-uddokta-row td:nth-child(3){font-weight:800;color:#b45309}
-        table.reports-table tr.duplicate-uddokta-row td:nth-child(4){font-weight:800;color:#b45309}
-
-.hidden { display: none !important; }
+        .hidden { display: none !important; }
 
         .alert {
             padding: 12px;
@@ -284,19 +277,11 @@
         .nav-scroll{overflow-x:auto;justify-content:flex-start!important}
         .nav-scroll .nav-item{min-width:92px;flex:0 0 auto}
 
-        /* Polished left navigation on desktop; bottom navigation on mobile */
-        .nav-bar{position:fixed;left:14px;top:86px;bottom:14px;width:190px;height:auto;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;gap:8px;padding:12px;background:rgba(255,255,255,.97);border:1px solid var(--border);border-radius:18px;box-shadow:0 14px 35px rgba(15,23,42,.12);overflow-y:auto;z-index:100}
-        .nav-item{flex:0 0 auto!important;width:100%;border-radius:12px;padding:13px 12px;transition:.2s;line-height:1.2;text-align:left;color:var(--text-light);font-size:.8rem;font-weight:700}
-        .nav-item span{display:block}
-        .nav-item:hover{background:#f1f5f9;transform:translateX(2px)}
-        .nav-item.active{background:#e8f0ff;color:var(--primary);font-weight:900;box-shadow:inset 3px 0 0 var(--primary)}
-        #main-app{margin-left:218px}
-        @media(max-width:800px){
-            .nav-bar{left:8px;right:8px;bottom:8px;top:auto;width:auto;height:68px;flex-direction:row;justify-content:space-around;align-items:center;padding:6px;gap:4px;border-radius:16px;overflow-x:auto;overflow-y:hidden}
-            .nav-item{width:auto;min-width:76px!important;flex:1 0 auto!important;padding:8px 6px;text-align:center;font-size:.7rem}
-            .nav-item.active{box-shadow:inset 0 -3px 0 var(--primary)}
-            #main-app{margin-left:0;padding-bottom:84px}
-        }
+        /* Polished single-page navigation + report details */
+        .nav-bar{gap:6px;padding:7px 10px;box-shadow:0 -4px 18px rgba(15,23,42,.08)}
+        .nav-item{border-radius:12px;padding:8px 10px;transition:.2s;line-height:1.15}
+        .nav-item:hover{background:#f1f5f9}
+        .nav-item.active{background:#e8f0ff;font-weight:800}
         .details-modal{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:300;display:flex;align-items:center;justify-content:center;padding:16px}
         .details-card{width:min(720px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:18px;padding:18px;box-shadow:0 20px 60px rgba(15,23,42,.25)}
         .details-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;position:sticky;top:0;background:#fff;padding-bottom:8px;border-bottom:1px solid var(--border)}
@@ -408,33 +393,6 @@ table{width:100%;max-width:100%}
 #osm-map, .osm-map-note { display:none !important; }
 </style>
 
-
-<style id="osm-location-only-hide">
-#osm-map, .osm-map-note, #gps-map-link { display:none !important; }
-</style>
-
-<style id="camera-switch-ui">
-.camera-box .btn{margin:3px 2px;min-width:96px;}
-.camera-switch-icon{width:42px;height:42px;border:1px solid #cbd5e1;border-radius:50%;background:#fff;color:#334155;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:9px;margin:3px 2px;box-shadow:0 2px 6px rgba(15,23,42,.10);transition:transform .15s,background .15s,border-color .15s;color .15s;}
-.camera-switch-icon:hover{background:#f1f5f9;border-color:#94a3b8;transform:scale(1.05);}
-.camera-switch-icon:active{transform:scale(.94);}
-.camera-switch-icon svg{width:22px;height:22px;fill:currentColor;}
-.camera-switch-icon.active{background:#e8f0ff;border-color:#2563eb;color:#1d4ed8;}
-@media(max-width:600px){.camera-switch-icon{width:40px;height:40px;padding:8px;}}
-
-@media(max-width:600px){.camera-box .btn{min-width:88px;font-size:.78rem;padding:8px 9px;}}
-</style>
-
-<style id="android-camera-capture-style">
-.camera-box{position:relative!important;border-radius:22px!important;background:#111827!important;overflow:hidden!important;min-height:300px!important;display:flex!important;align-items:center!important;justify-content:center!important;}
-.camera-box video{width:100%!important;height:100%!important;min-height:300px!important;object-fit:cover!important;display:block!important;background:#000!important;}
-.camera-box canvas{display:none!important;}
-.camera-box .camera-placeholder{color:#fff!important;font-size:.9rem!important;text-align:center!important;}
-.camera-controls{display:flex!important;align-items:center!important;justify-content:center!important;gap:22px!important;margin-top:12px!important;}
-.camera-capture-btn{width:72px!important;height:72px!important;border-radius:50%!important;border:6px solid #fff!important;background:#e5e7eb!important;box-shadow:0 3px 12px rgba(0,0,0,.3)!important;padding:0!important;font-size:0!important;}
-.camera-capture-btn:active{transform:scale(.94)!important;}
-.camera-switch-btn{width:48px!important;height:48px!important;border-radius:50%!important;border:0!important;background:#374151!important;color:#fff!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;font-size:24px!important;box-shadow:0 2px 8px rgba(0,0,0,.25)!important;}
-</style>
 </head>
 <body>
 
@@ -556,7 +514,6 @@ table{width:100%;max-width:100%}
                         <label>Search Uddokta Number</label>
                         <input type="text" id="search-input" placeholder="Type last 4 / last 6 / full Uddokta Number..." autocomplete="off" required>
                         <div id="search-results" class="search-results"></div>
-                        <div id="duplicate-uddokta-card" class="duplicate-uddokta-card hidden"></div>
                     </div>
 
                     <div class="form-group">
@@ -601,12 +558,6 @@ table{width:100%;max-width:100%}
                             <img id="photo-preview" alt="Preview">
                             <div style="margin-top: 10px;">
                                 <button type="button" class="btn btn-sm" id="btn-capture" onclick="captureLivePhoto()">📷 Start Camera</button>
-                                <button type="button" class="camera-switch-btn camera-switch-icon" id="btn-front-camera" onclick="switchCamera('user')" title="Front camera" aria-label="Switch to front camera">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h2l1.2-2h3.6L15 5h2a4 4 0 0 1 4 4v7a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a4 4 0 0 1 4-4Zm5 4.2A3.8 3.8 0 1 0 12 16.8 3.8 3.8 0 0 0 12 9.2Zm0 1.8a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z"/><path d="M5.2 9.1 2.8 7.7l.9-1.5 2.4 1.4-.9 1.5Zm13.6 0 .9-1.5 2.4-1.4.9 1.5-2.4 1.4-.9-1.5Z"/></svg>
-                                </button>
-                                <button type="button" class="camera-switch-icon" id="btn-back-camera" onclick="switchCamera('environment')" title="Back camera" aria-label="Switch to back camera">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h2l1.2-2h3.6L15 5h2a4 4 0 0 1 4 4v7a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a4 4 0 0 1 4-4Zm5 4.2A3.8 3.8 0 1 0 12 16.8 3.8 3.8 0 0 0 12 9.2Zm0 1.8a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z"/><path d="M5.2 9.1 2.8 7.7l.9-1.5 2.4 1.4-.9 1.5Zm13.6 0 .9-1.5 2.4-1.4.9 1.5-2.4 1.4-.9-1.5Z"/></svg>
-                                </button>
                                 <button type="button" class="btn btn-sm btn-sec hidden" id="btn-recapture" onclick="resetLivePhoto()">🔄 Retake Selfie</button>
                             </div>
                         </div>
@@ -619,9 +570,7 @@ table{width:100%;max-width:100%}
                         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
                             <button type="button" class="btn btn-primary" id="btn-location-permission" style="padding:9px 12px;font-size:0.82rem;" onclick="requestLocationPermission()">📍 Allow Location Permission</button>
                             <button type="button" class="btn btn-sec" style="padding:9px 12px;font-size:0.82rem;" onclick="fetchGPS()">🔄 Refresh Location</button>
-                        </div>
-                        <div id="osm-map" aria-label="OpenStreetMap location map"></div>
-                        <div class="osm-map-note">📍 অবস্থান OpenStreetMap থেকে নেওয়া হবে</div>
+                        </div>\n                        <div id="osm-map" aria-label="OpenStreetMap location map"></div>\n                        <div class="osm-map-note">📍 অবস্থান OpenStreetMap থেকে নেওয়া হবে</div>
                     </div>
 
                     <div id="submit-action-bar" style="position:sticky;bottom:8px;z-index:1000;background:rgba(255,255,255,.96);padding:8px;border-radius:12px;box-shadow:0 -4px 18px rgba(15,23,42,.08);display:block!important;visibility:visible!important;">
@@ -789,7 +738,7 @@ table{width:100%;max-width:100%}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-13-v3';
+        const APP_CACHE_VERSION = '2026-09-11-v2';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
         const UDDOKTA_CACHE_META_KEY = 'dms_uddokta_master_meta';
         const UDDOKTA_CACHE_TTL = 5 * 60 * 1000; // 5 minutes fallback only
@@ -837,7 +786,6 @@ table{width:100%;max-width:100%}
         let reportsData = [];
         let currentUser = null;
         let capturedPhotoData = null;
-        let currentCameraFacing = 'user';
         window.visitNotices = {};
         window.userUpdateNotices = {};
         window.__lastUserUpdateKeys = {};
@@ -907,38 +855,17 @@ table{width:100%;max-width:100%}
             return set;
         }
 
-        function canSeeReport(r, options) {
+        function canSeeReport(r) {
             const info = getRoleInfo();
-            const opts = (options && typeof options === 'object') ? options : {};
-            const selectedDss = String(opts.selectedDss || '').trim().toUpperCase();
-            const selectedDso = normalizeScopeWallet(opts.selectedDso || '');
-            const assignedMode = !!opts.assignedMode;
-            const reportDso = normalizeScopeWallet(r.dsoWallet || r.dsoNumber);
-            const reportDss = String(r.dssName || '').trim().toUpperCase();
-            const owner = String(r.user || '').trim().toLowerCase();
-            const me = String(currentUser || '').trim().toLowerCase();
-
-            if (info.role === 'Admin') return true;
-            if (info.role === 'DSO') return reportDso === normalizeScopeWallet(info.dsoWallet);
-
+            if (info.role === 'Admin' || info.role === 'DM') return true;
             if (info.role === 'DSS') {
-                // Default: DSS sees only reports submitted by that DSS.
-                // Selecting a DSO switches to that DSS's assigned DSO reports only.
-                if (!assignedMode || !selectedDso) return owner === me;
+                const a = String(r.dssName || '').trim().toUpperCase();
                 const allowed = String(info.dssName || '').trim().toUpperCase();
-                return dssHasAssignedDso(allowed, reportDso) &&
-                    reportDso === selectedDso &&
-                    (!reportDss || reportDss === allowed || reportDss.includes(allowed) || allowed.includes(reportDss));
+                if (!a || !allowed || !(a === allowed || a.includes(allowed) || allowed.includes(a))) return false;
+                // DSS can see only visits of DSO(s) assigned to that DSS.
+                return dssHasAssignedDso(allowed, r.dsoWallet || r.dsoNumber);
             }
-
-            if (info.role === 'DM') {
-                // Default: DM sees only the DM's own reports.
-                // Selecting DSS/DSO switches to the selected DSS's reports.
-                if (!assignedMode) return owner === me;
-                if (selectedDss && (!reportDss || !(reportDss === selectedDss || reportDss.includes(selectedDss) || selectedDss.includes(reportDss)))) return false;
-                if (selectedDso && reportDso !== selectedDso) return false;
-                return getReportType(r) === 'dss';
-            }
+            if (info.role === 'DSO') return normalizeScopeWallet(r.dsoWallet || r.dsoNumber) === normalizeScopeWallet(info.dsoWallet);
             return false;
         }
 
@@ -957,15 +884,9 @@ table{width:100%;max-width:100%}
             const select = document.getElementById('filter-report-type');
             if (!wrap || !select) return;
             const role = getRoleInfo().role;
-            const showTypeFilter = role === 'Admin';
+            const showTypeFilter = role === 'Admin' || role === 'DM';
             wrap.classList.toggle('hidden', !showTypeFilter);
             if (!showTypeFilter) select.value = 'all';
-            const dssSelect=document.getElementById('filter-dss');
-            if(dssSelect && dssSelect.parentElement){
-                const showDssFilter=(role==='Admin' || role==='DM');
-                dssSelect.parentElement.classList.toggle('hidden',!showDssFilter);
-                if(!showDssFilter) dssSelect.value='';
-            }
         }
 
         function canSeeUddokta(item) {
@@ -1056,7 +977,6 @@ table{width:100%;max-width:100%}
         }
 
         function clearVisitFormForNewVisit() {
-            const dupCard=document.getElementById('duplicate-uddokta-card'); if(dupCard){dupCard.classList.add('hidden'); dupCard.innerHTML='';}
             const form = document.getElementById('visit-form');
             if (form) form.reset();
 
@@ -1080,10 +1000,6 @@ table{width:100%;max-width:100%}
             if (preview) { preview.src = ''; preview.style.display = 'none'; }
             if (video) video.style.display = 'block';
             if (capture) { capture.classList.remove('hidden'); capture.innerText = '📷 Start Camera'; }
-            const frontBtn = document.getElementById('btn-front-camera');
-            const backBtn = document.getElementById('btn-back-camera');
-            if (frontBtn) frontBtn.classList.toggle('active', currentCameraFacing === 'user');
-            if (backBtn) backBtn.classList.toggle('active', currentCameraFacing === 'environment');
             if (recapture) recapture.classList.add('hidden');
 
             setTodayDate();
@@ -1307,10 +1223,7 @@ table{width:100%;max-width:100%}
                 document.getElementById('uddokta-excel-file').value = '';
                 document.getElementById('excel-upload-preview').classList.add('hidden');
                 pendingUddoktaExcelRows = [];
-                alert(`Uddokta information updated successfully!
-Updated: ${updated}
-Added: ${added}
-Total: ${merged.length}`);
+                alert(`Uddokta information updated successfully!\nUpdated: ${updated}\nAdded: ${added}\nTotal: ${merged.length}`);
             } catch (err) {
                 if (status) status.innerText = 'Upload failed: ' + err.message;
                 alert('Excel upload failed: ' + err.message);
@@ -1500,42 +1413,6 @@ Total: ${merged.length}`);
             }
         }
 
-        function getCurrentSelectedDuplicateReports() {
-            const role=getRoleInfo();
-            const date=(document.getElementById('visit-date')||{}).value||getDhakaToday();
-            const no=normalizeUddoktaNumber((document.getElementById('uddokta-number')||{}).value||'');
-            const name=String((document.getElementById('uddokta-name')||{}).value||'').trim().toUpperCase();
-            const selectedDso=normalizeScopeWallet((document.getElementById('dso-number')||{}).value||role.dsoWallet||'');
-            if(!date || (!no && !name)) return [];
-            return reportsData.filter(r=>{
-                if(String(r.date||'')!==String(date)) return false;
-                // One Uddokta can be visited only once per day by the same DSO.
-                const reportDso=normalizeScopeWallet(r.dsoWallet||r.dsoNumber||'');
-                if(selectedDso && reportDso !== selectedDso) return false;
-                const sameNo=no && normalizeUddoktaNumber(r.uddoktaNumber||'')===no;
-                const sameName=name && String(r.uddoktaName||'').trim().toUpperCase()===name;
-                return !!(sameNo || sameName);
-            });
-        }
-
-        function hasDuplicateUddoktaToday() {
-            return getCurrentSelectedDuplicateReports().length > 0;
-        }
-
-        function updateDuplicateUddoktaCard() {
-            const card=document.getElementById('duplicate-uddokta-card');
-            if(!card) return;
-            const found=getCurrentSelectedDuplicateReports();
-            if(found.length){
-                card.classList.remove('hidden');
-                const latest=found[0];
-                card.innerHTML=`🚫 <b>Duplicate Uddokta — Submit বন্ধ</b><br>${latest.uddoktaName||'এই Uddokta'} (${latest.uddoktaNumber||''}) আজকে ইতিমধ্যে visit হয়েছে। একই দিনে একই Uddokta-কে দ্বিতীয়বার visit করা যাবে না।`;
-            } else {
-                card.classList.add('hidden');
-                card.innerHTML='';
-            }
-        }
-
         function selectUddokta(item) {
             // Excel order:
             // [DSO Wallet, Uddokta Number, Uddokta Name, DSS Name]
@@ -1546,7 +1423,6 @@ Total: ${merged.length}`);
 
             document.getElementById('search-input').value = String(item[1] ?? '');
             document.getElementById('search-results').style.display = 'none';
-            updateDuplicateUddoktaCard();
             updateVisitSubmitState();
         }
 
@@ -1580,81 +1456,22 @@ Total: ${merged.length}`);
 
         window.addEventListener('beforeunload', stopCamera);
 
-        async function initCamera(facingMode = currentCameraFacing) {
+        async function initCamera() {
             const video = document.getElementById('camera-video');
-            if (!video) return false;
-            currentCameraFacing = facingMode === 'environment' ? 'environment' : 'user';
-
-            // Modern browsers
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                stopCamera();
-                try {
-                    const constraints = {
-                        audio: false,
-                        video: {
-                            facingMode: { ideal: currentCameraFacing },
-                            width: { ideal: 1280 },
-                            height: { ideal: 720 }
-                        }
-                    };
-                    let stream;
-                    try {
-                        stream = await navigator.mediaDevices.getUserMedia(constraints);
-                    } catch (firstErr) {
-                        // Some Safari/older browsers reject facingMode constraints.
-                        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-                    }
-                    video.srcObject = stream;
-                    video.muted = true;
-                    video.playsInline = true;
-                    video.autoplay = true;
-                    video.style.display = 'block';
-                    await video.play().catch(() => {});
-                    const cap = document.getElementById('btn-capture');
-                    if (cap) cap.innerText = currentCameraFacing === 'user' ? '🤳 Capture Selfie' : '📷 Capture Photo';
-                    return true;
-                } catch (err) {
-                    const secureMsg = window.isSecureContext ? '' : ' HTTPS/localhost প্রয়োজন.';
-                    showAlert('Camera permission is required. Browser permission allow করুন.' + secureMsg, 'error');
-                    return false;
-                }
-            }
-
-            // Legacy fallback for older browsers that still expose vendor getUserMedia.
-            const legacy = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
-            if (!legacy) {
-                showAlert('এই browser-এ Camera support নেই.', 'error');
-                return false;
-            }
+            if (!video || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { showAlert('Camera is not supported in this browser.', 'error'); return false; }
             stopCamera();
             try {
-                const stream = await new Promise((resolve, reject) => legacy.call(navigator, { video: true, audio: false }, resolve, reject));
+                let stream;
+                try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }); }
+                catch(e) { stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }); }
                 video.srcObject = stream;
-                video.muted = true;
-                video.playsInline = true;
-                video.autoplay = true;
                 video.style.display = 'block';
-                await video.play().catch(() => {});
-                const cap = document.getElementById('btn-capture');
-                if (cap) cap.innerText = currentCameraFacing === 'user' ? '🤳 Capture Selfie' : '📷 Capture Photo';
+                await video.play().catch(()=>{});
+                document.getElementById('btn-capture').innerText = '🤳 Capture Selfie';
                 return true;
             } catch (err) {
-                showAlert('Camera permission is required. Browser permission allow করুন.', 'error');
+                showAlert('Camera permission is required. Please allow camera access and try again.', 'error');
                 return false;
-            }
-        }
-
-        async function switchCamera(facingMode) {
-            if (capturedPhotoData) return;
-            currentCameraFacing = facingMode === 'environment' ? 'environment' : 'user';
-            document.getElementById('btn-front-camera')?.classList.toggle('active', currentCameraFacing === 'user');
-            document.getElementById('btn-back-camera')?.classList.toggle('active', currentCameraFacing === 'environment');
-            const video = document.getElementById('camera-video');
-            // If camera is already running, restart it with the selected camera.
-            if (video && video.srcObject) {
-                await initCamera(currentCameraFacing);
-            } else {
-                await initCamera(currentCameraFacing);
             }
         }
 
@@ -1695,7 +1512,6 @@ Total: ${merged.length}`);
         }
 
         function updateVisitSubmitState() {
-            try { updateDuplicateUddoktaCard(); } catch(e) {}
             const btn = document.getElementById('btn-submit');
             const state = getVisitFieldValidity();
             const fieldIds = [
@@ -1708,8 +1524,7 @@ Total: ${merged.length}`);
             });
             const cameraBox = document.querySelector('.camera-box');
             if (cameraBox) cameraBox.classList.toggle('submit-invalid', state.selfieMissing);
-            const duplicateToday = hasDuplicateUddoktaToday();
-            const ready = state.invalidFields.length === 0 && !state.selfieMissing && !duplicateToday;
+            const ready = state.invalidFields.length === 0 && !state.selfieMissing;
             if (btn) {
                 btn.hidden = false;
                 btn.removeAttribute('hidden');
@@ -1720,7 +1535,7 @@ Total: ${merged.length}`);
                 btn.disabled = !ready;
                 btn.style.opacity = ready ? '1' : '.55';
                 btn.style.cursor = ready ? 'pointer' : 'not-allowed';
-                btn.title = duplicateToday ? 'এই Uddokta আজকে ইতিমধ্যে visit হয়েছে' : (ready ? 'Submit Report' : 'লাল দেখানো প্রয়োজনীয় field পূরণ করুন');
+                btn.title = ready ? 'Submit Report' : 'লাল দেখানো প্রয়োজনীয় field পূরণ করুন';
                 btn.setAttribute('aria-disabled', String(!ready));
                 btn.textContent = 'Submit Report to Firebase';
             }
@@ -1747,7 +1562,7 @@ Total: ${merged.length}`);
             const preview = document.getElementById('photo-preview');
             if (!video.srcObject) {
                 const started = await initCamera();
-                if (started) showAlert(currentCameraFacing === 'user' ? 'Front camera ready. Capture Selfie চাপুন.' : 'Back camera ready. Capture চাপুন.', 'success');
+                if (started) showAlert('Camera ready. Press Capture Selfie again.', 'success');
                 return;
             }
             if (!video.videoWidth || !video.videoHeight) {
@@ -1809,43 +1624,33 @@ Total: ${merged.length}`);
         }
 
         async function reverseGeocodeFallback(lat, lon) {
-            // OpenStreetMap Nominatim only. Try detailed address first, then
-            // progressively broader OSM levels so rural/less-mapped locations
-            // can still resolve to a village, upazila, district or city.
-            const zooms = [18, 16, 14, 12, 10];
-            for (const zoom of zooms) {
-                const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=${zoom}&addressdetails=1&accept-language=bn,en`;
-                for (let attempt = 0; attempt < 2; attempt++) {
-                    try {
-                        const controller = new AbortController();
-                        const timer = setTimeout(() => controller.abort(), 12000);
-                        const response = await fetch(url, {
-                            method: 'GET',
-                            mode: 'cors',
-                            cache: 'no-store',
-                            headers: { 'Accept': 'application/json', 'Accept-Language': 'bn,en' },
-                            signal: controller.signal
-                        });
-                        clearTimeout(timer);
-                        if (response.ok) {
-                            const data = await response.json();
-                            const a = data.address || {};
-                            const parts = [
-                                a.amenity, a.building, a.house_number, a.road,
-                                a.neighbourhood, a.suburb, a.village, a.town,
-                                a.city, a.municipality, a.upazila, a.county,
-                                a.district, a.state
-                            ].filter(Boolean);
-                            const name = [...new Set(parts.map(v => String(v).trim()).filter(Boolean))].join(', ');
-                            if (name) return name;
-                            if (data.name) return String(data.name).trim();
-                            if (data.display_name) return String(data.display_name).trim();
-                        }
-                    } catch (e) {
-                        console.warn('OpenStreetMap reverse geocode failed:', e);
+            // OpenStreetMap Nominatim only. Retry once if the public endpoint is busy.
+            const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=18&addressdetails=1&accept-language=bn,en`;
+            for (let attempt = 0; attempt < 2; attempt++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        mode: 'cors',
+                        cache: 'no-store',
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        const a = data.address || {};
+                        const parts = [
+                            a.amenity, a.building, a.house_number, a.road,
+                            a.neighbourhood || a.suburb,
+                            a.village || a.town || a.city || a.municipality,
+                            a.upazila || a.county, a.district, a.state
+                        ].filter(Boolean);
+                        const name = [...new Set(parts)].join(', ').trim();
+                        if (name) return name;
+                        if (data.display_name) return String(data.display_name).trim();
                     }
-                    if (attempt === 0) await new Promise(r => setTimeout(r, 1200));
+                } catch (e) {
+                    console.warn('OpenStreetMap reverse geocode failed:', e);
                 }
+                if (attempt === 0) await new Promise(r => setTimeout(r, 900));
             }
             return '';
         }
@@ -1857,57 +1662,30 @@ Total: ${merged.length}`);
             });
         }
 
-        async function fetchGPS() {
-            const gpsInput = document.getElementById('gps-location');
-            const nameInput = document.getElementById('gps-location-name');
-            if (!gpsInput || !nameInput) return;
-
-            gpsInput.value = '';
-            nameInput.value = 'Getting location...';
-            nameInput.title = '';
-            updateVisitSubmitState();
-
+        async function getLocationPermissionState() {
             try {
-                let pos = await getPosition({ enableHighAccuracy:true, timeout:30000, maximumAge:0 });
-                // If the first fix is weak, ask once more for a fresh fix.
-                if (Number.isFinite(pos.coords.accuracy) && pos.coords.accuracy > 120) {
-                    try {
-                        const retry = await getPosition({ enableHighAccuracy:true, timeout:30000, maximumAge:0 });
-                        if (Number.isFinite(retry.coords.accuracy) && retry.coords.accuracy < pos.coords.accuracy) pos = retry;
-                    } catch(e) {}
+                if (navigator.permissions && navigator.permissions.query) {
+                    const result = await navigator.permissions.query({ name: 'geolocation' });
+                    return result.state;
                 }
+            } catch (e) {}
+            return 'prompt';
+        }
 
-                const lat = Number(pos.coords.latitude);
-                const lon = Number(pos.coords.longitude);
-                const accuracy = Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : 0;
-                if (!Number.isFinite(lat) || !Number.isFinite(lon)) throw new Error('Invalid GPS coordinates');
-
-                // Store GPS coordinates, but the visible location name comes only from OSM.
-                gpsInput.value = `${lat.toFixed(7)}, ${lon.toFixed(7)}`;
-                const resolvedName = await reverseGeocodeFallback(lat, lon);
-
-                if (!resolvedName) {
-                    gpsInput.value = '';
-                    nameInput.value = '';
-                    nameInput.placeholder = 'OpenStreetMap location not found — tap Refresh Location';
-                    nameInput.title = 'OpenStreetMap could not resolve this GPS position. Please try Refresh Location again.';
-                    updateVisitSubmitState();
-                    return;
-                }
-
-                nameInput.value = resolvedName;
-                nameInput.placeholder = 'Location name will appear here';
-                nameInput.title = accuracy ? `GPS accuracy: ±${Math.round(accuracy)}m` : 'GPS location from OpenStreetMap';
-                updateVisitSubmitState();
-            } catch (err) {
-                console.warn('GPS error:', err);
-                gpsInput.value = '';
-                nameInput.value = '';
-                nameInput.placeholder = err && err.code === 1
-                    ? 'Location permission denied — allow GPS and Refresh'
-                    : 'GPS location unavailable — tap Refresh Location';
-                nameInput.title = 'Allow browser location access and try again.';
-                updateVisitSubmitState();
+        function setLocationPermissionButton(state) {
+            const btn = document.getElementById('btn-location-permission');
+            if (!btn) return;
+            btn.disabled = false;
+            btn.classList.remove('btn-primary','btn-sec');
+            if (state === 'granted') {
+                btn.classList.add('btn-sec');
+                btn.textContent = '✅ Location Permission Granted';
+            } else if (state === 'denied') {
+                btn.classList.add('btn-primary');
+                btn.textContent = '📍 Allow Location Permission Again';
+            } else {
+                btn.classList.add('btn-primary');
+                btn.textContent = '📍 Allow Location Permission';
             }
         }
 
@@ -1915,21 +1693,123 @@ Total: ${merged.length}`);
             const btn = document.getElementById('btn-location-permission');
             if (btn) { btn.disabled = true; btn.textContent = '📍 Requesting Permission...'; }
             try {
+                if (!window.isSecureContext && location.hostname !== 'localhost') {
+                    throw new Error('Location requires HTTPS');
+                }
                 if (!navigator.geolocation) throw new Error('Geolocation is not supported');
-                // The browser permission prompt is triggered by this user action.
+
+                const state = await getLocationPermissionState();
+                if (state === 'denied') {
+                    const nameInput = document.getElementById('gps-location-name');
+                    if (nameInput) {
+                        nameInput.value = '';
+                        nameInput.placeholder = 'Location blocked — allow Location for this site in browser settings';
+                        nameInput.title = 'Chrome: lock icon → Site settings → Location → Allow, then reload.';
+                    }
+                    setLocationPermissionButton('denied');
+                    updateVisitSubmitState();
+                    showAlert('Location permission আগে Block করা আছে। Browser Site Settings থেকে Location = Allow করে page Reload করুন.', 'error');
+                    return false;
+                }
+
                 await getPosition({ enableHighAccuracy:true, timeout:30000, maximumAge:0 });
-                if (btn) { btn.textContent = '✅ Location Permission Granted'; btn.classList.remove('btn-primary'); btn.classList.add('btn-sec'); }
+                setLocationPermissionButton('granted');
                 await fetchGPS();
+                return true;
             } catch (err) {
                 console.warn('Location permission request:', err);
-                if (btn) { btn.disabled = false; btn.textContent = err && err.code === 1 ? '📍 Allow Location Permission Again' : '📍 Allow Location Permission'; }
                 const nameInput = document.getElementById('gps-location-name');
-                if (nameInput && err && err.code === 1) {
+                if (nameInput) {
                     nameInput.value = '';
-                    nameInput.placeholder = 'Permission denied — click Allow Location Permission';
-                    nameInput.title = 'Browser/phone location permission is required.';
-                    updateVisitSubmitState();
+                    if (err && err.code === 1) {
+                        nameInput.placeholder = 'Location blocked — allow Location for this site';
+                        nameInput.title = 'Chrome: lock icon → Site settings → Location → Allow, then reload.';
+                        setLocationPermissionButton('denied');
+                        showAlert('Location permission denied. Browser Site Settings থেকে Location = Allow করে Reload করুন.', 'error');
+                    } else {
+                        nameInput.placeholder = 'Location not available — try Refresh Location';
+                        nameInput.title = 'GPS could not get a position. Check phone/PC Location and try again.';
+                        setLocationPermissionButton('prompt');
+                        showAlert('GPS location পাওয়া যায়নি। Device Location ON করে আবার চেষ্টা করুন.', 'error');
+                    }
                 }
+                updateVisitSubmitState();
+                return false;
+            }
+        }
+
+        async function fetchGPS() {
+            const gpsInput = document.getElementById('gps-location');
+            const nameInput = document.getElementById('gps-location-name');
+            if (!gpsInput || !nameInput) return false;
+
+            gpsInput.value = '';
+            nameInput.value = 'Getting location...';
+            nameInput.title = '';
+            updateVisitSubmitState();
+
+            try {
+                const permission = await getLocationPermissionState();
+                if (permission === 'denied') {
+                    nameInput.value = '';
+                    nameInput.placeholder = 'Location blocked — allow Location for this site';
+                    nameInput.title = 'Chrome: lock icon → Site settings → Location → Allow, then reload.';
+                    setLocationPermissionButton('denied');
+                    updateVisitSubmitState();
+                    return false;
+                }
+
+                let pos = await getPosition({ enableHighAccuracy:true, timeout:45000, maximumAge:0 });
+                if (Number.isFinite(pos.coords.accuracy) && pos.coords.accuracy > 120) {
+                    try {
+                        const retry = await getPosition({ enableHighAccuracy:true, timeout:45000, maximumAge:0 });
+                        if (Number.isFinite(retry.coords.accuracy) && retry.coords.accuracy < pos.coords.accuracy) pos = retry;
+                    } catch(e) {}
+                }
+
+                const lat = Number(pos.coords.latitude);
+                const lon = Number(pos.coords.longitude);
+                const accuracy = Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : 0;
+                gpsInput.value = `${lat.toFixed(7)}, ${lon.toFixed(7)}`;
+                updateOSMMap(lat, lon, accuracy);
+
+                const resolvedName = await reverseGeocodeFallback(lat, lon);
+                if (!resolvedName) {
+                    gpsInput.value = '';
+                    nameInput.value = '';
+                    nameInput.placeholder = 'Location name not found — Refresh Location';
+                    nameInput.title = 'OpenStreetMap could not resolve this GPS position.';
+                    setLocationPermissionButton('granted');
+                    updateVisitSubmitState();
+                    return false;
+                }
+                nameInput.value = resolvedName;
+                nameInput.title = accuracy ? `GPS accuracy: ±${Math.round(accuracy)}m` : 'GPS location';
+                setLocationPermissionButton('granted');
+                updateVisitSubmitState();
+                return true;
+            } catch (err) {
+                console.warn('GPS error:', err);
+                gpsInput.value = '';
+                nameInput.value = '';
+                if (err && err.code === 1) {
+                    nameInput.placeholder = 'Location blocked — allow Location for this site';
+                    nameInput.title = 'Chrome: lock icon → Site settings → Location → Allow, then reload.';
+                    setLocationPermissionButton('denied');
+                } else if (err && err.code === 2) {
+                    nameInput.placeholder = 'Location unavailable — turn on Device Location';
+                    nameInput.title = 'Device could not determine your position.';
+                    setLocationPermissionButton('prompt');
+                } else if (err && err.code === 3) {
+                    nameInput.placeholder = 'GPS timeout — press Refresh Location';
+                    nameInput.title = 'GPS took too long to respond.';
+                    setLocationPermissionButton('prompt');
+                } else {
+                    nameInput.placeholder = 'Location unavailable — press Refresh Location';
+                    setLocationPermissionButton('prompt');
+                }
+                updateVisitSubmitState();
+                return false;
             }
         }
 
@@ -1938,13 +1818,6 @@ Total: ${merged.length}`);
         // ----------------------------------------------------
         document.getElementById('visit-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-
-            if (hasDuplicateUddoktaToday()) {
-                showAlert('এই Uddokta আজকে ইতিমধ্যে visit হয়েছে। একই দিনে একই Uddokta-কে দ্বিতীয়বার Submit করা যাবে না.', 'error');
-                updateDuplicateUddoktaCard();
-                updateVisitSubmitState();
-                return;
-            }
 
             if (!isVisitFormComplete()) {
                 showAlert('সব তথ্য, GPS Location এবং Selfie সম্পূর্ণ না হলে Submit করা যাবে না.', 'error');
@@ -2016,24 +1889,6 @@ Total: ${merged.length}`);
             };
 
             try {
-                // Re-check immediately before writing so a realtime update cannot create a second visit.
-                const latestSnap = await db.ref('visit_reports').once('value');
-                const latestReports = latestSnap.val() || {};
-                const newNo = normalizeUddoktaNumber(newReport.uddoktaNumber || '');
-                const newName = String(newReport.uddoktaName || '').trim().toUpperCase();
-                const newDso = normalizeScopeWallet(newReport.dsoWallet || newReport.dsoNumber || '');
-                const duplicateInFirebase = Object.values(latestReports).some(r => {
-                    if (!r || String(r.date || '') !== String(newReport.date || '')) return false;
-                    if (normalizeScopeWallet(r.dsoWallet || r.dsoNumber || '') !== newDso) return false;
-                    const rn = normalizeUddoktaNumber(r.uddoktaNumber || '');
-                    const rname = String(r.uddoktaName || '').trim().toUpperCase();
-                    return !!((newNo && rn === newNo) || (newName && rname === newName));
-                });
-                if (duplicateInFirebase) {
-                    showAlert('এই Uddokta আজকে ইতিমধ্যে visit হয়েছে। দ্বিতীয়বার Submit করা যাবে না.', 'error');
-                    updateDuplicateUddoktaCard();
-                    return;
-                }
                 await db.ref('visit_reports/' + reportId).set(newReport);
                 const anyNotOk = [newReport.festoonStatus,newReport.bannerStatus,newReport.fileStatus].includes('Not OK');
                 if (String(newReport.user||'').toLowerCase()==='zahangir' && anyNotOk) {
@@ -2042,10 +1897,8 @@ Total: ${merged.length}`);
                 showAlert('Visit Report successfully saved to Firebase!', 'success');
                 // A successful submit always starts a completely fresh Visit form.
                 clearVisitFormForNewVisit();
-                // Every successful submit starts a completely fresh GPS/OSM lookup.
-                // Do not reuse the previous visit's coordinates or location name.
-                try { await fetchGPS(); } catch (e) { console.warn('Fresh GPS refresh after submit failed:', e); }
-                setTimeout(() => { try { fetchGPS(); } catch (e) {} }, 700);
+                // Get a fresh GPS position for the next visit without restoring old fields.
+                setTimeout(() => { try { fetchGPS(); } catch (e) {} }, 150);
             } catch (err) {
                 showAlert('Error saving data to Firebase: ' + err.message, 'error');
             } finally {
@@ -2113,10 +1966,7 @@ Total: ${merged.length}`);
             if (tab !== 'form') stopCamera();
 
             if (tab === 'form') {
-                // Browser cannot bypass the OS permission prompt; once permission is granted,
-                // location is requested automatically whenever New Visit opens.
                 fetchGPS();
-                setTimeout(() => { try { if (!document.getElementById('gps-location').value) fetchGPS(); } catch (e) {} }, 1200);
                 stopCamera();
             }
             if (tab === 'daily') {
@@ -2129,25 +1979,23 @@ Total: ${merged.length}`);
 
         function populateDsoFilter(){
             const sel=document.getElementById('filter-dso'); if(!sel) return;
-            const current=normalizeScopeWallet(sel.value);
+            const current=sel.value;
             const info=getRoleInfo();
-            const selectedDss=String((document.getElementById('filter-dss')||{}).value||'').trim();
             sel.innerHTML='<option value="">All DSO</option>';
             let wallets=[];
             if(info.role==='DSO') {
                 wallets=[normalizeScopeWallet(info.dsoWallet)];
             } else if(info.role==='DSS') {
                 wallets=Array.from(getAssignedDsoWalletsForDss(info.dssName));
-            } else if(info.role==='DM' && selectedDss) {
-                wallets=Array.from(getAssignedDsoWalletsForDss(selectedDss));
             } else {
                 for(let i=801;i<=845;i++) wallets.push('13325178'+String(i-800).padStart(2,'0'));
             }
-            wallets=[...new Set(wallets.map(normalizeScopeWallet).filter(Boolean))].sort((a,b)=>Number(a)-Number(b));
+            wallets.sort();
             wallets.forEach(wallet=>{
+                if(!wallet) return;
                 const suffix=wallet.slice(-2);
                 const dsoNum=String(800+Number(suffix));
-                sel.insertAdjacentHTML('beforeend',`<option value="${wallet}">DSO ${dsoNum}</option>`);
+                sel.insertAdjacentHTML('beforeend',`<option value="${wallet}">${dsoNum} - ${wallet}</option>`);
             });
             if(wallets.includes(current)) sel.value=current;
             else sel.value='';
@@ -2167,45 +2015,31 @@ Total: ${merged.length}`);
             tableBody.innerHTML='';
             const role=getRoleInfo();
             setupReportTypeFilter();
-            const dssEl=document.getElementById('filter-dss');
-            const selectedDss=String((dssEl||{}).value||'').trim().toUpperCase();
             populateDsoFilter();
             const fd=(document.getElementById('filter-date')||{}).value||'';
             const fds=normalizeScopeWallet((document.getElementById('filter-dso')||{}).value||'');
+            let fdss=((document.getElementById('filter-dss')||{}).value||'').toUpperCase();
             const fq=((document.getElementById('filter-search')||{}).value||'').trim().toUpperCase();
             const frt=(document.getElementById('filter-report-type')||{}).value||'all';
-            const assignedMode=(role.role==='DSS' && !!fds) || (role.role==='DM' && (!!selectedDss || !!fds));
-
-            const rows=reportsData.filter(r=>canSeeReport(r,{assignedMode,selectedDss,selectedDso:fds})).filter(r=>{
+            if(role.role==='DSS') fdss=String(role.dssName||'').toUpperCase();
+            const rows=reportsData.filter(canSeeReport).filter(r=>{
                 if(frt !== 'all' && getReportType(r) !== frt) return false;
                 if(fd && r.date!==fd) return false;
                 if(fds && normalizeScopeWallet(r.dsoWallet||r.dsoNumber)!==fds) return false;
-                if(selectedDss && role.role==='DM' && !String(r.dssName||'').toUpperCase().includes(selectedDss)) return false;
+                if(fdss && !String(r.dssName||'').toUpperCase().includes(fdss)) return false;
                 if(fq && !(String(r.uddoktaName||'').toUpperCase().includes(fq)||String(r.uddoktaNumber||'').toUpperCase().includes(fq))) return false;
                 return true;
             });
-
             const reportCount = document.getElementById('report-total-visit-count');
             if(reportCount) reportCount.innerText = rows.length;
             if(!rows.length){ tableBody.innerHTML='<tr><td colspan="11" class="empty-state">No visit data found</td></tr>'; return; }
-
-            // Duplicate = same Uddokta submitted more than once on the same date in the current visible scope.
-            const dupCount=new Map();
-            rows.forEach(r=>{
-                const key=(String(r.date||'')+'|'+normalizeUddoktaNumber(r.uddoktaNumber||'')+'|'+String(r.uddoktaName||'').trim().toUpperCase());
-                dupCount.set(key,(dupCount.get(key)||0)+1);
-            });
-
             rows.forEach(r=>{
                 const tr=document.createElement('tr');
                 const idx=reportsData.indexOf(r);
                 const isDss = role.role === 'DSS';
-                const key=(String(r.date||'')+'|'+normalizeUddoktaNumber(r.uddoktaNumber||'')+'|'+String(r.uddoktaName||'').trim().toUpperCase());
-                const isDuplicate=(dupCount.get(key)||0)>1;
-                if(isDuplicate) tr.classList.add('duplicate-uddokta-row');
                 const reviewHtml = isDss && (r.festoonStatus==='Not OK'||r.bannerStatus==='Not OK'||r.fileStatus==='Not OK') ? `<div class="review-grid">${r.festoonStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${r.id}','OK','festoonStatus')">✓ Festoon OK</button>`:''}${r.bannerStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${r.id}','OK','bannerStatus')">✓ Banner OK</button>`:''}${r.fileStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${r.id}','OK','fileStatus')">✓ File OK</button>`:''}</div>` : `<span>${r.reviewStatus||'Pending'}</span>`;
                 const updatedText = r.reviewUpdatedAt ? `<div class="review-update">Updated: ${r.reviewUpdatedAt}${r.reviewUpdatedBy?' · '+r.reviewUpdatedBy:''}</div>` : '';
-                tr.innerHTML=`<td>${r.visitTime||(r.timestamp?new Date(r.timestamp).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}):'')}</td><td>${r.dsoWallet||r.dsoNumber||''}</td><td>${r.uddoktaName||''}${isDuplicate?'<div style="font-size:.68rem;color:#b45309;margin-top:3px;font-weight:900">⚠ Duplicate Visit</div>':''}</td><td>${r.uddoktaNumber||''}</td><td>${r.festoonStatus||'Pending'}</td><td>${r.bannerStatus||'Pending'}</td><td>${r.fileStatus||'Pending'}</td><td>${reviewHtml}${updatedText}</td><td><small>${r.locationName||r.gps||''}</small></td><td>${r.photo?`<img src="${r.photo}" class="table-img" alt="Visit Uddokta Photo" onclick="showVisitDetails(${idx})">`:''}</td><td><button class="detail-btn" onclick="showVisitDetails(${idx})">View</button></td>`;
+                tr.innerHTML=`<td>${r.visitTime||(r.timestamp?new Date(r.timestamp).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}):'')}</td><td>${r.dsoWallet||r.dsoNumber||''}</td><td>${r.uddoktaName||''}</td><td>${r.uddoktaNumber||''}</td><td>${r.festoonStatus||'Pending'}</td><td>${r.bannerStatus||'Pending'}</td><td>${r.fileStatus||'Pending'}</td><td>${reviewHtml}${updatedText}</td><td><small>${r.locationName||r.gps||''}</small></td><td>${r.photo?`<img src="${r.photo}" class="table-img" alt="Visit Uddokta Photo" onclick="showVisitDetails(${idx})">`:''}</td><td><button class="detail-btn" onclick="showVisitDetails(${idx})">View</button></td>`;
                 tableBody.appendChild(tr);
             });
         }
