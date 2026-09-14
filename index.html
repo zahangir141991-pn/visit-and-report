@@ -501,6 +501,7 @@ table{width:100%;max-width:100%}
 <header id="app-header">
   <button type="button" id="mobile-menu-btn" aria-label="Open navigation" aria-expanded="false" onclick="toggleMobileNav()">☰</button>
   <h1>DMS-Nagad Manikganj</h1>
+  <div id="header-user-name" aria-live="polite"></div>
 </header>
 <div id="mobile-nav-overlay" onclick="closeMobileNav()" aria-hidden="true"></div>
 
@@ -526,10 +527,7 @@ table{width:100%;max-width:100%}
   </div>
 </div>
 
-<div id="user-info-bar" class="user-bar hidden">
-  <span>👤 <b id="current-user-name"></b> · <span id="current-user-role"></span> · User ID: <b id="current-user-id"></b></span>
 
-</div>
 
 <style id="login-panel-fix">
 /* AUTH UI STATE
@@ -819,7 +817,6 @@ table{width:100%;max-width:100%}
 
     <!-- Left Navigation Sidebar -->
     <aside id="app-nav" class="nav-bar nav-sidebar hidden">
-        <div class="sidebar-brand" id="sidebar-user-display">👤 <span id="sidebar-user-name">User</span></div>
         <div class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')"><span>🏠</span><span>Dashboard</span></div>
         <div class="nav-item visit-parent" id="nav-visit" onclick="toggleVisitMenu(event)"><span>📋</span><span>Visit <b class="menu-arrow">▾</b></span></div>
         <div id="visit-menu-panel" class="visit-menu-panel">
@@ -1213,6 +1210,8 @@ table{width:100%;max-width:100%}
                     (roleInfo.role === 'DM' ? 'DM - ZAHANGIR' :
                     (roleInfo.role === 'DSS' ? 'DSS - ' + String(roleInfo.dssName || user).toUpperCase() :
                     (roleInfo.role === 'DSO' ? 'DSO - ' + dsoUserId : user.toUpperCase())));
+                const headerNameEl = document.getElementById('header-user-name');
+                if (headerNameEl) headerNameEl.innerText = displayName;
                 const nameEl = document.getElementById('current-user-name');
                 const roleEl = document.getElementById('current-user-role');
                 const idEl = document.getElementById('current-user-id');
@@ -1294,8 +1293,8 @@ table{width:100%;max-width:100%}
             if (ma) { ma.classList.add('hidden'); ma.classList.remove('app-visible'); }
             if (ub) { ub.classList.add('hidden'); ub.classList.remove('user-visible'); }
             if (an) { an.classList.add('hidden'); an.classList.remove('nav-visible'); }
-            const sidebarNameEl = document.getElementById('sidebar-user-name');
-            if (sidebarNameEl) sidebarNameEl.innerText = 'User';
+            const headerNameEl = document.getElementById('header-user-name');
+            if (headerNameEl) headerNameEl.innerText = '';
             document.getElementById('login-pass').value = '';
             document.getElementById('login-user').focus();
         }
