@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DMS-Nagad</title>
+    <title>DMS</title>
     
     <!-- OpenStreetMap + Leaflet map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
@@ -1240,7 +1240,7 @@ table{width:100%;max-width:100%}
                     (roleInfo.role === 'DSO' ? 'DSO - ' + dsoUserId : user.toUpperCase())));
                 const headerNameEl = document.getElementById('header-user-name');
                 const topUserId = roleInfo.role === 'DSO' ? dsoUserId : String(user || '').toUpperCase();
-                if (headerNameEl) headerNameEl.innerText = 'User ID: ' + topUserId;
+                if (headerNameEl) headerNameEl.innerText = displayName;
                 const nameEl = document.getElementById('current-user-name');
                 const roleEl = document.getElementById('current-user-role');
                 const idEl = document.getElementById('current-user-id');
