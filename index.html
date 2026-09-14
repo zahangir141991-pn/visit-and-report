@@ -388,12 +388,45 @@ table{width:100%;max-width:100%}
 
 
 <style id="hide-osm-map">
-});
-                </script>
-            </div>
-        </div>
+/* OSM map is intentionally hidden; only reverse-geocoded location name is shown. */
+#osm-map,.osm-map-note{display:none!important}
+</style>
 
-        <!-- Main App Section -->
+<header id="app-header">
+  <h1>DMS-Nagad Manikganj</h1>
+</header>
+
+<div id="view-login" class="page active" style="display:block!important;">
+  <div class="container">
+    <div class="card" style="max-width:420px;margin:60px auto 20px;text-align:left;padding:24px;">
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-size:2.5rem;">🔐</div>
+        <h2 style="font-size:1.3rem;margin-top:8px;">Login</h2>
+        <p style="color:#64748b;font-size:.85rem;margin-top:5px;">DMS-Nagad Manikganj</p>
+      </div>
+      <div id="login-alert" class="alert"></div>
+      <div class="form-group">
+        <label for="login-user">User ID</label>
+        <input type="text" id="login-user" autocomplete="username" placeholder="Enter User ID">
+      </div>
+      <div class="form-group">
+        <label for="login-pass">Password</label>
+        <input type="password" id="login-pass" autocomplete="current-password" placeholder="Enter Password">
+      </div>
+      <button type="button" class="btn" onclick="login()">Login</button>
+    </div>
+  </div>
+</div>
+
+<div id="user-info-bar" class="user-bar hidden">
+  <span><b id="current-user-name"></b> · <span id="current-user-role"></span></span>
+  <div style="display:flex;gap:6px;">
+    <button type="button" class="btn btn-sm btn-sec" onclick="switchTab('change-pass')">🔑 Password</button>
+    <button type="button" class="btn btn-sm btn-danger" onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<!-- Main App Section -->
         <div id="main-app" class="hidden">
 
             <!-- Dashboard Page -->
@@ -2503,7 +2536,12 @@ window.__submitStateWatcher = setInterval(function(){
     try { updateVisitSubmitState(); } catch(e) {}
 }, 500);
 
-document.addEventListener('DOMContentLoaded', bindVisitFormCompletionListeners);
+document.addEventListener('DOMContentLoaded', function(){
+    bindVisitFormCompletionListeners();
+    const u = document.getElementById('login-user');
+    const p = document.getElementById('login-pass');
+    [u,p].forEach(el => { if(el) el.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); login(); } }); });
+});
         setTimeout(bindVisitFormCompletionListeners, 0);
 
         // Some fields are populated asynchronously by Firebase/search/GPS code.
