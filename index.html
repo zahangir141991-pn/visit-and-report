@@ -413,6 +413,10 @@ table{width:100%;max-width:100%}
 #osm-map, .osm-map-note, #gps-map-link { display:none !important; }
 </style>
 
+<style id="camera-switch-ui">
+.camera-box .btn{margin:3px 2px;min-width:96px;}
+@media(max-width:600px){.camera-box .btn{min-width:88px;font-size:.78rem;padding:8px 9px;}}
+</style>
 </head>
 <body>
 
@@ -579,6 +583,8 @@ table{width:100%;max-width:100%}
                             <img id="photo-preview" alt="Preview">
                             <div style="margin-top: 10px;">
                                 <button type="button" class="btn btn-sm" id="btn-capture" onclick="captureLivePhoto()">📷 Start Camera</button>
+                                <button type="button" class="btn btn-sm btn-sec" id="btn-front-camera" onclick="switchCamera('user')" title="Front Camera">🤳 Front</button>
+                                <button type="button" class="btn btn-sm btn-sec" id="btn-back-camera" onclick="switchCamera('environment')" title="Back Camera">📷 Back</button>
                                 <button type="button" class="btn btn-sm btn-sec hidden" id="btn-recapture" onclick="resetLivePhoto()">🔄 Retake Selfie</button>
                             </div>
                         </div>
@@ -806,6 +812,7 @@ table{width:100%;max-width:100%}
         let reportsData = [];
         let currentUser = null;
         let capturedPhotoData = null;
+        let currentCameraFacing = 'user';
         window.visitNotices = {};
         window.userUpdateNotices = {};
         window.__lastUserUpdateKeys = {};
@@ -1047,7 +1054,7 @@ table{width:100%;max-width:100%}
             const recapture = document.getElementById('btn-recapture');
             if (preview) { preview.src = ''; preview.style.display = 'none'; }
             if (video) video.style.display = 'block';
-            if (capture) { capture.classList.remove('hidden'); capture.innerText = '📷 Start Camera'; }
+            if (capture) { capture.classList.remove('hidden'); capture.innerText = currentCameraFacing === 'user' ? '📷 Start Camera' : '📷 Start Camera'; }
             if (recapture) recapture.classList.add('hidden');
 
             setTodayDate();
@@ -1539,22 +1546,79 @@ Total: ${merged.length}`);
 
         window.addEventListener('beforeunload', stopCamera);
 
-        async function initCamera() {
+        async function initCamera(facingMode = currentCameraFacing) {
             const video = document.getElementById('camera-video');
-            if (!video || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { showAlert('Camera is not supported in this browser.', 'error'); return false; }
+            if (!video) return false;
+            currentCameraFacing = facingMode === 'environment' ? 'environment' : 'user';
+
+            // Modern browsers
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                stopCamera();
+                try {
+                    const constraints = {
+                        audio: false,
+                        video: {
+                            facingMode: { ideal: currentCameraFacing },
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        }
+                    };
+                    let stream;
+                    try {
+                        stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    } catch (firstErr) {
+                        // Some Safari/older browsers reject facingMode constraints.
+                        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                    }
+                    video.srcObject = stream;
+                    video.muted = true;
+                    video.playsInline = true;
+                    video.autoplay = true;
+                    video.style.display = 'block';
+                    await video.play().catch(() => {});
+                    const cap = document.getElementById('btn-capture');
+                    if (cap) cap.innerText = currentCameraFacing === 'user' ? '🤳 Capture Selfie' : '📷 Capture Photo';
+                    return true;
+                } catch (err) {
+                    const secureMsg = window.isSecureContext ? '' : ' HTTPS/localhost প্রয়োজন.';
+                    showAlert('Camera permission is required. Browser permission allow করুন.' + secureMsg, 'error');
+                    return false;
+                }
+            }
+
+            // Legacy fallback for older browsers that still expose vendor getUserMedia.
+            const legacy = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+            if (!legacy) {
+                showAlert('এই browser-এ Camera support নেই.', 'error');
+                return false;
+            }
             stopCamera();
             try {
-                let stream;
-                try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }); }
-                catch(e) { stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }); }
+                const stream = await new Promise((resolve, reject) => legacy.call(navigator, { video: true, audio: false }, resolve, reject));
                 video.srcObject = stream;
+                video.muted = true;
+                video.playsInline = true;
+                video.autoplay = true;
                 video.style.display = 'block';
-                await video.play().catch(()=>{});
-                document.getElementById('btn-capture').innerText = '🤳 Capture Selfie';
+                await video.play().catch(() => {});
+                const cap = document.getElementById('btn-capture');
+                if (cap) cap.innerText = currentCameraFacing === 'user' ? '🤳 Capture Selfie' : '📷 Capture Photo';
                 return true;
             } catch (err) {
-                showAlert('Camera permission is required. Please allow camera access and try again.', 'error');
+                showAlert('Camera permission is required. Browser permission allow করুন.', 'error');
                 return false;
+            }
+        }
+
+        async function switchCamera(facingMode) {
+            if (capturedPhotoData) return;
+            currentCameraFacing = facingMode === 'environment' ? 'environment' : 'user';
+            const video = document.getElementById('camera-video');
+            // If camera is already running, restart it with the selected camera.
+            if (video && video.srcObject) {
+                await initCamera(currentCameraFacing);
+            } else {
+                await initCamera(currentCameraFacing);
             }
         }
 
@@ -1646,7 +1710,7 @@ Total: ${merged.length}`);
             const preview = document.getElementById('photo-preview');
             if (!video.srcObject) {
                 const started = await initCamera();
-                if (started) showAlert('Camera ready. Press Capture Selfie again.', 'success');
+                if (started) showAlert(currentCameraFacing === 'user' ? 'Front camera ready. Capture Selfie চাপুন.' : 'Back camera ready. Capture চাপুন.', 'success');
                 return;
             }
             if (!video.videoWidth || !video.videoHeight) {
@@ -1894,8 +1958,10 @@ Total: ${merged.length}`);
                 showAlert('Visit Report successfully saved to Firebase!', 'success');
                 // A successful submit always starts a completely fresh Visit form.
                 clearVisitFormForNewVisit();
-                // Get a fresh GPS position for the next visit without restoring old fields.
-                setTimeout(() => { try { fetchGPS(); } catch (e) {} }, 150);
+                // Every successful submit starts a completely fresh GPS/OSM lookup.
+                // Do not reuse the previous visit's coordinates or location name.
+                try { await fetchGPS(); } catch (e) { console.warn('Fresh GPS refresh after submit failed:', e); }
+                setTimeout(() => { try { fetchGPS(); } catch (e) {} }, 700);
             } catch (err) {
                 showAlert('Error saving data to Firebase: ' + err.message, 'error');
             } finally {
@@ -1963,7 +2029,10 @@ Total: ${merged.length}`);
             if (tab !== 'form') stopCamera();
 
             if (tab === 'form') {
+                // Browser cannot bypass the OS permission prompt; once permission is granted,
+                // location is requested automatically whenever New Visit opens.
                 fetchGPS();
+                setTimeout(() => { try { if (!document.getElementById('gps-location').value) fetchGPS(); } catch (e) {} }, 1200);
                 stopCamera();
             }
             if (tab === 'daily') {
