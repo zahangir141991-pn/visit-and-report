@@ -505,6 +505,30 @@ table{width:100%;max-width:100%}
 #osm-map,.osm-map-note{display:none!important}
 </style>
 
+
+<style id="cross-browser-responsive-patch">
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;width:100%;min-width:320px}
+body{width:100%;min-width:320px;min-height:100vh;min-height:100dvh;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+button,input,select,textarea{font:inherit;-webkit-border-radius:8px;border-radius:8px}
+button,.nav-item,.visit-menu-btn{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+img,video,canvas,svg{max-width:100%;height:auto}
+.container{width:100%;max-width:100%}
+.section-head>*{min-width:0}
+.quick-grid,.cards-grid,.filter-grid,.visit-check-grid,.chart-kpi-grid{min-width:0}
+.quick-grid>*,.cards-grid>*,.filter-grid>*,.visit-check-grid>*,.chart-kpi-grid>*{min-width:0}
+.table-responsive{width:100%;max-width:100%;overflow-x:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.reports-table{width:100%}
+.details-card{max-width:calc(100vw - 24px)}
+.visit-menu-title{display:none!important}
+#app-nav{padding-bottom:8px;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+#main-app{padding-bottom:88px;padding-bottom:calc(88px + env(safe-area-inset-bottom))}
+@media(max-width:1024px){.container{padding-left:14px!important;padding-right:14px!important}.dashboard-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:767px){body{font-size:15px}#app-header{width:100%;min-width:0}#app-header h1,#header-user-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#main-app{width:100%!important;margin-left:0!important}.container{padding:10px!important}.section-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.section-head h2{font-size:1.05rem}.dashboard-summary-grid,.quick-grid,.cards-grid,.report-summary-cards,.chart-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}.filter-grid,.visit-check-grid,.chart-filter-grid,.details-grid{grid-template-columns:1fr!important}input[type=text],input[type=date],input[type=password],select,textarea{width:100%;min-height:44px;font-size:16px}.btn{min-height:44px}.card{padding:12px}.card-val{font-size:1.35rem}.table-responsive{max-height:none;overflow:auto}table.reports-table{min-width:760px!important;font-size:.8rem}table.reports-table th,table.reports-table td{padding:8px}.details-modal{padding:8px;align-items:flex-start;padding-top:max(8px,env(safe-area-inset-top))}.details-card{width:100%;max-width:100%;max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px);border-radius:14px}.camera-box{padding:12px}#camera-video{max-height:42vh}#submit-action-bar{bottom:calc(8px + env(safe-area-inset-bottom))!important}.nav-sidebar{height:100vh;height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch}}
+@media(max-width:430px){.dashboard-summary-grid,.quick-grid,.cards-grid,.report-summary-cards,.chart-kpi-grid{grid-template-columns:1fr 1fr!important}.card-lbl{font-size:.68rem}.card-val{font-size:1.2rem}.report-kpi{padding:9px}.report-kpi b{font-size:1.15rem}#mobile-menu-btn{width:40px;height:40px;top:9px;left:9px}}
+@media(max-width:360px){.dashboard-summary-grid,.quick-grid,.cards-grid,.report-summary-cards,.chart-kpi-grid{grid-template-columns:1fr!important}.container{padding-left:8px!important;padding-right:8px!important}}
+@supports not (padding:env(safe-area-inset-bottom)){#app-nav{padding-bottom:8px}#main-app{padding-bottom:88px}#submit-action-bar{bottom:8px!important}}
+</style>
+
 <header id="app-header">
   <button type="button" id="mobile-menu-btn" aria-label="Open navigation" aria-expanded="false" onclick="toggleMobileNav()">☰</button>
   <h1>DMS</h1>
@@ -823,7 +847,7 @@ table{width:100%;max-width:100%}
         <div class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')"><span>🏠</span><span>Dashboard</span></div>
         <div class="nav-item visit-parent" id="nav-visit" onclick="toggleVisitMenu(event)"><span>📋</span><span>Visit <b class="menu-arrow">▾</b></span></div>
         <div id="visit-menu-panel" class="visit-menu-panel">
-            <div class="visit-menu-title">Visit Menu</div>
+            
             <button type="button" class="visit-menu-btn" onclick="visitMenuAction('new')">➕ New Visit</button>
             <button type="button" id="visit-menu-my" class="visit-menu-btn" onclick="visitMenuAction('my')">👤 Amar Visit Report</button>
             <button type="button" class="visit-menu-btn role-dss-option hidden" onclick="visitMenuAction('dso')">👥 DSO Visit Report</button>
