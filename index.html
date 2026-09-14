@@ -396,7 +396,7 @@ table{width:100%;max-width:100%}
   <h1>DMS-Nagad Manikganj</h1>
 </header>
 
-<div id="view-login" class="page hidden">
+<div id="view-login" class="page login-visible">
   <div class="container">
     <div class="card" style="max-width:420px;margin:60px auto 20px;text-align:left;padding:24px;">
       <div style="text-align:center;margin-bottom:20px;">
@@ -944,10 +944,10 @@ table{width:100%;max-width:100%}
             const mainApp = document.getElementById('main-app');
             const userBar = document.getElementById('user-info-bar');
             const appNav = document.getElementById('app-nav');
-            if (loginView) loginView.classList.add('hidden');
-            if (mainApp) mainApp.classList.remove('hidden');
-            if (userBar) userBar.classList.remove('hidden');
-            if (appNav) appNav.classList.remove('hidden');
+            if (loginView) { loginView.classList.remove('login-visible','active'); loginView.classList.add('hidden'); }
+            if (mainApp) { mainApp.classList.remove('hidden'); mainApp.classList.add('app-visible'); }
+            if (userBar) { userBar.classList.remove('hidden'); userBar.classList.add('user-visible'); }
+            if (appNav) { appNav.classList.remove('hidden'); appNav.classList.add('nav-visible'); }
 
             try {
                 const roleInfo = getRoleInfo();
@@ -1021,10 +1021,14 @@ table{width:100%;max-width:100%}
                 loginAlert.className = 'alert';
             }
 
-            document.getElementById('view-login').classList.remove('hidden');
-            document.getElementById('main-app').classList.add('hidden');
-            document.getElementById('user-info-bar').classList.add('hidden');
-            document.getElementById('app-nav').classList.add('hidden');
+            const lv = document.getElementById('view-login');
+            const ma = document.getElementById('main-app');
+            const ub = document.getElementById('user-info-bar');
+            const an = document.getElementById('app-nav');
+            if (lv) { lv.classList.remove('hidden'); lv.classList.add('login-visible','active'); }
+            if (ma) { ma.classList.add('hidden'); ma.classList.remove('app-visible'); }
+            if (ub) { ub.classList.add('hidden'); ub.classList.remove('user-visible'); }
+            if (an) { an.classList.add('hidden'); an.classList.remove('nav-visible'); }
             document.getElementById('login-pass').value = '';
             document.getElementById('login-user').focus();
         }
@@ -2544,10 +2548,21 @@ window.__submitStateWatcher = setInterval(function(){
 }, 500);
 
 document.addEventListener('DOMContentLoaded', function(){
+    // Initial state: ONLY the login panel is visible.
+    const loginView = document.getElementById('view-login');
+    const mainApp = document.getElementById('main-app');
+    const userBar = document.getElementById('user-info-bar');
+    const appNav = document.getElementById('app-nav');
+    if (loginView) { loginView.classList.add('login-visible'); loginView.classList.remove('hidden'); loginView.classList.add('active'); }
+    if (mainApp) { mainApp.classList.remove('app-visible'); mainApp.classList.add('hidden'); }
+    if (userBar) { userBar.classList.remove('user-visible'); userBar.classList.add('hidden'); }
+    if (appNav) { appNav.classList.remove('nav-visible'); appNav.classList.add('hidden'); }
+
     bindVisitFormCompletionListeners();
     const u = document.getElementById('login-user');
     const p = document.getElementById('login-pass');
     [u,p].forEach(el => { if(el) el.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); login(); } }); });
+}); });
 });
         setTimeout(bindVisitFormCompletionListeners, 0);
 
