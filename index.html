@@ -396,7 +396,7 @@ table{width:100%;max-width:100%}
   <h1>DMS-Nagad Manikganj</h1>
 </header>
 
-<div id="view-login" class="page login-visible">
+<div id="view-login" class="page login-visible active">
   <div class="container">
     <div class="card" style="max-width:420px;margin:60px auto 20px;text-align:left;padding:24px;">
       <div style="text-align:center;margin-bottom:20px;">
@@ -427,10 +427,27 @@ table{width:100%;max-width:100%}
 </div>
 
 <style id="login-panel-fix">
-/* Login panel is visible only before authentication. */
-#view-login.hidden{display:none!important}
+/* AUTH UI STATE
+   - Before login: login panel ONLY.
+   - After login: app pages/nav/user bar ONLY.
+   - Login panel can never remain visible over app pages.
+*/
+#view-login{display:none!important}
+#view-login.login-visible{display:block!important}
+#view-login.login-visible.hidden{display:block!important}
+#view-login:not(.login-visible){display:none!important}
+
+#main-app{display:none!important}
+#main-app.app-visible{display:block!important}
 #main-app.hidden{display:none!important}
+#main-app.app-visible.hidden{display:block!important}
+
+#user-info-bar{display:none!important}
+#user-info-bar.user-visible{display:flex!important}
 #user-info-bar.hidden{display:none!important}
+
+#app-nav{display:none!important}
+#app-nav.nav-visible{display:flex!important}
 #app-nav.hidden{display:none!important}
 </style>
 
@@ -470,17 +487,6 @@ table{width:100%;max-width:100%}
                     <div class="chart-info-strip" id="dashboard-chart-info">Hover on a date to see Visit Count, Unique Uddokta, Repeat Visit and Visit Rate.</div>
                     <div class="chart-wrap"><canvas id="dashboard-visit-chart"></canvas></div>
                     <div id="dashboard-chart-empty" class="chart-empty">No visit data found for the selected dates.</div>
-                </div>
-            </div>
-
-            <div class="cards-grid hidden">
-                <div class="card">
-                    <div class="card-lbl">Total Visits</div>
-                    <div class="card-val" id="total-visit-count">0</div>
-                </div>
-                <div class="card">
-                    <div class="card-lbl">Today Unique Visits</div>
-                    <div class="card-val" id="unique-visit-count">0</div>
                 </div>
             </div>
 
@@ -2007,6 +2013,18 @@ table{width:100%;max-width:100%}
         }
 
         function switchTab(tab) {
+            // Never allow app navigation before successful login.
+            if (!currentUser) {
+                const lv = document.getElementById('view-login');
+                const ma = document.getElementById('main-app');
+                const ub = document.getElementById('user-info-bar');
+                const an = document.getElementById('app-nav');
+                if (lv) { lv.classList.add('login-visible','active'); lv.classList.remove('hidden'); }
+                if (ma) { ma.classList.add('hidden'); ma.classList.remove('app-visible'); }
+                if (ub) { ub.classList.add('hidden'); ub.classList.remove('user-visible'); }
+                if (an) { an.classList.add('hidden'); an.classList.remove('nav-visible'); }
+                return;
+            }
             if (tab === 'admin' && currentUser !== 'admin') return;
             // Single-page navigation: ONLY the clicked page is visible.
             const pages = ['dashboard','form','daily','notices','admin','change-pass'];
@@ -2561,8 +2579,11 @@ document.addEventListener('DOMContentLoaded', function(){
     bindVisitFormCompletionListeners();
     const u = document.getElementById('login-user');
     const p = document.getElementById('login-pass');
-    [u,p].forEach(el => { if(el) el.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); login(); } }); });
-}); });
+    [u,p].forEach(el => {
+        if (el) el.addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); login(); }
+        });
+    });
 });
         setTimeout(bindVisitFormCompletionListeners, 0);
 
