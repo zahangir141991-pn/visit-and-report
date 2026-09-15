@@ -529,6 +529,18 @@ img,video,canvas,svg{max-width:100%;height:auto}
 @supports not (padding:env(safe-area-inset-bottom)){#app-nav{padding-bottom:8px}#main-app{padding-bottom:88px}#submit-action-bar{bottom:8px!important}}
 </style>
 
+
+<style id="submit-success-popup-style">
+#submit-success-popup{position:fixed;inset:0;background:rgba(15,23,42,.48);z-index:12000;display:none;align-items:center;justify-content:center;padding:18px}
+#submit-success-popup.show{display:flex}
+#submit-success-popup .success-popup-card{width:min(360px,92vw);background:#fff;border-radius:20px;padding:28px 22px 22px;text-align:center;box-shadow:0 24px 70px rgba(15,23,42,.28);animation:successPop .2s ease-out}
+#submit-success-popup .success-check{width:76px;height:76px;border-radius:50%;margin:0 auto 14px;background:#10b981;color:#fff;display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:900;line-height:1}
+#submit-success-popup h3{font-size:1.25rem;color:#0f172a;margin:0 0 7px}
+#submit-success-popup p{font-size:.9rem;color:#64748b;margin:0 0 18px}
+#submit-success-popup .success-ok-btn{width:100%;min-height:46px;border:0;border-radius:10px;background:#2563eb;color:#fff;font-size:.95rem;font-weight:800;cursor:pointer}
+@keyframes successPop{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+</style>
+
 <header id="app-header">
   <button type="button" id="mobile-menu-btn" aria-label="Open navigation" aria-expanded="false" onclick="toggleMobileNav()">☰</button>
   <h1>DMS</h1>
@@ -584,6 +596,16 @@ img,video,canvas,svg{max-width:100%;height:auto}
 #app-nav.nav-visible{display:flex!important}
 #app-nav.hidden{display:none!important}
 </style>
+
+
+<div id="submit-success-popup" role="dialog" aria-modal="true" aria-labelledby="submit-success-title">
+  <div class="success-popup-card">
+    <div class="success-check" aria-hidden="true">✓</div>
+    <h3 id="submit-success-title">Successfully Submitted</h3>
+    <p>Visit Report successfully saved.</p>
+    <button type="button" class="success-ok-btn" onclick="closeSubmitSuccessPopup()">OK</button>
+  </div>
+</div>
 
 <!-- Main App Section -->
         <div id="main-app" class="hidden">
@@ -2333,6 +2355,24 @@ img,video,canvas,svg{max-width:100%;height:auto}
             return { committed: !!result.committed, ref };
         }
 
+
+        function showSubmitSuccessPopup() {
+            const popup = document.getElementById('submit-success-popup');
+            if (!popup) return;
+            popup.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => {
+                const ok = popup.querySelector('.success-ok-btn');
+                if (ok) ok.focus();
+            }, 50);
+        }
+
+        function closeSubmitSuccessPopup() {
+            const popup = document.getElementById('submit-success-popup');
+            if (popup) popup.classList.remove('show');
+            document.body.style.overflow = '';
+        }
+
         // ----------------------------------------------------
         // 2. SUBMIT REPORT TO FIREBASE REALTIME DATABASE
         // ----------------------------------------------------
@@ -2446,7 +2486,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
                 if (String(newReport.user||'').toLowerCase()==='zahangir' && anyNotOk) {
                     await createReviewNotice(reportId, newReport);
                 }
-                showAlert('Visit Report successfully saved to Firebase!', 'success');
+                showSubmitSuccessPopup();
                 // A successful submit always starts a completely fresh Visit form.
                 clearVisitFormForNewVisit();
                 // Automatically prepare a fresh GPS location for the next visit after every successful submit.
