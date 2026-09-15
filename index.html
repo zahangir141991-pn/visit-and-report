@@ -917,7 +917,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-14-login-refresh-logout-v3';
+        const APP_CACHE_VERSION = '2026-09-15-final-total-count-v1';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -1177,38 +1177,60 @@ img,video,canvas,svg{max-width:100%;height:auto}
         // Total Uddokta NEVER comes from visit_reports. Every Uddokta Number
         // is normalized and counted once from the single master array.
         function countUniqueMasterUddokta(predicate) {
-            if (!uddoktaMasterSynced) return 0;
+            // Always count from the current live master used by the UI.
+            // This prevents temporary/incorrect ZERO counts while Firebase is syncing.
+            const rows = Array.isArray(uddoktaDB) ? uddoktaDB : [];
             const seen = new Set();
-            const rows = Array.isArray(authoritativeUddoktaDB) ? authoritativeUddoktaDB : [];
             rows.forEach(item => {
+                if (!Array.isArray(item)) return;
                 if (predicate && !predicate(item)) return;
-                const n = normalizeUddoktaNumber(item && item[1]);
+                const n = normalizeUddoktaNumber(item[1]);
                 if (n) seen.add(n);
             });
             return seen.size;
         }
+        function canonicalDssName(v) {
+            return String(v || '').trim().toUpperCase().replace(/\s+/g, ' ');
+        }
         function namesMatch(a, b) {
-            const clean = v => String(v || '').trim().toUpperCase().replace(/\s+/g, ' ');
-            const x = clean(a), y = clean(b);
-            return !!x && !!y && (x === y || x.includes(y) || y.includes(x));
+            const x = canonicalDssName(a), y = canonicalDssName(b);
+            if (!x || !y) return false;
+            if (x === y) return true;
+            // Login/filter may use a short display name (Sohag/Alamin/etc.).
+            const aliases = {
+                'SOHAG':'MOHOSIN HOSSAIN SOHAG',
+                'ALAMIN':'MD. ALAMIN',
+                'IMRAN':'MD. IMRAN HOSSAIN',
+                'RUBEL':'RUBEL',
+                'SHOFIQ':'MD. SHOFIQ'
+            };
+            return (aliases[x] || x) === (aliases[y] || y);
         }
         function getMasterTotalCount() { return countUniqueMasterUddokta(); }
         function getReportMasterUddoktaCount() {
             const info = getRoleInfo();
             const mode = visitReportMode;
             const selectedDss = String((document.getElementById('filter-dss') || {}).value || '').trim();
-            const selectedDso = normalizeScopeWallet((document.getElementById('filter-dso') || {}).value || '');
-            if (!uddoktaMasterSynced) return 0;
-            if (info.role === 'DSS') return countUniqueMasterUddokta(item => namesMatch(item && item[3], info.dssName));
-            if ((mode === 'dss' || mode === 'all') && selectedDss) return countUniqueMasterUddokta(item => namesMatch(item && item[3], selectedDss));
-            if ((mode === 'dso' || mode === 'dso-wise') && selectedDso) return countUniqueMasterUddokta(item => normalizeScopeWallet(item && item[0]) === selectedDso);
-            if ((mode === 'dso' || mode === 'dso-wise') && selectedDss) return countUniqueMasterUddokta(item => namesMatch(item && item[3], selectedDss));
+            // DSS report Total Uddokta = unique Uddokta assigned to that DSS in CURRENT master.
+            if (info.role === 'DSS') {
+                return countUniqueMasterUddokta(item => namesMatch(item[3], info.dssName));
+            }
+            if (mode === 'dss' && selectedDss) {
+                return countUniqueMasterUddokta(item => namesMatch(item[3], selectedDss));
+            }
+            if ((info.role === 'Admin' || info.role === 'DM') && mode === 'dss' && !selectedDss) {
+                return getMasterTotalCount();
+            }
             return getScopedTotalUddoktaCount();
         }
         function getScopedTotalUddoktaCount() {
-            if (!uddoktaMasterSynced) return 0;
             const info = getRoleInfo();
             if (info.role === 'Admin' || info.role === 'DM') return getMasterTotalCount();
+            if (info.role === 'DSS') return countUniqueMasterUddokta(item => namesMatch(item[3], info.dssName));
+            if (info.role === 'DSO') {
+                const wallet = normalizeScopeWallet(info.dsoWallet || currentUser || '');
+                return countUniqueMasterUddokta(item => normalizeScopeWallet(item[0]) === wallet);
+            }
             return countUniqueMasterUddokta(item => canSeeUddokta(item));
         }
 
