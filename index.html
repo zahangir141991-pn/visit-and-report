@@ -362,7 +362,7 @@
         .visit-menu-title{font-size:.75rem;color:#64748b;font-weight:800;padding:7px 9px 5px;}
         .visit-menu-btn{display:block;width:100%;border:0;background:#f8fafc;color:#0f172a;text-align:left;padding:10px 12px;border-radius:10px;margin:3px 0;font-size:.82rem;font-weight:700;cursor:pointer;}
         .visit-menu-btn:hover{background:#e8f0ff;color:#1d4ed8;}
-        .report-summary-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px;}
+        .report-summary-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px;}
         .report-kpi{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;box-shadow:0 2px 8px rgba(15,23,42,.05);}
         .report-kpi span{display:block;color:#64748b;font-size:.72rem;font-weight:700;}
         .report-kpi b{display:block;color:#2563eb;font-size:1.45rem;margin-top:3px;}
@@ -616,9 +616,9 @@ img,video,canvas,svg{max-width:100%;height:auto}
                     <div><h2>Dashboard</h2><small style="color:#64748b">DMS</small></div>
                 </div>
                 <div class="quick-grid dashboard-summary-grid">
-                    <div class="card"><div class="card-lbl">Total Visits</div><div class="card-val" id="total-visit-count">0</div></div>
                     <div class="card"><div class="card-lbl">Total Uddokta</div><div class="card-val" id="dashboard-total-uddokta-count">0</div></div>
-                    <div class="card"><div class="card-lbl">Today Visits</div><div class="card-val" id="unique-visit-count">0</div></div>
+                    <div class="card"><div class="card-lbl">Total Visit</div><div class="card-val" id="total-visit-count">0</div></div>
+                    <div class="card"><div class="card-lbl">Today Visit</div><div class="card-val" id="unique-visit-count">0</div></div>
                     <div class="card"><div class="card-lbl">Today</div><div class="card-val" id="today-date-card" style="font-size:1rem"></div></div>
                     <div class="card"><div class="card-lbl">Access</div><div class="card-val" id="access-card" style="font-size:1rem"></div></div>
                 </div>
@@ -749,11 +749,11 @@ img,video,canvas,svg{max-width:100%;height:auto}
                     <div><h2 id="visit-report-title">Visit Report</h2><small id="visit-report-subtitle" style="color:#64748b">Date-wise visit report & details</small></div>
                     <button class="btn btn-sm btn-sec" onclick="resetDailyFilters()">↺ Reset Filter</button>
                 </div>
-                <div class="report-summary-cards">
-                    <div class="report-kpi"><span>Total Uddokta</span><b id="report-total-uddokta">0</b></div>
-                    <div class="report-kpi"><span>Total Visit</span><b id="report-total-visit-count">0</b></div>
-                    <div class="report-kpi"><span>Unique Visit</span><b id="report-unique-visit">0</b></div>
-                    <div class="report-kpi"><span>Repeated Visit</span><b id="report-repeated-visit">0</b></div>
+                <div class="report-summary-cards" id="dm-admin-report-cards">
+                    <div class="report-kpi"><span id="report-card-1-label">DSS Total Visit</span><b id="report-total-visit-count">0</b></div>
+                    <div class="report-kpi"><span id="report-card-2-label">DSS Today Visit</span><b id="report-unique-visit">0</b></div>
+                    <div class="report-kpi"><span id="report-card-3-label">Selected DSO Visit</span><b id="report-repeated-visit">0</b></div>
+                    <b id="report-total-uddokta" class="hidden">0</b>
                 </div>
                 <div class="card" style="text-align:left;margin-bottom:14px">
                     <div class="filter-grid">
@@ -2012,14 +2012,14 @@ img,video,canvas,svg{max-width:100%;height:auto}
             }
             const sourceW = video.videoWidth || 1280;
             const sourceH = video.videoHeight || 720;
-            const maxW = 960;
+            const maxW = 720;
             const scale = Math.min(1, maxW / sourceW);
             canvas.width = Math.round(sourceW * scale);
             canvas.height = Math.round(sourceH * scale);
             const ctx = canvas.getContext('2d', { alpha:false });
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             // Smaller JPEG = much faster Firebase write/read and less buffering.
-            capturedPhotoData = canvas.toDataURL('image/jpeg', 0.72);
+            capturedPhotoData = canvas.toDataURL('image/jpeg', 0.62);
             preview.src = capturedPhotoData;
             preview.style.display = 'block';
             video.style.display = 'none';
@@ -2433,7 +2433,14 @@ img,video,canvas,svg{max-width:100%;height:auto}
             let dailyReservation = null;
             const reservationToken = `${Date.now()}_${Math.random().toString(36).slice(2,10)}`;
             try {
-                if (await hasExistingDailyVisit(visitDateValue, visitUddoktaNumber)) {
+                // Fast duplicate check: use already-loaded local reports first, then one atomic Firebase transaction.
+                // This removes the previous extra full-day Firebase query that made Submit slow.
+                const normalizedVisitNo = normalizeUddoktaNumber(visitUddoktaNumber);
+                const existsLocally = (reportsData || []).some(r =>
+                    String(r.date || '') === visitDateValue &&
+                    normalizeUddoktaNumber(r.uddoktaNumber || '') === normalizedVisitNo
+                );
+                if (existsLocally) {
                     showAlert('এই Uddokta-কে আজ ইতোমধ্যে Visit করা হয়েছে। একই দিনে একই Uddokta একবারের বেশি Visit করা যাবে না।', 'error');
                     return;
                 }
@@ -2483,10 +2490,11 @@ img,video,canvas,svg{max-width:100%;height:auto}
             try {
                 await db.ref('visit_reports/' + reportId).set(newReport);
                 const anyNotOk = [newReport.festoonStatus,newReport.bannerStatus,newReport.fileStatus].includes('Not OK');
-                if (String(newReport.user||'').toLowerCase()==='zahangir' && anyNotOk) {
-                    await createReviewNotice(reportId, newReport);
-                }
+                // Show success immediately after the report itself is saved. Secondary notice write runs in background.
                 showSubmitSuccessPopup();
+                if (String(newReport.user||'').toLowerCase()==='zahangir' && anyNotOk) {
+                    createReviewNotice(reportId, newReport).catch(err => console.warn('Review notice save failed:', err));
+                }
                 // A successful submit always starts a completely fresh Visit form.
                 clearVisitFormForNewVisit();
                 // Automatically prepare a fresh GPS location for the next visit after every successful submit.
@@ -2746,6 +2754,45 @@ img,video,canvas,svg{max-width:100%;height:auto}
             renderReports();
         }
 
+        function updateDmAdminReportCards() {
+            const info = getRoleInfo();
+            const today = getDhakaToday();
+            const dssSel = String((document.getElementById('filter-dss') || {}).value || '').trim().toUpperCase();
+            const dsoSel = normalizeScopeWallet((document.getElementById('filter-dso') || {}).value || '');
+            const visible = (reportsData || []).filter(canSeeReport);
+
+            let dssRows = visible;
+            if (dssSel) {
+                const assigned = getAssignedDsoWalletsForDss(dssSel);
+                dssRows = visible.filter(r => {
+                    const reportDss = String(r.dssName || '').trim().toUpperCase();
+                    const reportDso = normalizeScopeWallet(r.dsoWallet || r.dsoNumber);
+                    return reportDss === dssSel || assigned.has(reportDso);
+                });
+            } else if (info.role === 'DSS') {
+                const own = String(info.dssName || '').trim().toUpperCase();
+                const assigned = getAssignedDsoWalletsForDss(own);
+                dssRows = visible.filter(r => assigned.has(normalizeScopeWallet(r.dsoWallet || r.dsoNumber)));
+            }
+
+            const dsoRows = dsoSel
+                ? visible.filter(r => normalizeScopeWallet(r.dsoWallet || r.dsoNumber) === dsoSel)
+                : [];
+
+            const c1 = document.getElementById('report-total-visit-count');
+            const c2 = document.getElementById('report-unique-visit');
+            const c3 = document.getElementById('report-repeated-visit');
+            const l1 = document.getElementById('report-card-1-label');
+            const l2 = document.getElementById('report-card-2-label');
+            const l3 = document.getElementById('report-card-3-label');
+            if (l1) l1.innerText = dssSel ? 'DSS Total Visit' : (info.role === 'DSS' ? 'My DSS Total Visit' : 'All DSS Total Visit');
+            if (l2) l2.innerText = dssSel ? 'DSS Today Visit' : (info.role === 'DSS' ? 'My DSS Today Visit' : 'All DSS Today Visit');
+            if (l3) l3.innerText = dsoSel ? 'Selected DSO Visit' : 'Select DSO Visit';
+            if (c1) c1.innerText = dssRows.length;
+            if (c2) c2.innerText = dssRows.filter(r => String(r.date || '') === today).length;
+            if (c3) c3.innerText = dsoSel ? dsoRows.length : 0;
+        }
+
         function renderReports() {
             const tableBody=document.getElementById('reports-table-body');
             if(!tableBody) return;
@@ -2802,9 +2849,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
             const visitCounts=new Map();
             rows.forEach(r=>{ const k=normalizeUddoktaNumber(r.uddoktaNumber||'')||String(r.uddoktaName||'').trim().toUpperCase(); if(k){keys.add(k);visitCounts.set(k,(visitCounts.get(k)||0)+1);} });
             const totalU=document.getElementById('report-total-uddokta'); if(totalU) totalU.innerText=getReportMasterUddoktaCount();
-            const reportCount=document.getElementById('report-total-visit-count'); if(reportCount) reportCount.innerText=rows.length;
-            const unique=document.getElementById('report-unique-visit'); if(unique) unique.innerText=keys.size;
-            const repeated=document.getElementById('report-repeated-visit'); if(repeated) repeated.innerText=Array.from(visitCounts.values()).filter(v=>v>1).reduce((a,v)=>a+(v-1),0);
+            updateDmAdminReportCards();
             if(!rows.length){ tableBody.innerHTML='<tr><td colspan="11" class="empty-state">No visit data found</td></tr>'; return; }
             rows.sort((a,b)=>Number(b.timestamp||0)-Number(a.timestamp||0));
             rows.forEach(r=>{
