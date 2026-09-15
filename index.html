@@ -917,7 +917,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-15-final-total-count-v1';
+        const APP_CACHE_VERSION = '2026-09-15-dso-summary-v2';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -1205,19 +1205,29 @@ img,video,canvas,svg{max-width:100%;height:auto}
             const info = getRoleInfo();
             const mode = visitReportMode;
             const selectedDss = String((document.getElementById('filter-dss') || {}).value || '').trim();
+            let selectedDso = normalizeScopeWallet((document.getElementById('filter-dso') || {}).value || '');
+
+            // DSO Visit Report: Total Uddokta always follows the effective DSO/DSS selection.
+            if (mode === 'dso' || mode === 'dso-wise') {
+                if (info.role === 'DSO') selectedDso = normalizeScopeWallet(info.dsoWallet || currentUser || '');
+                if (selectedDso) {
+                    return countUniqueMasterUddokta(item => normalizeScopeWallet(item[0]) === selectedDso);
+                }
+                const effectiveDss = info.role === 'DSS' ? String(info.dssName || '').trim() : selectedDss;
+                if (effectiveDss) {
+                    const allowed = getAssignedDsoWalletsForDss(effectiveDss);
+                    return countUniqueMasterUddokta(item => allowed.has(normalizeScopeWallet(item[0])));
+                }
+                return info.role === 'Admin' || info.role === 'DM' ? getMasterTotalCount() : getScopedTotalUddoktaCount();
+            }
+
             // DSS report Total Uddokta = unique Uddokta assigned to that DSS in CURRENT master.
-            if (info.role === 'DSS') {
-                return countUniqueMasterUddokta(item => namesMatch(item[3], info.dssName));
-            }
-            if (mode === 'dss' && selectedDss) {
-                return countUniqueMasterUddokta(item => namesMatch(item[3], selectedDss));
-            }
-            if ((info.role === 'Admin' || info.role === 'DM') && mode === 'dss' && !selectedDss) {
-                return getMasterTotalCount();
-            }
+            if (info.role === 'DSS') return countUniqueMasterUddokta(item => namesMatch(item[3], info.dssName));
+            if (mode === 'dss' && selectedDss) return countUniqueMasterUddokta(item => namesMatch(item[3], selectedDss));
+            if ((info.role === 'Admin' || info.role === 'DM') && mode === 'dss' && !selectedDss) return getMasterTotalCount();
             return getScopedTotalUddoktaCount();
         }
-        function getScopedTotalUddoktaCount() {
+                function getScopedTotalUddoktaCount() {
             const info = getRoleInfo();
             if (info.role === 'Admin' || info.role === 'DM') return getMasterTotalCount();
             if (info.role === 'DSS') return countUniqueMasterUddokta(item => namesMatch(item[3], info.dssName));
@@ -2815,6 +2825,44 @@ img,video,canvas,svg{max-width:100%;height:auto}
             const info = getRoleInfo();
             const today = getDhakaToday();
             const month = ((document.getElementById('filter-month') || {}).value || today.slice(0,7));
+            const mode = visitReportMode;
+            const c0 = document.getElementById('report-total-uddokta');
+            const c1 = document.getElementById('report-total-visit-count');
+            const c2 = document.getElementById('report-unique-visit');
+            const l0 = document.getElementById('report-card-0-label');
+            const l1 = document.getElementById('report-card-1-label');
+            const l2 = document.getElementById('report-card-2-label');
+
+            // DSO Visit Report summary: only genuine DSO-ID submissions are counted.
+            if (mode === 'dso' || mode === 'dso-wise') {
+                let selectedDso = normalizeScopeWallet((document.getElementById('filter-dso') || {}).value || '');
+                let selectedDss = String((document.getElementById('filter-dss') || {}).value || '').trim();
+                if (info.role === 'DSO') selectedDso = normalizeScopeWallet(info.dsoWallet || currentUser || '');
+                if (info.role === 'DSS') selectedDss = String(info.dssName || '').trim();
+
+                let dsoRows = (reportsData || []).filter(canSeeReport).filter(r => {
+                    const rw = normalizeScopeWallet(r.dsoWallet || r.dsoNumber);
+                    const ru = normalizeScopeWallet(r.user || '');
+                    return /^13325178(?:0[1-9]|[1-3]\d|4[0-5])$/.test(ru) && ru === rw;
+                });
+                if (selectedDss) {
+                    const allowed = getAssignedDsoWalletsForDss(selectedDss);
+                    dsoRows = dsoRows.filter(r => allowed.has(normalizeScopeWallet(r.dsoWallet || r.dsoNumber)));
+                }
+                if (selectedDso) dsoRows = dsoRows.filter(r => normalizeScopeWallet(r.dsoWallet || r.dsoNumber) === selectedDso);
+
+                const monthRows = dsoRows.filter(r => String(r.date || '').slice(0,7) === month);
+                const todayRows = dsoRows.filter(r => String(r.date || '') === today);
+                const idLabel = selectedDso || (selectedDss ? selectedDss : 'All DSO');
+                if (l0) l0.innerText = 'Total Uddokta';
+                if (l1) l1.innerText = `DSO Total Visit (${idLabel}) - Month`;
+                if (l2) l2.innerText = `DSO Today Visit (${idLabel})`;
+                if (c0) c0.innerText = getReportMasterUddoktaCount();
+                if (c1) c1.innerText = monthRows.length;
+                if (c2) c2.innerText = todayRows.length;
+                return;
+            }
+
             let dssSel = String((document.getElementById('filter-dss') || {}).value || '').trim().toUpperCase();
             if (info.role === 'DSS') dssSel = String(info.dssName || '').trim().toUpperCase();
             const visible = (reportsData || []).filter(canSeeReport);
@@ -2824,13 +2872,6 @@ img,video,canvas,svg{max-width:100%;height:auto}
                 dssRows = visible.filter(r => assigned.has(normalizeScopeWallet(r.dsoWallet || r.dsoNumber)));
             }
             const monthRows = dssRows.filter(r => String(r.date || '').slice(0,7) === month);
-            const c0 = document.getElementById('report-total-uddokta');
-            const c1 = document.getElementById('report-total-visit-count');
-            const c2 = document.getElementById('report-unique-visit');
-            const l0 = document.getElementById('report-card-0-label');
-            const l1 = document.getElementById('report-card-1-label');
-            const l2 = document.getElementById('report-card-2-label');
-            // Show the selected/fixed DSS name on the DSS summary cards (e.g. Sohag).
             let dssDisplay = '';
             const dssSelect = document.getElementById('filter-dss');
             if (info.role === 'DSS') {
@@ -2847,7 +2888,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
             if (c2) c2.innerText = dssRows.filter(r => String(r.date || '') === today).length;
         }
 
-        function renderReports() {
+                function renderReports() {
             const tableBody=document.getElementById('reports-table-body');
             if(!tableBody) return;
             if (!document.getElementById('view-daily')?.classList.contains('active')) return;
