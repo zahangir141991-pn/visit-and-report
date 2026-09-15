@@ -2654,8 +2654,16 @@ img,video,canvas,svg{max-width:100%;height:auto}
                 return role.role==='DM' || role.role==='Admin';
             });
             if(visitReportMode==='dso' || visitReportMode==='dso-wise') return reportsData.filter(r=>{
-                const w=normalizeScopeWallet(r.dsoWallet||r.dsoNumber);
-                return !!w && (role.role==='DM' || role.role==='Admin' || (role.role==='DSS' && getAssignedDsoWalletsForDss(role.dssName).has(w)));
+                const w = normalizeScopeWallet(r.dsoWallet || r.dsoNumber);
+                const submitter = normalizeScopeWallet(r.user || '');
+                // HARD ACCESS RULE: DSO Visit Report contains ONLY reports actually
+                // submitted while logged in with that DSO ID. A DM/DSS/Admin visit
+                // for the same DSO wallet must never appear in this report.
+                const isDsoSubmitted = /^13325178(?:0[1-9]|[1-3]\d|4[0-5])$/.test(submitter) && submitter === w;
+                if (!isDsoSubmitted) return false;
+                if (role.role === 'DSO') return submitter === normalizeScopeWallet(role.dsoWallet || currentUser || '');
+                if (role.role === 'DSS') return getAssignedDsoWalletsForDss(role.dssName).has(w);
+                return role.role === 'DM' || role.role === 'Admin';
             });
             return reportsData.filter(canSeeReport);
         }
@@ -2863,6 +2871,13 @@ img,video,canvas,svg{max-width:100%;height:auto}
             if(role.role==='DSS') fdss=String(role.dssName||'').toUpperCase();
             let base=getVisitRowsForMode();
             const rows=base.filter(r=>{
+                // Defense-in-depth for DSO Visit Report: only DSO-login submissions.
+                if (visitReportMode==='dso' || visitReportMode==='dso-wise') {
+                    const rw = normalizeScopeWallet(r.dsoWallet || r.dsoNumber);
+                    const ru = normalizeScopeWallet(r.user || '');
+                    if (!/^13325178(?:0[1-9]|[1-3]\d|4[0-5])$/.test(ru) || ru !== rw) return false;
+                    if (role.role === 'DSO' && ru !== normalizeScopeWallet(role.dsoWallet || currentUser || '')) return false;
+                }
                 // Month-wise filter applies to every report mode.
                 if(fm && String(r.date||'').slice(0,7)!==fm) return false;
                 if(visitReportMode==='dso-wise' && !String(r.dssName||'').trim()) return false;
