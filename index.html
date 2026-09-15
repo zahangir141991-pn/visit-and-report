@@ -917,12 +917,12 @@ img,video,canvas,svg{max-width:100%;height:auto}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-15-fast-accurate-v5';
+        const APP_CACHE_VERSION = '2026-09-15-final-data-v8';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
         const UDDOKTA_CACHE_META_KEY = 'dms_uddokta_master_meta';
-        const REPORTS_CACHE_KEY = 'dms_visit_reports_fast_cache';
+        const REPORTS_CACHE_KEY = 'dms_visit_reports_fast_cache_v8';
         const UDDOKTA_CACHE_TTL = 5 * 60 * 1000; // 5 minutes fallback only
 
         function clearStaleAppCache() {
@@ -1772,6 +1772,8 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
             }
 
             populateDsoFilter();
+            // Paint cache/index first, then reconcile the logged-in user's own report data.
+            setTimeout(() => { try { ensureReportModeData(visitReportMode); } catch(e) {} }, 0);
             const todayEl = document.getElementById('today-date-card');
             if (todayEl) todayEl.innerText = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
             const searchInput = document.getElementById('search-input');
@@ -2690,6 +2692,11 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
             closeVisitMenu();
             if(mode==='new'){ switchTab('form'); return; }
             visitReportMode=mode;
+            // Final compatibility loader: the lightweight index can be incomplete when
+            // older reports were created before visit_reports_index existed. Load only
+            // the report scope the user opens, merge it with the fast index, and never
+            // replace already loaded rows. This keeps DSO/DSS/My reports accurate.
+            ensureReportModeData(mode).catch(err => console.warn('Scoped report sync error:', err));
             const reportDate = document.getElementById('filter-date');
             if (reportDate) reportDate.value = getDhakaToday();
             const reportMonth = document.getElementById('filter-month');
@@ -2706,6 +2713,76 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
             if(newBtn) newBtn.classList.toggle('hidden',role==='Admin');
             const myBtn=document.getElementById('visit-menu-my');
             if(myBtn) myBtn.classList.toggle('hidden',role==='Admin');
+        }
+
+        const scopedReportLoads = new Map();
+        function mergeReportObjectsIntoData(data){
+            const map = new Map();
+            (reportsData || []).forEach(r => {
+                const k = String(r.reportId || r.id || (String(r.user||'')+'|'+String(r.visitTimestamp||r.timestamp||'')+'|'+String(r.uddoktaNumber||'')));
+                map.set(k, r);
+            });
+            Object.keys(data || {}).forEach(key => {
+                const r = Object.assign({}, data[key] || {});
+                r.reportId = r.reportId || key;
+                if (r.photo) { r.hasPhoto = true; delete r.photo; }
+                const k = String(r.reportId || r.id || key);
+                map.set(k, Object.assign({}, map.get(k) || {}, r));
+            });
+            reportsData = Array.from(map.values()).sort((a,b)=>Number(b.visitTimestamp||b.timestamp||0)-Number(a.visitTimestamp||a.timestamp||0));
+            try { localStorage.setItem(REPORTS_CACHE_KEY, JSON.stringify(reportsData.slice(0,3000))); } catch(e) {}
+            updateDashboard(false);
+            if(document.getElementById('view-daily')?.classList.contains('active')) scheduleRenderReports();
+        }
+
+        async function fetchLegacyByChild(child, value){
+            if(!db || value===undefined || value===null || value==='') return {};
+            try {
+                const snap = await db.ref('visit_reports').orderByChild(child).equalTo(value).once('value');
+                return snap.val() || {};
+            } catch(e) { console.warn('Legacy scoped query failed:', child, value, e); return {}; }
+        }
+
+        async function ensureReportModeData(mode){
+            if(!db || !currentUser) return;
+            const role=getRoleInfo();
+            let jobs=[];
+            if(mode==='my') {
+                jobs=[['user', String(currentUser)]];
+            } else if(mode==='dss') {
+                if(role.role==='DSS') jobs=[['user', String(currentUser)]];
+                else if(role.role==='DM' || role.role==='Admin') jobs=Object.keys(DSS_LOGIN_IDS).map(id=>['user',id]);
+            } else if(mode==='dso' || mode==='dso-wise') {
+                let wallets=[];
+                if(role.role==='DSO') wallets=[normalizeScopeWallet(role.dsoWallet||currentUser)];
+                else if(role.role==='DSS') wallets=Array.from(getAssignedDsoWalletsForDss(role.dssName));
+                else if(role.role==='DM' || role.role==='Admin') {
+                    const set=new Set();
+                    (uddoktaDB||[]).forEach(x=>{ const w=normalizeScopeWallet(x&&x[0]); if(w) set.add(w); });
+                    wallets=Array.from(set);
+                }
+                jobs=wallets.map(w=>['dsoWallet',w]);
+            } else return;
+            const signature=mode+'|'+role.role+'|'+String(currentUser)+'|'+jobs.map(x=>x.join(':')).join(',');
+            if(scopedReportLoads.has(signature)) return scopedReportLoads.get(signature);
+            const task=(async()=>{
+                // Small batches prevent dozens of simultaneous Firebase requests on mobile.
+                for(let i=0;i<jobs.length;i+=6){
+                    const batch=jobs.slice(i,i+6);
+                    const parts=await Promise.all(batch.map(j=>fetchLegacyByChild(j[0],j[1])));
+                    const merged={}; parts.forEach(obj=>Object.assign(merged,obj||{}));
+                    if(Object.keys(merged).length) mergeReportObjectsIntoData(merged);
+                }
+                // Old DSO records may store the short login ID in user. Query these only
+                // for the exact DSO user so historical rows are not lost.
+                if((mode==='dso'||mode==='dso-wise') && role.role==='DSO'){
+                    const w=normalizeScopeWallet(role.dsoWallet||currentUser);
+                    const short=w && w.startsWith('13325178') ? String(800+Number(w.slice(-2))) : '';
+                    if(short){ const old=await fetchLegacyByChild('user',short); if(Object.keys(old).length) mergeReportObjectsIntoData(old); }
+                }
+            })();
+            scopedReportLoads.set(signature,task);
+            try { await task; } finally { /* keep completed promise to avoid repeated downloads */ }
         }
 
         function getMyVisitRows(){
