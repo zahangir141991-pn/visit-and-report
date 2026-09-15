@@ -2064,14 +2064,23 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
             }
             const sourceW = video.videoWidth || 1280;
             const sourceH = video.videoHeight || 720;
-            const maxW = 720;
-            const scale = Math.min(1, maxW / sourceW);
-            canvas.width = Math.round(sourceW * scale);
-            canvas.height = Math.round(sourceH * scale);
+            // FINAL PHOTO OPTIMIZATION: keep visit selfie small enough for fast mobile/Firebase use.
+            const maxW = 480;
+            const maxH = 640;
+            const scale = Math.min(1, maxW / sourceW, maxH / sourceH);
+            canvas.width = Math.max(1, Math.round(sourceW * scale));
+            canvas.height = Math.max(1, Math.round(sourceH * scale));
             const ctx = canvas.getContext('2d', { alpha:false });
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            // Smaller JPEG = much faster Firebase write/read and less buffering.
-            capturedPhotoData = canvas.toDataURL('image/jpeg', 0.62);
+            // ~50-100 KB in most phones; dramatically reduces submit/load buffering.
+            let photoQuality = 0.50;
+            capturedPhotoData = canvas.toDataURL('image/jpeg', photoQuality);
+            while (capturedPhotoData.length > 135000 && photoQuality > 0.30) {
+                photoQuality -= 0.06;
+                capturedPhotoData = canvas.toDataURL('image/jpeg', photoQuality);
+            }
             preview.src = capturedPhotoData;
             preview.style.display = 'block';
             video.style.display = 'none';
@@ -3347,6 +3356,53 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
             }
         }
 
+        const visitPhotoMemoryCache = new Map();
+        function compressStoredVisitPhoto(dataUrl, maxW=480, maxH=640, quality=0.48) {
+            return new Promise(resolve => {
+                if (!dataUrl || !String(dataUrl).startsWith('data:image/')) return resolve(dataUrl || '');
+                const img = new Image();
+                img.onload = () => {
+                    try {
+                        const scale = Math.min(1, maxW/img.width, maxH/img.height);
+                        if (scale >= 1 && String(dataUrl).length <= 135000) return resolve(dataUrl);
+                        const c = document.createElement('canvas');
+                        c.width = Math.max(1, Math.round(img.width*scale));
+                        c.height = Math.max(1, Math.round(img.height*scale));
+                        const x = c.getContext('2d',{alpha:false});
+                        x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high';
+                        x.drawImage(img,0,0,c.width,c.height);
+                        let q=quality, out=c.toDataURL('image/jpeg',q);
+                        while(out.length>135000 && q>0.30){ q-=0.06; out=c.toDataURL('image/jpeg',q); }
+                        resolve(out);
+                    } catch(e){ resolve(dataUrl); }
+                };
+                img.onerror=()=>resolve(dataUrl);
+                img.src=dataUrl;
+            });
+        }
+        async function loadVisitPhotoFast(r, slot) {
+            const id=String(r?.reportId || r?.id || '');
+            if(!id || !slot || !db) return;
+            if(visitPhotoMemoryCache.has(id)) { slot.innerHTML=`<img src="${visitPhotoMemoryCache.get(id)}" class="detail-photo" alt="Visit Uddokta Photo" loading="lazy" decoding="async">`; return; }
+            slot.innerHTML='<div style="padding:12px;color:#64748b">Loading compressed photo...</div>';
+            try {
+                let source='separate';
+                let snap=await db.ref('visit_report_photos/'+id).once('value');
+                let photo=snap.val()||'';
+                if(!photo){ source='legacy'; snap=await db.ref('visit_reports/'+id+'/photo').once('value'); photo=snap.val()||''; }
+                if(!photo){ slot.innerHTML='<div style="padding:12px;color:#94a3b8">Photo not available</div>'; return; }
+                const compressed=await compressStoredVisitPhoto(photo);
+                visitPhotoMemoryCache.set(id,compressed);
+                slot.innerHTML=`<img src="${compressed}" class="detail-photo" alt="Visit Uddokta Photo" loading="lazy" decoding="async">`;
+                // Self-heal old/large photos: future opens download the small copy only.
+                if(compressed && compressed.length < String(photo).length && (source==='legacy' || String(photo).length>135000)) {
+                    const updates={}; updates['visit_report_photos/'+id]=compressed;
+                    if(source==='legacy') updates['visit_reports/'+id+'/photo']=null;
+                    db.ref().update(updates).catch(()=>{});
+                }
+            } catch(e){ slot.innerHTML='<div style="padding:12px;color:#b91c1c">Photo load failed. Please check internet.</div>'; }
+        }
+
         function showVisitDetails(index){
             const r=reportsData[index];
             if(!r) return;
@@ -3367,19 +3423,10 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
                     <div class="detail-box" style="grid-column:1/-1"><b>Feedback</b><span>${r.feedback||'—'}</span></div>
                     <div class="detail-box" style="grid-column:1/-1"><b>Location</b><span>${r.locationName||r.gps||'—'}</span></div>
                 </div>
-                <div id="visit-detail-photo-slot">${r.photo?`<img src="${r.photo}" class="detail-photo" alt="Visit Uddokta Photo">`:''}</div>`;
+                <div id="visit-detail-photo-slot">${r.photo?`<img src="${r.photo}" class="detail-photo" alt="Visit Uddokta Photo" loading="lazy" decoding="async">`:''}</div>`;
             modal.classList.remove('hidden');
             if (!r.photo && r.hasPhoto && db) {
-                const slot = document.getElementById('visit-detail-photo-slot');
-                if (slot) slot.innerHTML = '<div style="padding:12px;color:#64748b">Loading photo...</div>';
-                db.ref('visit_report_photos/' + (r.reportId || '')).once('value').then(snap => {
-                    let photo = snap.val() || '';
-                    if (photo && slot) slot.innerHTML = `<img src="${photo}" class="detail-photo" alt="Visit Uddokta Photo">`;
-                    else if (r.reportId) return db.ref('visit_reports/' + r.reportId + '/photo').once('value').then(oldSnap => {
-                        photo = oldSnap.val() || '';
-                        if (slot) slot.innerHTML = photo ? `<img src="${photo}" class="detail-photo" alt="Visit Uddokta Photo">` : '';
-                    });
-                }).catch(()=>{ if(slot) slot.innerHTML=''; });
+                loadVisitPhotoFast(r, document.getElementById('visit-detail-photo-slot'));
             }
         }
         function closeVisitDetails(){ document.getElementById('visit-details-modal')?.classList.add('hidden'); }
