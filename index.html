@@ -540,6 +540,14 @@ img,video,canvas,svg{max-width:100%;height:auto}
 #submit-success-popup p{font-size:.9rem;color:#64748b;margin:0 0 18px}
 #submit-success-popup .success-ok-btn{width:100%;min-height:46px;border:0;border-radius:10px;background:#2563eb;color:#fff;font-size:.95rem;font-weight:800;cursor:pointer}
 @keyframes successPop{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+
+#submit-reason-popup{position:fixed;inset:0;background:rgba(15,23,42,.42);z-index:13000;display:none;align-items:center;justify-content:center;padding:18px}
+#submit-reason-popup.show{display:flex}
+#submit-reason-popup .reason-card{width:min(380px,92vw);background:#fff;border-radius:18px;padding:24px 20px;text-align:center;box-shadow:0 24px 70px rgba(15,23,42,.28)}
+#submit-reason-popup .reason-icon{width:58px;height:58px;border-radius:50%;margin:0 auto 12px;background:#fee2e2;color:#b91c1c;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:900}
+#submit-reason-popup .reason-title{font-size:1.12rem;color:#991b1b;margin:0 0 8px}
+#submit-reason-popup .reason-message{font-size:.9rem;color:#475569;line-height:1.5;margin:0}
+
 </style>
 
 <header id="app-header">
@@ -924,7 +932,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-15-final-data-v8';
+        const APP_CACHE_VERSION = '2026-09-16-submit-performance-v14';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -2417,14 +2425,22 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
         }
 
         async function reserveDailyVisit(date, uddoktaNumber, token) {
+            // The unique-lock path was added after the original Firebase database was created.
+            // Some existing Firebase rules do not permit writes there. A rules error must NEVER
+            // block the actual Visit Report submit, so the lock is best-effort only.
             const normalized = normalizeUddoktaNumber(uddoktaNumber);
             const safeKey = normalized.replace(/[^0-9A-Za-z_-]/g, '_');
             const ref = db.ref(`visit_daily_unique/${date}/${safeKey}`);
-            const result = await ref.transaction(current => {
-                if (current) return;
-                return { token, user: currentUser, uddoktaNumber: normalized, reservedAt: firebase.database.ServerValue.TIMESTAMP };
-            }, undefined, false);
-            return { committed: !!result.committed, ref };
+            try {
+                const result = await ref.transaction(current => {
+                    if (current) return;
+                    return { token, user: currentUser, uddoktaNumber: normalized, reservedAt: firebase.database.ServerValue.TIMESTAMP };
+                }, undefined, false);
+                return { committed: !!result.committed, ref, supported:true };
+            } catch (err) {
+                console.warn('Daily unique lock unavailable; continuing with report duplicate check:', err);
+                return { committed:true, ref:null, supported:false };
+            }
         }
 
 
@@ -2502,7 +2518,7 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
             const visitDateValue = document.getElementById('visit-date').value || getDhakaToday();
             const visitUddoktaNumber = document.getElementById('uddokta-number').value;
             btnSubmit.disabled = true;
-            btnSubmit.innerText = 'Submit';
+            btnSubmit.innerText = 'Submitting...';
 
             let dailyReservation = null;
             const reservationToken = `${Date.now()}_${Math.random().toString(36).slice(2,10)}`;
@@ -2524,9 +2540,11 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
                     return;
                 }
             } catch (duplicateCheckError) {
-                console.error('Duplicate visit check failed:', duplicateCheckError);
-                showAlert('Duplicate visit check করা যায়নি। Internet/Firebase connection দেখে আবার চেষ্টা করুন।', 'error');
-                return;
+                // Duplicate protection is secondary to saving the report. If an old Firebase
+                // ruleset blocks the optional lock, continue and let the main database write
+                // return the real save result instead of making Submit appear broken.
+                console.warn('Optional duplicate lock skipped:', duplicateCheckError);
+                dailyReservation = { committed:true, ref:null, supported:false };
             } finally {
                 if (!dailyReservation || !dailyReservation.committed) {
                     btnSubmit.disabled = false;
@@ -2596,8 +2614,9 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
                 } catch (cleanupError) { console.warn('Daily visit reservation cleanup failed:', cleanupError); }
                 showAlert('Error saving data to Firebase: ' + err.message, 'error');
             } finally {
-                updateVisitSubmitState();
+                btnSubmit.disabled = false;
                 btnSubmit.innerText = 'Submit';
+                updateVisitSubmitState();
             }
         });
 
