@@ -922,6 +922,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
         const UDDOKTA_CACHE_META_KEY = 'dms_uddokta_master_meta';
+        const REPORTS_CACHE_KEY = 'dms_visit_reports_fast_cache';
         const UDDOKTA_CACHE_TTL = 5 * 60 * 1000; // 5 minutes fallback only
 
         function clearStaleAppCache() {
@@ -1590,21 +1591,13 @@ img,video,canvas,svg{max-width:100%;height:auto}
                 });
 
                 if (!db) throw new Error('Firebase is not connected. Please check internet/Firebase access.');
-                await db.ref('uddokta_master').set(masterObj);
-                const verifySnap = await db.ref('uddokta_master').once('value');
-                const verifyData = verifySnap.val() || {};
-                const verifyNumbers = new Set();
-                Object.keys(verifyData).forEach(k => {
-                    const x = verifyData[k] || {};
-                    const n = normalizeUddoktaNumber(x.uddoktaNumber || '');
-                    if (n) verifyNumbers.add(n);
-                });
-                if (verifyNumbers.size !== replacement.length) {
-                    throw new Error(`Firebase verification failed: Excel has ${replacement.length} unique Uddokta, Firebase returned ${verifyNumbers.size}.`);
-                }
                 const authorityMeta = {source:'excel',version:APP_CACHE_VERSION,uniqueCount:replacement.length,updatedAt:Date.now()};
-                // Store authority in Firebase so ALL users/browsers know which master is current.
-                await db.ref(UDDOKTA_MASTER_META_PATH).set(authorityMeta);
+                // Atomic multi-location update: new Excel completely replaces old master and metadata together.
+                // set() replaces the entire node, so records missing from the new file are removed automatically.
+                await db.ref().update({
+                    uddokta_master: masterObj,
+                    [UDDOKTA_MASTER_META_PATH]: authorityMeta
+                });
                 authoritativeUddoktaDB = replacement.slice();
                 uddoktaMasterSynced = true;
                 try { localStorage.setItem(UDDOKTA_MASTER_META_KEY, JSON.stringify(authorityMeta)); } catch(e) {}
@@ -1690,8 +1683,8 @@ img,video,canvas,svg{max-width:100%;height:auto}
             // is shared by every browser/user instead of relying on per-browser localStorage.
             db.ref(UDDOKTA_MASTER_META_PATH).on('value', metaSnap => {
                 remoteMasterAuthorityMeta = metaSnap.val() || null;
-                db.ref('uddokta_master').once('value').then(snap => acceptFirebaseMasterIfAuthoritative(snap.val())).catch(()=>{});
             }, err => console.warn('Uddokta master metadata sync error:',err));
+            // One realtime master listener is enough; avoids downloading the whole master twice.
             db.ref('uddokta_master').on('value', snapshot => acceptFirebaseMasterIfAuthoritative(snapshot.val()), err => console.warn('Uddokta realtime sync error:',err));
         }
         function forceRealtimeRefresh() {
@@ -1725,7 +1718,8 @@ img,video,canvas,svg{max-width:100%;height:auto}
             // Prevent duplicate realtime listeners if login/init is triggered again.
             if (!firebaseListenersStarted) {
                 firebaseListenersStarted = true;
-                listenFirebaseData();
+                loadFastReportsCache();
+            listenFirebaseData();
                 listenUddoktaMaster();
                 listenNotices();
                 listenUserUpdateNotices();
@@ -2549,6 +2543,16 @@ img,video,canvas,svg{max-width:100%;height:auto}
             });
         }
 
+        function loadFastReportsCache() {
+            try {
+                const cached = JSON.parse(localStorage.getItem(REPORTS_CACHE_KEY) || '[]');
+                if (Array.isArray(cached) && cached.length) {
+                    reportsData = cached;
+                    updateDashboard(false);
+                }
+            } catch(e) {}
+        }
+
         function listenFirebaseData() {
             if (!db) return;
             // Initial sync is still required for historical reports, but rendering is
@@ -2556,6 +2560,8 @@ img,video,canvas,svg{max-width:100%;height:auto}
             db.ref('visit_reports').on('value', (snapshot) => {
                 const data = snapshot.val() || {};
                 reportsData = Object.keys(data).map(key => data[key]).reverse();
+                // Keep a local snapshot so Dashboard/Report can paint immediately on next login/open.
+                try { localStorage.setItem(REPORTS_CACHE_KEY, JSON.stringify(reportsData)); } catch(e) {}
                 if (document.getElementById('view-daily')?.classList.contains('active')) scheduleRenderReports();
                 updateDashboard(false);
             }, err => console.warn('Visit report sync error:', err));
