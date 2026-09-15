@@ -917,7 +917,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-15-data-load-fix-v4';
+        const APP_CACHE_VERSION = '2026-09-15-fast-accurate-v5';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -2538,7 +2538,18 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
             };
 
             try {
-                await db.ref('visit_reports/' + reportId).set(newReport);
+                // Keep heavy photo outside report metadata so every user does not download
+                // all historical images on each login.
+                const reportForDb = Object.assign({}, newReport);
+                const photoForDb = reportForDb.photo || '';
+                delete reportForDb.photo;
+                reportForDb.hasPhoto = !!photoForDb;
+                const multi = {};
+                multi['visit_reports/' + reportId] = reportForDb;
+                multi['visit_reports_index/' + reportId] = reportForDb;
+                if (photoForDb) multi['visit_report_photos/' + reportId] = photoForDb;
+                await db.ref().update(multi);
+                newReport.hasPhoto = !!photoForDb;
                 const anyNotOk = [newReport.festoonStatus,newReport.bannerStatus,newReport.fileStatus].includes('Not OK');
                 // Show success immediately after the report itself is saved. Secondary notice write runs in background.
                 showSubmitSuccessPopup();
@@ -2600,24 +2611,54 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
             } catch(e) {}
         }
 
+        function applyLightReportSnapshot(data) {
+            const rows = Object.keys(data || {}).map(key => {
+                const r = Object.assign({}, data[key] || {});
+                r.reportId = r.reportId || key;
+                // List/dashboard never needs Base64 image bytes.
+                if (r.photo) { r.hasPhoto = true; delete r.photo; }
+                return r;
+            });
+            rows.sort((a,b) => Number(b.visitTimestamp || b.timestamp || 0) - Number(a.visitTimestamp || a.timestamp || 0));
+            reportsData = rows;
+            try { localStorage.setItem(REPORTS_CACHE_KEY, JSON.stringify(rows.slice(0, 2500))); } catch(e) {}
+            if (document.getElementById('view-daily')?.classList.contains('active')) scheduleRenderReports();
+            updateDashboard(false);
+        }
+
         function listenFirebaseData() {
             if (!db) return;
             const activeBody = document.getElementById('reports-table-body');
             if (activeBody && !reportsData.length) activeBody.innerHTML = '<tr class="report-loading-row"><td colspan="11">Loading visit data...</td></tr>';
-            // Initial sync is still required for historical reports, but rendering is
-            // throttled and skipped when the user is on another page.
-            db.ref('visit_reports').on('value', (snapshot) => {
+
+            // FAST PATH: lightweight report index contains no Base64 photos.
+            // This keeps dashboard/report loading fast and exact once the index exists.
+            const indexRef = db.ref('visit_reports_index');
+            indexRef.on('value', (snapshot) => {
                 const data = snapshot.val() || {};
-                reportsData = Object.keys(data).map(key => data[key]).reverse();
-                // Keep a local snapshot so Dashboard/Report can paint immediately on next login/open.
-                try {
-                    // Never cache Base64 photos: they make localStorage huge/slow and can exceed quota.
-                    const lightCache = reportsData.slice(0, 1500).map(r => { const x = Object.assign({}, r); delete x.photo; return x; });
-                    localStorage.setItem(REPORTS_CACHE_KEY, JSON.stringify(lightCache));
-                } catch(e) {}
-                if (document.getElementById('view-daily')?.classList.contains('active')) scheduleRenderReports();
-                updateDashboard(false);
-            }, err => console.warn('Visit report sync error:', err));
+                if (Object.keys(data).length) {
+                    applyLightReportSnapshot(data);
+                    return;
+                }
+                // Compatibility fallback for older databases. Limit the first payload so
+                // embedded photos cannot freeze the whole app. Admin/DM will build the
+                // lightweight index in the background from this batch.
+                db.ref('visit_reports').orderByChild('timestamp').limitToLast(500).once('value').then(legacySnap => {
+                    const legacy = legacySnap.val() || {};
+                    applyLightReportSnapshot(legacy);
+                    const info = getRoleInfo();
+                    if ((info.role === 'Admin' || info.role === 'DM') && Object.keys(legacy).length) {
+                        const updates = {};
+                        Object.keys(legacy).forEach(key => {
+                            const x = Object.assign({}, legacy[key] || {});
+                            x.reportId = x.reportId || key;
+                            if (x.photo) { x.hasPhoto = true; delete x.photo; }
+                            updates[key] = x;
+                        });
+                        db.ref('visit_reports_index').update(updates).catch(()=>{});
+                    }
+                }).catch(err => console.warn('Visit report fallback sync error:', err));
+            }, err => console.warn('Visit report index sync error:', err));
         }
 
         // Firebase connection status is realtime; when connection returns,
@@ -3222,8 +3263,20 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
                     <div class="detail-box" style="grid-column:1/-1"><b>Feedback</b><span>${r.feedback||'—'}</span></div>
                     <div class="detail-box" style="grid-column:1/-1"><b>Location</b><span>${r.locationName||r.gps||'—'}</span></div>
                 </div>
-                ${r.photo?`<img src="${r.photo}" class="detail-photo" alt="Visit Uddokta Photo">`:''}`;
+                <div id="visit-detail-photo-slot">${r.photo?`<img src="${r.photo}" class="detail-photo" alt="Visit Uddokta Photo">`:''}</div>`;
             modal.classList.remove('hidden');
+            if (!r.photo && r.hasPhoto && db) {
+                const slot = document.getElementById('visit-detail-photo-slot');
+                if (slot) slot.innerHTML = '<div style="padding:12px;color:#64748b">Loading photo...</div>';
+                db.ref('visit_report_photos/' + (r.reportId || '')).once('value').then(snap => {
+                    let photo = snap.val() || '';
+                    if (photo && slot) slot.innerHTML = `<img src="${photo}" class="detail-photo" alt="Visit Uddokta Photo">`;
+                    else if (r.reportId) return db.ref('visit_reports/' + r.reportId + '/photo').once('value').then(oldSnap => {
+                        photo = oldSnap.val() || '';
+                        if (slot) slot.innerHTML = photo ? `<img src="${photo}" class="detail-photo" alt="Visit Uddokta Photo">` : '';
+                    });
+                }).catch(()=>{ if(slot) slot.innerHTML=''; });
+            }
         }
         function closeVisitDetails(){ document.getElementById('visit-details-modal')?.classList.add('hidden'); }
 
