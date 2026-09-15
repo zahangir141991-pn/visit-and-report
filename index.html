@@ -144,6 +144,7 @@
 
         input[type="text"],
         input[type="date"],
+        input[type="month"],
         input[type="password"],
         select,
         textarea {
@@ -523,7 +524,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
 #app-nav{padding-bottom:8px;padding-bottom:max(8px,env(safe-area-inset-bottom))}
 #main-app{padding-bottom:88px;padding-bottom:calc(88px + env(safe-area-inset-bottom))}
 @media(max-width:1024px){.container{padding-left:14px!important;padding-right:14px!important}.dashboard-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:767px){body{font-size:15px}#app-header{width:100%;min-width:0}#app-header h1,#header-user-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#main-app{width:100%!important;margin-left:0!important}.container{padding:10px!important}.section-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.section-head h2{font-size:1.05rem}.dashboard-summary-grid,.quick-grid,.cards-grid,.report-summary-cards,.chart-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}.filter-grid,.visit-check-grid,.chart-filter-grid,.details-grid{grid-template-columns:1fr!important}input[type=text],input[type=date],input[type=password],select,textarea{width:100%;min-height:44px;font-size:16px}.btn{min-height:44px}.card{padding:12px}.card-val{font-size:1.35rem}.table-responsive{max-height:none;overflow:auto}table.reports-table{min-width:760px!important;font-size:.8rem}table.reports-table th,table.reports-table td{padding:8px}.details-modal{padding:8px;align-items:flex-start;padding-top:max(8px,env(safe-area-inset-top))}.details-card{width:100%;max-width:100%;max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px);border-radius:14px}.camera-box{padding:12px}#camera-video{max-height:42vh}#submit-action-bar{bottom:calc(8px + env(safe-area-inset-bottom))!important}.nav-sidebar{height:100vh;height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch}}
+@media(max-width:767px){body{font-size:15px}#app-header{width:100%;min-width:0}#app-header h1,#header-user-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#main-app{width:100%!important;margin-left:0!important}.container{padding:10px!important}.section-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.section-head h2{font-size:1.05rem}.dashboard-summary-grid,.quick-grid,.cards-grid,.report-summary-cards,.chart-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}.filter-grid,.visit-check-grid,.chart-filter-grid,.details-grid{grid-template-columns:1fr!important}input[type=text],input[type=date],input[type=month],input[type=password],select,textarea{width:100%;min-height:44px;font-size:16px}.btn{min-height:44px}.card{padding:12px}.card-val{font-size:1.35rem}.table-responsive{max-height:none;overflow:auto}table.reports-table{min-width:760px!important;font-size:.8rem}table.reports-table th,table.reports-table td{padding:8px}.details-modal{padding:8px;align-items:flex-start;padding-top:max(8px,env(safe-area-inset-top))}.details-card{width:100%;max-width:100%;max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px);border-radius:14px}.camera-box{padding:12px}#camera-video{max-height:42vh}#submit-action-bar{bottom:calc(8px + env(safe-area-inset-bottom))!important}.nav-sidebar{height:100vh;height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch}}
 @media(max-width:430px){.dashboard-summary-grid,.quick-grid,.cards-grid,.report-summary-cards,.chart-kpi-grid{grid-template-columns:1fr 1fr!important}.card-lbl{font-size:.68rem}.card-val{font-size:1.2rem}.report-kpi{padding:9px}.report-kpi b{font-size:1.15rem}#mobile-menu-btn{width:40px;height:40px;top:9px;left:9px}}
 @media(max-width:360px){.dashboard-summary-grid,.quick-grid,.cards-grid,.report-summary-cards,.chart-kpi-grid{grid-template-columns:1fr!important}.container{padding-left:8px!important;padding-right:8px!important}}
 @supports not (padding:env(safe-area-inset-bottom)){#app-nav{padding-bottom:8px}#main-app{padding-bottom:88px}#submit-action-bar{bottom:8px!important}}
@@ -750,14 +751,14 @@ img,video,canvas,svg{max-width:100%;height:auto}
                     <button class="btn btn-sm btn-sec" onclick="resetDailyFilters()">↺ Reset Filter</button>
                 </div>
                 <div class="report-summary-cards" id="dm-admin-report-cards">
-                    <div class="report-kpi"><span id="report-card-1-label">DSS Total Visit</span><b id="report-total-visit-count">0</b></div>
+                    <div class="report-kpi"><span id="report-card-0-label">Total Uddokta</span><b id="report-total-uddokta">0</b></div>
+                    <div class="report-kpi"><span id="report-card-1-label">DSS Total Visit (Month)</span><b id="report-total-visit-count">0</b></div>
                     <div class="report-kpi"><span id="report-card-2-label">DSS Today Visit</span><b id="report-unique-visit">0</b></div>
-                    <div class="report-kpi"><span id="report-card-3-label">Selected DSO Visit</span><b id="report-repeated-visit">0</b></div>
-                    <b id="report-total-uddokta" class="hidden">0</b>
                 </div>
                 <div class="card" style="text-align:left;margin-bottom:14px">
                     <div class="filter-grid">
                         <div id="filter-date-wrap"><label>Date</label><input type="date" id="filter-date" onchange="renderReports()"></div>
+                        <div id="filter-month-wrap" class="hidden"><label>Month</label><input type="month" id="filter-month" onchange="renderReports()"></div>
                         <div id="report-type-wrap" class="hidden"><label>Report Type</label><select id="filter-report-type" onchange="renderReports()"><option value="all">All Visit Reports</option><option value="dm">DM Visit Report</option><option value="dss">DSS Visit Report</option></select></div>
                         <div id="filter-dss-wrap"><label>DSS</label><select id="filter-dss" onchange="populateDsoFilter();renderReports()"><option value="">All DSS</option><option value="MOHOSIN HOSSAIN SOHAG">Sohag</option><option value="MD. ALAMIN">Alamin</option><option value="MD. IMRAN HOSSAIN">Imran</option><option value="RUBEL">Rubel</option><option value="MD. SHOFIQ">Shofiq</option></select></div>
                         <div id="filter-dso-wrap"><label>DSO</label><select id="filter-dso" onchange="renderReports()"><option value="">All DSO</option></select></div>
@@ -1105,6 +1106,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
             const dssw = document.getElementById('filter-dss-wrap');
             const sw = document.getElementById('filter-search-wrap');
             const dtw = document.getElementById('filter-date-wrap');
+            const mtw = document.getElementById('filter-month-wrap');
             if (!wrap) return;
 
             const role = getRoleInfo().role;
@@ -1118,6 +1120,13 @@ img,video,canvas,svg{max-width:100%;height:auto}
             if (dtw) dtw.classList.toggle('hidden',
                 !(mode === 'my' || mode === 'dss' || mode === 'dso' || mode === 'dso-wise' || (mode === 'all' && role === 'Admin'))
             );
+            // DSS Visit Report is month-based. Other report modes keep their date behavior.
+            if (mode === 'dss') {
+                if (dtw) dtw.classList.add('hidden');
+                if (mtw) mtw.classList.remove('hidden');
+            } else {
+                if (mtw) mtw.classList.add('hidden');
+            }
             if (sw) sw.classList.toggle('hidden', mode !== 'my');
             if (dssw) dssw.classList.toggle('hidden',
                 !(mode === 'dss' || mode === 'dso' || mode === 'dso-wise' || (mode === 'all' && role === 'Admin'))
@@ -1668,10 +1677,11 @@ img,video,canvas,svg{max-width:100%;height:auto}
             else { authoritativeUddoktaDB=[]; uddoktaDB=[]; uddoktaMasterSynced=true; }
         }
         function acceptFirebaseMasterIfAuthoritative(data) {
+            // Realtime Firebase master is the live source. Do not show ZERO merely because
+            // old/missing authority metadata does not exactly match the current row count.
             if(!data) { useEmbeddedMasterFallback(); return; }
             const rows=normalizeMasterRows(data);
-            const meta=readMasterAuthorityMeta();
-            if(meta && meta.source==='excel' && Number(meta.uniqueCount)===rows.length) useMasterRows(rows);
+            if(rows.length) useMasterRows(rows);
             else useEmbeddedMasterFallback();
         }
         function listenUddoktaMaster() {
@@ -1702,7 +1712,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
             if (event.key === UDDOKTA_CACHE_KEY && event.newValue) {
                 try {
                     const arr = JSON.parse(event.newValue);
-                    if (Array.isArray(arr) && arr.length) { uddoktaDB = arr; renderReports(); updateDashboard(); }
+                    if (Array.isArray(arr) && arr.length) { useMasterRows(arr); }
                 } catch (e) {}
             }
         });
@@ -2581,6 +2591,8 @@ img,video,canvas,svg{max-width:100%;height:auto}
             visitReportMode=mode;
             const reportDate = document.getElementById('filter-date');
             if (reportDate) reportDate.value = getDhakaToday();
+            const reportMonth = document.getElementById('filter-month');
+            if (reportMonth && !reportMonth.value) reportMonth.value = getDhakaToday().slice(0,7);
             switchTab('daily');
         }
 
@@ -2603,7 +2615,11 @@ img,video,canvas,svg{max-width:100%;height:auto}
         function getVisitRowsForMode(){
             const role=getRoleInfo();
             if(visitReportMode==='my') return getMyVisitRows();
-            if(visitReportMode==='dss') return reportsData.filter(r=>getReportType(r)==='dss' && (role.role!=='DSS' || String(r.user||'').trim().toLowerCase()===String(currentUser||'').trim().toLowerCase()));
+            if(visitReportMode==='dss') return reportsData.filter(r=>{
+                const w=normalizeScopeWallet(r.dsoWallet||r.dsoNumber);
+                if(role.role==='DSS') return getAssignedDsoWalletsForDss(role.dssName).has(w);
+                return role.role==='DM' || role.role==='Admin';
+            });
             if(visitReportMode==='dso' || visitReportMode==='dso-wise') return reportsData.filter(r=>{
                 const w=normalizeScopeWallet(r.dsoWallet||r.dsoNumber);
                 return !!w && (role.role==='DM' || role.role==='Admin' || (role.role==='DSS' && getAssignedDsoWalletsForDss(role.dssName).has(w)));
@@ -2614,7 +2630,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
         function getVisitModeLabel(){
             const role=getRoleInfo().role;
             if(visitReportMode==='my') return ['Amar Visit Report','শুধু আপনার নিজের login ID দিয়ে submit করা Visit Report'];
-            if(visitReportMode==='dss') return ['DSS Visit Report','Date + DSS filter • DSS select করলে শুধু ওই DSS login ID-এর Visit Report'];
+            if(visitReportMode==='dss') return ['DSS Visit Report','Month + DSS filter • selected DSS-এর assigned DSO-দের Visit Report'];
             if(visitReportMode==='dso-wise') return ['DSO Visit Report — DSS Wise','Date + DSS + DSO filter • selected DSS-এর assigned DSO Visit Report'];
             if(visitReportMode==='dso') return ['DSO Visit Report','Date + DSS + DSO filter • DSS select করলে assigned DSO-দের report'];
             return ['Visit Report','সব অনুমোদিত Visit Report'];
@@ -2747,8 +2763,8 @@ img,video,canvas,svg{max-width:100%;height:auto}
         }
 
         function resetDailyFilters(){
-            const d=document.getElementById('filter-date'), s=document.getElementById('filter-dso'), ds=document.getElementById('filter-dss'), q=document.getElementById('filter-search'), rt=document.getElementById('filter-report-type');
-            if(d) d.value=getDhakaToday(); if(s) s.value=''; if(q) q.value=''; if(rt) rt.value='all';
+            const d=document.getElementById('filter-date'), m=document.getElementById('filter-month'), s=document.getElementById('filter-dso'), ds=document.getElementById('filter-dss'), q=document.getElementById('filter-search'), rt=document.getElementById('filter-report-type');
+            if(d) d.value=getDhakaToday(); if(m) m.value=getDhakaToday().slice(0,7); if(s) s.value=''; if(q) q.value=''; if(rt) rt.value='all';
             const role=getRoleInfo();
             if(ds) ds.value = role.role === 'DSS' ? String(role.dssName || '') : '';
             renderReports();
@@ -2757,40 +2773,22 @@ img,video,canvas,svg{max-width:100%;height:auto}
         function updateDmAdminReportCards() {
             const info = getRoleInfo();
             const today = getDhakaToday();
-            const dssSel = String((document.getElementById('filter-dss') || {}).value || '').trim().toUpperCase();
-            const dsoSel = normalizeScopeWallet((document.getElementById('filter-dso') || {}).value || '');
+            const month = ((document.getElementById('filter-month') || {}).value || today.slice(0,7));
+            let dssSel = String((document.getElementById('filter-dss') || {}).value || '').trim().toUpperCase();
+            if (info.role === 'DSS') dssSel = String(info.dssName || '').trim().toUpperCase();
             const visible = (reportsData || []).filter(canSeeReport);
-
             let dssRows = visible;
             if (dssSel) {
                 const assigned = getAssignedDsoWalletsForDss(dssSel);
-                dssRows = visible.filter(r => {
-                    const reportDss = String(r.dssName || '').trim().toUpperCase();
-                    const reportDso = normalizeScopeWallet(r.dsoWallet || r.dsoNumber);
-                    return reportDss === dssSel || assigned.has(reportDso);
-                });
-            } else if (info.role === 'DSS') {
-                const own = String(info.dssName || '').trim().toUpperCase();
-                const assigned = getAssignedDsoWalletsForDss(own);
                 dssRows = visible.filter(r => assigned.has(normalizeScopeWallet(r.dsoWallet || r.dsoNumber)));
             }
-
-            const dsoRows = dsoSel
-                ? visible.filter(r => normalizeScopeWallet(r.dsoWallet || r.dsoNumber) === dsoSel)
-                : [];
-
+            const monthRows = dssRows.filter(r => String(r.date || '').slice(0,7) === month);
+            const c0 = document.getElementById('report-total-uddokta');
             const c1 = document.getElementById('report-total-visit-count');
             const c2 = document.getElementById('report-unique-visit');
-            const c3 = document.getElementById('report-repeated-visit');
-            const l1 = document.getElementById('report-card-1-label');
-            const l2 = document.getElementById('report-card-2-label');
-            const l3 = document.getElementById('report-card-3-label');
-            if (l1) l1.innerText = dssSel ? 'DSS Total Visit' : (info.role === 'DSS' ? 'My DSS Total Visit' : 'All DSS Total Visit');
-            if (l2) l2.innerText = dssSel ? 'DSS Today Visit' : (info.role === 'DSS' ? 'My DSS Today Visit' : 'All DSS Today Visit');
-            if (l3) l3.innerText = dsoSel ? 'Selected DSO Visit' : 'Select DSO Visit';
-            if (c1) c1.innerText = dssRows.length;
+            if (c0) c0.innerText = getReportMasterUddoktaCount();
+            if (c1) c1.innerText = monthRows.length;
             if (c2) c2.innerText = dssRows.filter(r => String(r.date || '') === today).length;
-            if (c3) c3.innerText = dsoSel ? dsoRows.length : 0;
         }
 
         function renderReports() {
@@ -2808,6 +2806,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
             if(title) title.innerText=labels[0];
             if(sub) sub.innerText=labels[1];
             const fd=(document.getElementById('filter-date')||{}).value||'';
+            const fm=(document.getElementById('filter-month')||{}).value||getDhakaToday().slice(0,7);
             const fds=normalizeScopeWallet((document.getElementById('filter-dso')||{}).value||'');
             let fdss=((document.getElementById('filter-dss')||{}).value||'').toUpperCase();
             if(visitReportMode==='dss' && role.role==='DSS') fdss=String(role.dssName||'').toUpperCase();
@@ -2816,21 +2815,22 @@ img,video,canvas,svg{max-width:100%;height:auto}
             if(role.role==='DSS') fdss=String(role.dssName||'').toUpperCase();
             let base=getVisitRowsForMode();
             const rows=base.filter(r=>{
-                if(visitReportMode==='dss' && getReportType(r)!=='dss') return false;
-                if(visitReportMode==='dss' && role.role==='DM' && fdss && !dssLoginMatchesName(r.user, fdss)) return false;
+                if(visitReportMode==='dss' && fm && String(r.date||'').slice(0,7)!==fm) return false;
                 if(visitReportMode==='dso-wise' && !String(r.dssName||'').trim()) return false;
                 if(visitReportMode==='my' && String(r.user||'').trim().toLowerCase()!==String(currentUser||'').trim().toLowerCase()) return false;
                 if(frt !== 'all' && getReportType(r) !== frt) return false;
                 // Date filter:
                 // DSS Visit, DSO Visit, Amar Visit and Admin All Visit.
-                if(fd && (visitReportMode==='my' || visitReportMode==='dss' || visitReportMode==='dso' || visitReportMode==='dso-wise' || (visitReportMode==='all' && role.role==='Admin')) && r.date!==fd) return false;
+                if(fd && (visitReportMode==='my' || visitReportMode==='dso' || visitReportMode==='dso-wise' || (visitReportMode==='all' && role.role==='Admin')) && r.date!==fd) return false;
 
                 // DSO filter is only meaningful in DSO Visit.
                 if((visitReportMode==='dso' || visitReportMode==='dso-wise') && fds && normalizeScopeWallet(r.dsoWallet||r.dsoNumber)!==fds) return false;
 
-                // DSS Visit Report:
-                // Selecting a DSS means ONLY reports submitted from that DSS's login ID.
-                if(visitReportMode==='dss' && fdss && !dssLoginMatchesName(r.user, fdss)) return false;
+                // DSS Visit Report: selected DSS includes visits from all DSOs assigned to that DSS.
+                if(visitReportMode==='dss' && fdss){
+                    const assigned = getAssignedDsoWalletsForDss(fdss);
+                    if(!assigned.has(normalizeScopeWallet(r.dsoWallet||r.dsoNumber))) return false;
+                }
 
                 // DSO Visit Report:
                 // Selecting a DSS means ONLY that DSS's assigned DSO reports.
