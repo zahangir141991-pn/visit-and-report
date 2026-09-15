@@ -621,7 +621,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
                     <div class="card"><div class="card-lbl">Total Visit</div><div class="card-val" id="total-visit-count">0</div></div>
                     <div class="card"><div class="card-lbl">Today Visit</div><div class="card-val" id="unique-visit-count">0</div></div>
                     <div class="card"><div class="card-lbl">Today</div><div class="card-val" id="today-date-card" style="font-size:1rem"></div></div>
-                    <div class="card"><div class="card-lbl">Access</div><div class="card-val" id="access-card" style="font-size:1rem"></div></div>
+                    <div class="card hidden" aria-hidden="true"><div class="card-lbl">Access</div><div class="card-val" id="access-card" style="font-size:1rem"></div></div>
                 </div>
                 <div id="dashboard-visit-chart-card" class="card dashboard-chart-card hidden">
                     <div class="dashboard-chart-head">
@@ -2860,10 +2860,10 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
 
         function getVisitModeLabel(){
             const role=getRoleInfo().role;
-            if(visitReportMode==='my') return ['Amar Visit Report','Date + Month filter • শুধু আপনার নিজের login ID দিয়ে submit করা Visit Report'];
-            if(visitReportMode==='dss') return ['DSS Visit Report','Date + Month + DSS filter • শুধু DSS login ID দিয়ে submit করা Visit Report'];
-            if(visitReportMode==='dso-wise') return ['DSO Visit Report — DSS Wise','Date + Month + DSS + DSO filter • selected DSS-এর assigned DSO Visit Report'];
-            if(visitReportMode==='dso') return ['DSO Visit Report','Date + Month + DSS + DSO filter • শুধু DSO login ID দিয়ে submit করা Visit Report'];
+            if(visitReportMode==='my') return ['Amar Visit Report',''];
+            if(visitReportMode==='dss') return ['DSS Visit Report',''];
+            if(visitReportMode==='dso-wise') return ['DSO Visit Report — DSS Wise',''];
+            if(visitReportMode==='dso') return ['DSO Visit Report',''];
             return ['Visit Report','সব অনুমোদিত Visit Report'];
         }
 
