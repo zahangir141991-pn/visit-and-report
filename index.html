@@ -2993,9 +2993,14 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
             const rows=base.filter(r=>{
                 // Defense-in-depth for DSO Visit Report: only DSO-login submissions.
                 if (visitReportMode==='dso' || visitReportMode==='dso-wise') {
+                    const rawUser = String(r.user || '').trim();
                     const rw = normalizeScopeWallet(r.dsoWallet || r.dsoNumber);
-                    const ru = normalizeScopeWallet(r.user || '');
-                    if (!/^13325178(?:0[1-9]|[1-3]\d|4[0-5])$/.test(ru) || ru !== rw) return false;
+                    const ru = normalizeScopeWallet(rawUser);
+                    // Validate the ORIGINAL DSO login ID (1332517801–1332517845),
+                    // then compare its normalized wallet (801–845) with the report DSO.
+                    // Previously the regex was applied to normalized `ru` (e.g. 801),
+                    // which rejected every DSO row and left the table blank.
+                    if (!/^13325178(?:0[1-9]|[1-3]\d|4[0-5])$/.test(rawUser) || ru !== rw) return false;
                     if (role.role === 'DSO' && ru !== normalizeScopeWallet(role.dsoWallet || currentUser || '')) return false;
                 }
                 // Month-wise filter applies to every report mode.
