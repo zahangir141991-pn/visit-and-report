@@ -607,6 +607,13 @@ img,video,canvas,svg{max-width:100%;height:auto}
     <button type="button" class="success-ok-btn" onclick="closeSubmitSuccessPopup()">OK</button>
   </div>
 </div>
+<div id="submit-reason-popup" role="status" aria-live="assertive">
+  <div class="reason-card">
+    <div class="reason-icon">!</div>
+    <h3 class="reason-title">Submit হয়নি</h3>
+    <p class="reason-message" id="submit-reason-message"></p>
+  </div>
+</div>
 
 <!-- Main App Section -->
         <div id="main-app" class="hidden">
@@ -2430,6 +2437,8 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
                 const ok = popup.querySelector('.success-ok-btn');
                 if (ok) ok.focus();
             }, 50);
+            clearTimeout(window.__submitSuccessPopupTimer);
+            window.__submitSuccessPopupTimer = setTimeout(closeSubmitSuccessPopup, 3000);
         }
 
         function closeSubmitSuccessPopup() {
@@ -3738,8 +3747,26 @@ let firebaseListenersStarted = false;
         // completion. A 500ms polling loop caused unnecessary CPU work and UI jank, so it
         // is intentionally removed.
 
+        let submitReasonPopupTimer = null;
         function showAlert(msg, type) {
+            // Errors/warnings are shown as a clear 3-second popup so the user always
+            // knows exactly why Submit (or another action) could not continue.
+            if (type === 'error') {
+                const popup = document.getElementById('submit-reason-popup');
+                const message = document.getElementById('submit-reason-message');
+                if (popup && message) {
+                    message.innerText = String(msg || 'Submit করা যায়নি। আবার চেষ্টা করুন।');
+                    popup.classList.add('show');
+                    if (submitReasonPopupTimer) clearTimeout(submitReasonPopupTimer);
+                    submitReasonPopupTimer = setTimeout(() => {
+                        popup.classList.remove('show');
+                        submitReasonPopupTimer = null;
+                    }, 3000);
+                    return;
+                }
+            }
             const box = document.getElementById('alert-box');
+            if (!box) return;
             box.className = `alert alert-${type}`;
             box.innerText = msg;
             box.style.display = 'block';
