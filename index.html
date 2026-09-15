@@ -752,7 +752,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
                 </div>
                 <div class="report-summary-cards" id="dm-admin-report-cards">
                     <div class="report-kpi"><span id="report-card-0-label">Total Uddokta</span><b id="report-total-uddokta">0</b></div>
-                    <div class="report-kpi"><span id="report-card-1-label">DSS Total Visit (Month)</span><b id="report-total-visit-count">0</b></div>
+                    <div class="report-kpi"><span id="report-card-1-label">DSS Total Visit</span><b id="report-total-visit-count">0</b></div>
                     <div class="report-kpi"><span id="report-card-2-label">DSS Today Visit</span><b id="report-unique-visit">0</b></div>
                 </div>
                 <div class="card" style="text-align:left;margin-bottom:14px">
@@ -1134,7 +1134,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
             );
 
             // DSO filter is visible ONLY in DSO Visit Report.
-            if (dw) dw.classList.toggle('hidden', !(mode === 'dso' || mode === 'dso-wise'));
+            if (dw) dw.classList.toggle('hidden', mode === 'dss' || !(mode === 'dso' || mode === 'dso-wise'));
 
             // Report Type selector is not needed in these role-specific Visit pages.
             if (wrap) wrap.classList.add('hidden');
@@ -2792,6 +2792,21 @@ img,video,canvas,svg{max-width:100%;height:auto}
             const c0 = document.getElementById('report-total-uddokta');
             const c1 = document.getElementById('report-total-visit-count');
             const c2 = document.getElementById('report-unique-visit');
+            const l0 = document.getElementById('report-card-0-label');
+            const l1 = document.getElementById('report-card-1-label');
+            const l2 = document.getElementById('report-card-2-label');
+            // Show the selected/fixed DSS name on the DSS summary cards (e.g. Sohag).
+            let dssDisplay = '';
+            const dssSelect = document.getElementById('filter-dss');
+            if (info.role === 'DSS') {
+                const raw = String(info.dssName || '').trim();
+                dssDisplay = raw ? raw.split(/\s+/).slice(-1)[0] : '';
+            } else if (dssSelect && dssSelect.value) {
+                dssDisplay = (dssSelect.options[dssSelect.selectedIndex] || {}).text || dssSelect.value;
+            }
+            if (l0) l0.innerText = 'Total Uddokta';
+            if (l1) l1.innerText = dssDisplay ? `DSS Total Visit (${dssDisplay})` : 'DSS Total Visit';
+            if (l2) l2.innerText = dssDisplay ? `DSS Today Visit (${dssDisplay})` : 'DSS Today Visit';
             if (c0) c0.innerText = getReportMasterUddoktaCount();
             if (c1) c1.innerText = monthRows.length;
             if (c2) c2.innerText = dssRows.filter(r => String(r.date || '') === today).length;
