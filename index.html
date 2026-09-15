@@ -917,7 +917,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-15-dso-summary-v2';
+        const APP_CACHE_VERSION = '2026-09-15-fast-load-v3';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -1042,23 +1042,14 @@ img,video,canvas,svg{max-width:100%;height:auto}
             const dss = String(dssName || '').trim().toUpperCase();
             const dso = normalizeScopeWallet(dsoWallet);
             if (!dss || !dso) return false;
-            return (Array.isArray(uddoktaDB) ? uddoktaDB : []).some(item => {
-                const itemDss = String(item[3] || '').trim().toUpperCase();
-                const itemDso = normalizeScopeWallet(item[0]);
-                return itemDso === dso && itemDss === dss;
-            });
+            const assigned = dssDsoAssignmentIndex.get(dss);
+            return !!assigned && assigned.has(dso);
         }
 
         function getAssignedDsoWalletsForDss(dssName) {
             const dss = String(dssName || '').trim().toUpperCase();
-            const set = new Set();
-            (Array.isArray(uddoktaDB) ? uddoktaDB : []).forEach(item => {
-                if (String(item[3] || '').trim().toUpperCase() === dss) {
-                    const w = normalizeScopeWallet(item[0]);
-                    if (w) set.add(w);
-                }
-            });
-            return set;
+            const assigned = dssDsoAssignmentIndex.get(dss);
+            return assigned ? new Set(assigned) : new Set();
         }
 
         function canSeeReport(r) {
@@ -1679,6 +1670,20 @@ img,video,canvas,svg{max-width:100%;height:auto}
             }
         }
 
+        // Performance index: avoids scanning the full Uddokta master for every report row.
+        let dssDsoAssignmentIndex = new Map();
+        function rebuildDssDsoAssignmentIndex(rows) {
+            const next = new Map();
+            (Array.isArray(rows) ? rows : []).forEach(item => {
+                const dss = String((item && item[3]) || '').trim().toUpperCase();
+                const dso = normalizeScopeWallet(item && item[0]);
+                if (!dss || !dso) return;
+                if (!next.has(dss)) next.set(dss, new Set());
+                next.get(dss).add(dso);
+            });
+            dssDsoAssignmentIndex = next;
+        }
+
         let remoteMasterAuthorityMeta = null;
         function readMasterAuthorityMeta() {
             if (remoteMasterAuthorityMeta) return remoteMasterAuthorityMeta;
@@ -1698,6 +1703,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
         function useMasterRows(rows) {
             authoritativeUddoktaDB = Array.isArray(rows) ? rows.slice() : [];
             uddoktaDB = authoritativeUddoktaDB.slice();
+            rebuildDssDsoAssignmentIndex(uddoktaDB);
             uddoktaMasterSynced = true;
             saveUddoktaCache(uddoktaDB);
             try { renderReports(); updateDashboard(); } catch(e) {}
@@ -1734,10 +1740,9 @@ img,video,canvas,svg{max-width:100%;height:auto}
 
         // Reconnect and tab-focus refresh: realtime listener remains active,
         // while these events immediately reconcile any stale browser state.
-        window.addEventListener('online', forceRealtimeRefresh);
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') forceRealtimeRefresh();
-        });
+        // Realtime listeners already resync after reconnect/focus. Avoid duplicate full-master downloads here.
+        window.addEventListener('online', () => { /* realtime listener reconnects automatically */ });
+        document.addEventListener('visibilitychange', () => { /* no forced full refresh */ });
         window.addEventListener('storage', (event) => {
             if (event.key === UDDOKTA_CACHE_KEY && event.newValue) {
                 try {
@@ -2586,6 +2591,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
                 if (Array.isArray(cached) && cached.length) {
                     reportsData = cached;
                     updateDashboard(false);
+                    if (document.getElementById('view-daily')?.classList.contains('active')) scheduleRenderReports();
                 }
             } catch(e) {}
         }
@@ -2602,7 +2608,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
                 // Keep a local snapshot so Dashboard/Report can paint immediately on next login/open.
                 try {
                     // Never cache Base64 photos: they make localStorage huge/slow and can exceed quota.
-                    const lightCache = reportsData.map(r => { const x = Object.assign({}, r); delete x.photo; return x; });
+                    const lightCache = reportsData.slice(0, 1500).map(r => { const x = Object.assign({}, r); delete x.photo; return x; });
                     localStorage.setItem(REPORTS_CACHE_KEY, JSON.stringify(lightCache));
                 } catch(e) {}
                 if (document.getElementById('view-daily')?.classList.contains('active')) scheduleRenderReports();
@@ -2615,7 +2621,8 @@ img,video,canvas,svg{max-width:100%;height:auto}
         if (db) {
             db.ref('.info/connected').on('value', snapshot => {
                 if (snapshot.val() === true) {
-                    try { forceRealtimeRefresh(); } catch (e) { console.warn('Realtime refresh skipped:', e); }
+                    // Active Firebase listeners automatically deliver fresh data.
+                    // Do not force a second full Uddokta-master download here.
                 }
             });
         }
