@@ -1614,20 +1614,31 @@ img,video,canvas,svg{max-width:100%;height:auto}
 
                 if (!db) throw new Error('Firebase is not connected. Please check internet/Firebase access.');
                 const authorityMeta = {source:'excel',version:APP_CACHE_VERSION,uniqueCount:replacement.length,updatedAt:Date.now()};
-                // Atomic multi-location update: new Excel completely replaces old master and metadata together.
-                // set() replaces the entire node, so records missing from the new file are removed automatically.
-                await db.ref().update({
-                    uddokta_master: masterObj,
-                    [UDDOKTA_MASTER_META_PATH]: authorityMeta
-                });
-                authoritativeUddoktaDB = replacement.slice();
+
+                // HARD REPLACE MODE:
+                // Never merge the new Excel with the previous Firebase master.
+                // 1) Delete the complete old master node.
+                // 2) Write ONLY the rows from the newly uploaded Excel.
+                // 3) Verify Firebase count before updating the UI/cache.
+                const masterRef = db.ref('uddokta_master');
+                await masterRef.remove();
+                await masterRef.set(masterObj);
+                await db.ref(UDDOKTA_MASTER_META_PATH).set(authorityMeta);
+
+                const verifySnap = await masterRef.once('value');
+                const verifiedRows = normalizeMasterRows(verifySnap.val());
+                if (verifiedRows.length !== replacement.length) {
+                    throw new Error(`Master verification failed. Excel: ${replacement.length}, Firebase: ${verifiedRows.length}`);
+                }
+
+                authoritativeUddoktaDB = verifiedRows.slice();
                 uddoktaMasterSynced = true;
                 try { localStorage.setItem(UDDOKTA_MASTER_META_KEY, JSON.stringify(authorityMeta)); } catch(e) {}
-                saveUddoktaCache(replacement);
-                uddoktaDB = replacement;
+                saveUddoktaCache(verifiedRows);
+                uddoktaDB = verifiedRows;
                 renderReports();
                 try { updateDashboard(); } catch (e) {}
-                if (status) status.innerText = `Update successful — ${replacement.length} unique Uddokta records are now the current master.`;
+                if (status) status.innerText = `Update successful — ${verifiedRows.length} unique Uddokta records verified in Firebase. Previous master was fully deleted.`;
             } catch (err) {
                 if (status) status.innerText = 'Upload failed: ' + err.message;
                 alert('Excel upload failed: ' + err.message);
