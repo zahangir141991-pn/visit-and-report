@@ -1118,16 +1118,10 @@ img,video,canvas,svg{max-width:100%;height:auto}
             // DSO Visit Report = Date + DSS + DSO
             // Amar Visit Report = Date + Uddokta search
             // All Visit Report (Admin) = Date + DSS
-            if (dtw) dtw.classList.toggle('hidden',
-                !(mode === 'my' || mode === 'dss' || mode === 'dso' || mode === 'dso-wise' || (mode === 'all' && role === 'Admin'))
-            );
-            // DSS Visit Report is month-based. Other report modes keep their date behavior.
-            if (mode === 'dss') {
-                if (dtw) dtw.classList.add('hidden');
-                if (mtw) mtw.classList.remove('hidden');
-            } else {
-                if (mtw) mtw.classList.add('hidden');
-            }
+            // Every Visit Report supports BOTH Date-wise and Month-wise filtering.
+            // Month filters the selected month; Date can optionally narrow it to one exact day.
+            if (dtw) dtw.classList.remove('hidden');
+            if (mtw) mtw.classList.remove('hidden');
             if (sw) sw.classList.toggle('hidden', mode !== 'my');
             if (dssw) dssw.classList.toggle('hidden',
                 !(mode === 'dss' || mode === 'dso' || mode === 'dso-wise' || (mode === 'all' && role === 'Admin'))
@@ -2668,10 +2662,10 @@ img,video,canvas,svg{max-width:100%;height:auto}
 
         function getVisitModeLabel(){
             const role=getRoleInfo().role;
-            if(visitReportMode==='my') return ['Amar Visit Report','শুধু আপনার নিজের login ID দিয়ে submit করা Visit Report'];
-            if(visitReportMode==='dss') return ['DSS Visit Report','Month + DSS filter • selected DSS-এর assigned DSO-দের Visit Report'];
-            if(visitReportMode==='dso-wise') return ['DSO Visit Report — DSS Wise','Date + DSS + DSO filter • selected DSS-এর assigned DSO Visit Report'];
-            if(visitReportMode==='dso') return ['DSO Visit Report','Date + DSS + DSO filter • DSS select করলে assigned DSO-দের report'];
+            if(visitReportMode==='my') return ['Amar Visit Report','Date + Month filter • শুধু আপনার নিজের login ID দিয়ে submit করা Visit Report'];
+            if(visitReportMode==='dss') return ['DSS Visit Report','Date + Month + DSS filter • selected DSS-এর assigned DSO-দের Visit Report'];
+            if(visitReportMode==='dso-wise') return ['DSO Visit Report — DSS Wise','Date + Month + DSS + DSO filter • selected DSS-এর assigned DSO Visit Report'];
+            if(visitReportMode==='dso') return ['DSO Visit Report','Date + Month + DSS + DSO filter • DSS select করলে assigned DSO-দের report'];
             return ['Visit Report','সব অনুমোদিত Visit Report'];
         }
 
@@ -2803,7 +2797,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
 
         function resetDailyFilters(){
             const d=document.getElementById('filter-date'), m=document.getElementById('filter-month'), s=document.getElementById('filter-dso'), ds=document.getElementById('filter-dss'), q=document.getElementById('filter-search'), rt=document.getElementById('filter-report-type');
-            if(d) d.value=getDhakaToday(); if(m) m.value=getDhakaToday().slice(0,7); if(s) s.value=''; if(q) q.value=''; if(rt) rt.value='all';
+            if(d) d.value=''; if(m) m.value=getDhakaToday().slice(0,7); if(s) s.value=''; if(q) q.value=''; if(rt) rt.value='all';
             const role=getRoleInfo();
             if(ds) ds.value = role.role === 'DSS' ? String(role.dssName || '') : '';
             renderReports();
@@ -2869,13 +2863,13 @@ img,video,canvas,svg{max-width:100%;height:auto}
             if(role.role==='DSS') fdss=String(role.dssName||'').toUpperCase();
             let base=getVisitRowsForMode();
             const rows=base.filter(r=>{
-                if(visitReportMode==='dss' && fm && String(r.date||'').slice(0,7)!==fm) return false;
+                // Month-wise filter applies to every report mode.
+                if(fm && String(r.date||'').slice(0,7)!==fm) return false;
                 if(visitReportMode==='dso-wise' && !String(r.dssName||'').trim()) return false;
                 if(visitReportMode==='my' && String(r.user||'').trim().toLowerCase()!==String(currentUser||'').trim().toLowerCase()) return false;
                 if(frt !== 'all' && getReportType(r) !== frt) return false;
-                // Date filter:
-                // DSS Visit, DSO Visit, Amar Visit and Admin All Visit.
-                if(fd && (visitReportMode==='my' || visitReportMode==='dso' || visitReportMode==='dso-wise' || (visitReportMode==='all' && role.role==='Admin')) && r.date!==fd) return false;
+                // Date-wise filter applies to every report mode. Leave Date blank for whole-month view.
+                if(fd && String(r.date||'')!==fd) return false;
 
                 // DSO filter is only meaningful in DSO Visit.
                 if((visitReportMode==='dso' || visitReportMode==='dso-wise') && fds && normalizeScopeWallet(r.dsoWallet||r.dsoNumber)!==fds) return false;
