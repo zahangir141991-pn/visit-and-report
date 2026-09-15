@@ -762,7 +762,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
                         <div id="report-type-wrap" class="hidden"><label>Report Type</label><select id="filter-report-type" onchange="renderReports()"><option value="all">All Visit Reports</option><option value="dm">DM Visit Report</option><option value="dss">DSS Visit Report</option></select></div>
                         <div id="filter-dss-wrap"><label>DSS</label><select id="filter-dss" onchange="populateDsoFilter();renderReports()"><option value="">All DSS</option><option value="MOHOSIN HOSSAIN SOHAG">Sohag</option><option value="MD. ALAMIN">Alamin</option><option value="MD. IMRAN HOSSAIN">Imran</option><option value="RUBEL">Rubel</option><option value="MD. SHOFIQ">Shofiq</option></select></div>
                         <div id="filter-dso-wrap"><label>DSO</label><select id="filter-dso" onchange="renderReports()"><option value="">All DSO</option></select></div>
-                        <div id="filter-search-wrap"><label>Search Uddokta</label><input type="text" id="filter-search" placeholder="Name / number" oninput="renderReports()"></div>
+                        <div id="filter-search-wrap"><label>Search Uddokta</label><input type="text" id="filter-search" placeholder="Name / number" oninput="scheduleRenderReports()"></div>
                     </div>
                 </div>
                 <div class="table-wrap"><div class="table-responsive"><table class="reports-table"><thead><tr><th>Visit Time</th><th>DSO</th><th>Uddokta Name</th><th>Uddokta Number</th><th>Festoon</th><th>Banner</th><th>File</th><th>Review</th><th>Location</th><th>Photo</th><th>Details</th></tr></thead><tbody id="reports-table-body"></tbody></table></div></div>
@@ -2592,13 +2592,19 @@ img,video,canvas,svg{max-width:100%;height:auto}
 
         function listenFirebaseData() {
             if (!db) return;
+            const activeBody = document.getElementById('reports-table-body');
+            if (activeBody && !reportsData.length) activeBody.innerHTML = '<tr class="report-loading-row"><td colspan="11">Loading visit data...</td></tr>';
             // Initial sync is still required for historical reports, but rendering is
             // throttled and skipped when the user is on another page.
             db.ref('visit_reports').on('value', (snapshot) => {
                 const data = snapshot.val() || {};
                 reportsData = Object.keys(data).map(key => data[key]).reverse();
                 // Keep a local snapshot so Dashboard/Report can paint immediately on next login/open.
-                try { localStorage.setItem(REPORTS_CACHE_KEY, JSON.stringify(reportsData)); } catch(e) {}
+                try {
+                    // Never cache Base64 photos: they make localStorage huge/slow and can exceed quota.
+                    const lightCache = reportsData.map(r => { const x = Object.assign({}, r); delete x.photo; return x; });
+                    localStorage.setItem(REPORTS_CACHE_KEY, JSON.stringify(lightCache));
+                } catch(e) {}
                 if (document.getElementById('view-daily')?.classList.contains('active')) scheduleRenderReports();
                 updateDashboard(false);
             }, err => console.warn('Visit report sync error:', err));
@@ -2979,15 +2985,17 @@ img,video,canvas,svg{max-width:100%;height:auto}
             updateDmAdminReportCards();
             if(!rows.length){ tableBody.innerHTML='<tr><td colspan="11" class="empty-state">No visit data found</td></tr>'; return; }
             rows.sort((a,b)=>Number(b.timestamp||0)-Number(a.timestamp||0));
+            const reportFragment = document.createDocumentFragment();
             rows.forEach(r=>{
                 const tr=document.createElement('tr');
                 const idx=reportsData.indexOf(r);
                 const isDss = role.role === 'DSS';
                 const reviewHtml = isDss && (r.festoonStatus==='Not OK'||r.bannerStatus==='Not OK'||r.fileStatus==='Not OK') ? `<div class="review-grid">${r.festoonStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${r.id}','OK','festoonStatus')">✓ Festoon OK</button>`:''}${r.bannerStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${r.id}','OK','bannerStatus')">✓ Banner OK</button>`:''}${r.fileStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${r.id}','OK','fileStatus')">✓ File OK</button>`:''}</div>` : `<span>${r.reviewStatus||'Pending'}</span>`;
                 const updatedText = r.reviewUpdatedAt ? `<div class="review-update">Updated: ${r.reviewUpdatedAt}${r.reviewUpdatedBy?' · '+r.reviewUpdatedBy:''}</div>` : '';
-                tr.innerHTML=`<td>${r.visitTime||(r.timestamp?new Date(r.timestamp).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}):'')}</td><td>${r.dsoWallet||r.dsoNumber||''}</td><td>${r.uddoktaName||''}</td><td>${r.uddoktaNumber||''}</td><td>${r.festoonStatus||'Pending'}</td><td>${r.bannerStatus||'Pending'}</td><td>${r.fileStatus||'Pending'}</td><td>${reviewHtml}${updatedText}</td><td><small>${r.locationName||r.gps||''}</small></td><td>${r.photo?`<img src="${r.photo}" class="table-img" loading="lazy" decoding="async" alt="Visit Uddokta Photo" onclick="showVisitDetails(${idx})">`:''}</td><td><button class="detail-btn" onclick="showVisitDetails(${idx})">View</button></td>`;
-                tableBody.appendChild(tr);
+                tr.innerHTML=`<td data-label="Visit Time">${r.visitTime||(r.timestamp?new Date(r.timestamp).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}):'')}</td><td data-label="DSO">${r.dsoWallet||r.dsoNumber||''}</td><td data-label="Uddokta Name">${r.uddoktaName||''}</td><td data-label="Uddokta Number">${r.uddoktaNumber||''}</td><td data-label="Festoon">${r.festoonStatus||'Pending'}</td><td data-label="Banner">${r.bannerStatus||'Pending'}</td><td data-label="File">${r.fileStatus||'Pending'}</td><td data-label="Review" data-wide="1">${reviewHtml}${updatedText}</td><td data-label="Location" data-wide="1"><small>${r.locationName||r.gps||''}</small></td><td data-label="Photo">${r.photo?`<button class="mobile-photo-btn" onclick="showVisitDetails(${idx})">Photo</button>`:'—'}</td><td data-label="Details"><button class="detail-btn" onclick="showVisitDetails(${idx})">View</button></td>`;
+                reportFragment.appendChild(tr);
             });
+            tableBody.replaceChildren(reportFragment);
         }
 
         async function createReviewNotice(reportId, report) {
