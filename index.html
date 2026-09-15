@@ -2657,23 +2657,29 @@ img,video,canvas,svg{max-width:100%;height:auto}
 
         function getVisitRowsForMode(){
             const role=getRoleInfo();
+            // Amar Visit Report: STRICTLY the currently logged-in ID only.
             if(visitReportMode==='my') return getMyVisitRows();
-            if(visitReportMode==='dss') return reportsData.filter(r=>{
-                const w=normalizeScopeWallet(r.dsoWallet||r.dsoNumber);
-                if(role.role==='DSS') return getAssignedDsoWalletsForDss(role.dssName).has(w);
+
+            // DSS Visit Report: STRICTLY reports submitted from a DSS login ID.
+            // DSO/DM/Admin submissions are never allowed here, even if the Uddokta/DSO belongs to that DSS.
+            if(visitReportMode==='dss') return (reportsData || []).filter(r=>{
+                const submitter = String(r.user || '').trim().toLowerCase();
+                if(!isDssLoginUser(submitter)) return false;
+                if(role.role==='DSS') return submitter === String(currentUser || '').trim().toLowerCase();
                 return role.role==='DM' || role.role==='Admin';
             });
-            if(visitReportMode==='dso' || visitReportMode==='dso-wise') return reportsData.filter(r=>{
+
+            // DSO Visit Report: STRICTLY reports submitted from a DSO login ID.
+            // DSS/DM/Admin submissions are never allowed here.
+            if(visitReportMode==='dso' || visitReportMode==='dso-wise') return (reportsData || []).filter(r=>{
                 const w = normalizeScopeWallet(r.dsoWallet || r.dsoNumber);
-                const submitter = normalizeScopeWallet(r.user || '');
-                // HARD ACCESS RULE: DSO Visit Report contains ONLY reports actually
-                // submitted while logged in with that DSO ID. A DM/DSS/Admin visit
-                // for the same DSO wallet must never appear in this report.
-                const isDsoSubmitted = /^13325178(?:0[1-9]|[1-3]\d|4[0-5])$/.test(submitter) && submitter === w;
-                if (!isDsoSubmitted) return false;
-                if (role.role === 'DSO') return submitter === normalizeScopeWallet(role.dsoWallet || currentUser || '');
-                if (role.role === 'DSS') return getAssignedDsoWalletsForDss(role.dssName).has(w);
-                return role.role === 'DM' || role.role === 'Admin';
+                const rawUser = String(r.user || '').trim();
+                const submitter = normalizeScopeWallet(rawUser);
+                const isDsoSubmitted = /^13325178(?:0[1-9]|[1-3]\d|4[0-5])$/.test(rawUser) && submitter === w;
+                if(!isDsoSubmitted) return false;
+                if(role.role==='DSO') return rawUser === String(currentUser || '').trim();
+                if(role.role==='DSS') return getAssignedDsoWalletsForDss(role.dssName).has(w);
+                return role.role==='DM' || role.role==='Admin';
             });
             return reportsData.filter(canSeeReport);
         }
@@ -2681,9 +2687,9 @@ img,video,canvas,svg{max-width:100%;height:auto}
         function getVisitModeLabel(){
             const role=getRoleInfo().role;
             if(visitReportMode==='my') return ['Amar Visit Report','Date + Month filter • শুধু আপনার নিজের login ID দিয়ে submit করা Visit Report'];
-            if(visitReportMode==='dss') return ['DSS Visit Report','Date + Month + DSS filter • selected DSS-এর assigned DSO-দের Visit Report'];
+            if(visitReportMode==='dss') return ['DSS Visit Report','Date + Month + DSS filter • শুধু DSS login ID দিয়ে submit করা Visit Report'];
             if(visitReportMode==='dso-wise') return ['DSO Visit Report — DSS Wise','Date + Month + DSS + DSO filter • selected DSS-এর assigned DSO Visit Report'];
-            if(visitReportMode==='dso') return ['DSO Visit Report','Date + Month + DSS + DSO filter • DSS select করলে assigned DSO-দের report'];
+            if(visitReportMode==='dso') return ['DSO Visit Report','Date + Month + DSS + DSO filter • শুধু DSO login ID দিয়ে submit করা Visit Report'];
             return ['Visit Report','সব অনুমোদিত Visit Report'];
         }
 
@@ -2832,60 +2838,75 @@ img,video,canvas,svg{max-width:100%;height:auto}
             const l0 = document.getElementById('report-card-0-label');
             const l1 = document.getElementById('report-card-1-label');
             const l2 = document.getElementById('report-card-2-label');
+            if(l0) l0.innerText = 'Total Uddokta';
 
-            // DSO Visit Report summary: only genuine DSO-ID submissions are counted.
-            if (mode === 'dso' || mode === 'dso-wise') {
-                let selectedDso = normalizeScopeWallet((document.getElementById('filter-dso') || {}).value || '');
-                let selectedDss = String((document.getElementById('filter-dss') || {}).value || '').trim();
-                if (info.role === 'DSO') selectedDso = normalizeScopeWallet(info.dsoWallet || currentUser || '');
-                if (info.role === 'DSS') selectedDss = String(info.dssName || '').trim();
-
-                let dsoRows = (reportsData || []).filter(canSeeReport).filter(r => {
-                    const rw = normalizeScopeWallet(r.dsoWallet || r.dsoNumber);
-                    const ru = normalizeScopeWallet(r.user || '');
-                    return /^13325178(?:0[1-9]|[1-3]\d|4[0-5])$/.test(ru) && ru === rw;
-                });
-                if (selectedDss) {
-                    const allowed = getAssignedDsoWalletsForDss(selectedDss);
-                    dsoRows = dsoRows.filter(r => allowed.has(normalizeScopeWallet(r.dsoWallet || r.dsoNumber)));
-                }
-                if (selectedDso) dsoRows = dsoRows.filter(r => normalizeScopeWallet(r.dsoWallet || r.dsoNumber) === selectedDso);
-
-                const monthRows = dsoRows.filter(r => String(r.date || '').slice(0,7) === month);
-                const todayRows = dsoRows.filter(r => String(r.date || '') === today);
-                const idLabel = selectedDso || (selectedDss ? selectedDss : 'All DSO');
-                if (l0) l0.innerText = 'Total Uddokta';
-                if (l1) l1.innerText = `DSO Total Visit (${idLabel}) - Month`;
-                if (l2) l2.innerText = `DSO Today Visit (${idLabel})`;
-                if (c0) c0.innerText = getReportMasterUddoktaCount();
-                if (c1) c1.innerText = monthRows.length;
-                if (c2) c2.innerText = todayRows.length;
+            // AMAR VISIT: only the exact currently logged-in ID.
+            if(mode === 'my') {
+                const me = String(currentUser || '').trim().toLowerCase();
+                const ownRows = (reportsData || []).filter(r => String(r.user || '').trim().toLowerCase() === me);
+                if(l1) l1.innerText = 'Total Visit (Month)';
+                if(l2) l2.innerText = 'Today Visit';
+                if(c0) c0.innerText = getScopedTotalUddoktaCount();
+                if(c1) c1.innerText = ownRows.filter(r => String(r.date || '').slice(0,7) === month).length;
+                if(c2) c2.innerText = ownRows.filter(r => String(r.date || '') === today).length;
                 return;
             }
 
-            let dssSel = String((document.getElementById('filter-dss') || {}).value || '').trim().toUpperCase();
-            if (info.role === 'DSS') dssSel = String(info.dssName || '').trim().toUpperCase();
+            // DSS VISIT: only submissions made from DSS login IDs.
+            if(mode === 'dss') {
+                let selectedDss = String((document.getElementById('filter-dss') || {}).value || '').trim();
+                if(info.role === 'DSS') selectedDss = String(info.dssName || '').trim();
+                let rows = (reportsData || []).filter(r => isDssLoginUser(r.user));
+                if(info.role === 'DSS') {
+                    const me = String(currentUser || '').trim().toLowerCase();
+                    rows = rows.filter(r => String(r.user || '').trim().toLowerCase() === me);
+                } else if(selectedDss) {
+                    rows = rows.filter(r => dssLoginMatchesName(r.user, selectedDss));
+                }
+                const dssSelect = document.getElementById('filter-dss');
+                let label = '';
+                if(info.role === 'DSS') label = String(currentUser || '').trim();
+                else if(dssSelect && dssSelect.value) label = (dssSelect.options[dssSelect.selectedIndex] || {}).text || dssSelect.value;
+                if(l1) l1.innerText = label ? `DSS Total Visit (${label}) - Month` : 'DSS Total Visit (Month)';
+                if(l2) l2.innerText = label ? `DSS Today Visit (${label})` : 'DSS Today Visit';
+                if(c0) c0.innerText = getReportMasterUddoktaCount();
+                if(c1) c1.innerText = rows.filter(r => String(r.date || '').slice(0,7) === month).length;
+                if(c2) c2.innerText = rows.filter(r => String(r.date || '') === today).length;
+                return;
+            }
+
+            // DSO VISIT: only submissions made from DSO login IDs.
+            if(mode === 'dso' || mode === 'dso-wise') {
+                let selectedDso = normalizeScopeWallet((document.getElementById('filter-dso') || {}).value || '');
+                let selectedDss = String((document.getElementById('filter-dss') || {}).value || '').trim();
+                if(info.role === 'DSO') selectedDso = normalizeScopeWallet(info.dsoWallet || currentUser || '');
+                if(info.role === 'DSS') selectedDss = String(info.dssName || '').trim();
+                let rows = (reportsData || []).filter(r => {
+                    const rawUser = String(r.user || '').trim();
+                    const ru = normalizeScopeWallet(rawUser);
+                    const rw = normalizeScopeWallet(r.dsoWallet || r.dsoNumber);
+                    return /^13325178(?:0[1-9]|[1-3]\d|4[0-5])$/.test(rawUser) && ru === rw;
+                });
+                if(selectedDss) {
+                    const allowed = getAssignedDsoWalletsForDss(selectedDss);
+                    rows = rows.filter(r => allowed.has(normalizeScopeWallet(r.dsoWallet || r.dsoNumber)));
+                }
+                if(selectedDso) rows = rows.filter(r => normalizeScopeWallet(r.dsoWallet || r.dsoNumber) === selectedDso);
+                const idLabel = selectedDso || (selectedDss || 'All DSO');
+                if(l1) l1.innerText = `DSO Total Visit (${idLabel}) - Month`;
+                if(l2) l2.innerText = `DSO Today Visit (${idLabel})`;
+                if(c0) c0.innerText = getReportMasterUddoktaCount();
+                if(c1) c1.innerText = rows.filter(r => String(r.date || '').slice(0,7) === month).length;
+                if(c2) c2.innerText = rows.filter(r => String(r.date || '') === today).length;
+                return;
+            }
+
             const visible = (reportsData || []).filter(canSeeReport);
-            let dssRows = visible;
-            if (dssSel) {
-                const assigned = getAssignedDsoWalletsForDss(dssSel);
-                dssRows = visible.filter(r => assigned.has(normalizeScopeWallet(r.dsoWallet || r.dsoNumber)));
-            }
-            const monthRows = dssRows.filter(r => String(r.date || '').slice(0,7) === month);
-            let dssDisplay = '';
-            const dssSelect = document.getElementById('filter-dss');
-            if (info.role === 'DSS') {
-                const raw = String(info.dssName || '').trim();
-                dssDisplay = raw ? raw.split(/\s+/).slice(-1)[0] : '';
-            } else if (dssSelect && dssSelect.value) {
-                dssDisplay = (dssSelect.options[dssSelect.selectedIndex] || {}).text || dssSelect.value;
-            }
-            if (l0) l0.innerText = 'Total Uddokta';
-            if (l1) l1.innerText = dssDisplay ? `DSS Total Visit (${dssDisplay})` : 'DSS Total Visit';
-            if (l2) l2.innerText = dssDisplay ? `DSS Today Visit (${dssDisplay})` : 'DSS Today Visit';
-            if (c0) c0.innerText = getReportMasterUddoktaCount();
-            if (c1) c1.innerText = monthRows.length;
-            if (c2) c2.innerText = dssRows.filter(r => String(r.date || '') === today).length;
+            if(l1) l1.innerText = 'Total Visit (Month)';
+            if(l2) l2.innerText = 'Today Visit';
+            if(c0) c0.innerText = getReportMasterUddoktaCount();
+            if(c1) c1.innerText = visible.filter(r => String(r.date || '').slice(0,7) === month).length;
+            if(c2) c2.innerText = visible.filter(r => String(r.date || '') === today).length;
         }
 
                 function renderReports() {
@@ -2930,10 +2951,12 @@ img,video,canvas,svg{max-width:100%;height:auto}
                 // DSO filter is only meaningful in DSO Visit.
                 if((visitReportMode==='dso' || visitReportMode==='dso-wise') && fds && normalizeScopeWallet(r.dsoWallet||r.dsoNumber)!==fds) return false;
 
-                // DSS Visit Report: selected DSS includes visits from all DSOs assigned to that DSS.
-                if(visitReportMode==='dss' && fdss){
-                    const assigned = getAssignedDsoWalletsForDss(fdss);
-                    if(!assigned.has(normalizeScopeWallet(r.dsoWallet||r.dsoNumber))) return false;
+                // DSS Visit Report: selected DSS means ONLY that DSS LOGIN ID's own submissions.
+                if(visitReportMode==='dss'){
+                    const ru = String(r.user || '').trim().toLowerCase();
+                    if(!isDssLoginUser(ru)) return false;
+                    if(role.role === 'DSS' && ru !== String(currentUser || '').trim().toLowerCase()) return false;
+                    if(fdss && !dssLoginMatchesName(ru, fdss)) return false;
                 }
 
                 // DSO Visit Report:
