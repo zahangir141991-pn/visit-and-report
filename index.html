@@ -733,9 +733,10 @@ img,video,canvas,svg{max-width:100%;height:auto}
                         <div class="camera-box">
                             <video id="camera-video" autoplay playsinline></video>
                             <canvas id="camera-canvas" class="hidden"></canvas>
+                            <input type="file" id="native-camera-input" accept="image/*" capture="user" style="display:none" aria-hidden="true">
                             <img id="photo-preview" alt="Preview">
                             <div style="margin-top: 10px;">
-                                <button type="button" class="btn btn-sm" id="btn-capture" onclick="captureLivePhoto()">📷 Start Camera</button>
+                                <button type="button" class="btn btn-sm" id="btn-capture" onclick="captureLivePhoto()">📷 Take Photo</button>
                                 <button type="button" class="camera-switch-btn" id="btn-switch-camera" onclick="switchCamera()" title="Switch Front / Back Camera" aria-label="Switch Front / Back Camera">🔄</button>
                                 <button type="button" class="btn btn-sm btn-sec hidden" id="btn-recapture" onclick="resetLivePhoto()">🔄 Retake Selfie</button>
                             </div>
@@ -1956,7 +1957,10 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
             const video = document.getElementById('camera-video');
             if (!video) return;
             if (!video.srcObject) {
-                showAlert('First press Start Camera, then use the 🔄 icon to switch camera.', 'error');
+                currentCameraFacing = currentCameraFacing === 'user' ? 'environment' : 'user';
+                const input = document.getElementById('native-camera-input');
+                if (input) input.setAttribute('capture', currentCameraFacing === 'environment' ? 'environment' : 'user');
+                showAlert(currentCameraFacing === 'user' ? 'Front camera selected.' : 'Back camera selected.', 'success');
                 return;
             }
             currentCameraFacing = currentCameraFacing === 'user' ? 'environment' : 'user';
@@ -2082,75 +2086,90 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
             if (video) video.classList.toggle('front-camera-preview', currentCameraFacing === 'user');
         }
 
+        // Native Android-style camera capture. This opens the phone camera UI instead of
+        // taking a low-resolution frame from the browser video preview.
         async function captureLivePhoto() {
-            const video = document.getElementById('camera-video');
-            const canvas = document.getElementById('camera-canvas');
-            const preview = document.getElementById('photo-preview');
-            if (!video.srcObject) {
-                const started = await initCamera();
-                if (started) showAlert('Camera ready. Press Capture Selfie again.', 'success');
+            const input = document.getElementById('native-camera-input');
+            if (!input) { showAlert('Native camera input is unavailable.', 'error'); return; }
+            input.setAttribute('capture', currentCameraFacing === 'environment' ? 'environment' : 'user');
+            input.value = '';
+            input.click();
+        }
+
+        async function processNativeCameraPhoto(file) {
+            if (!file || !String(file.type || '').startsWith('image/')) {
+                showAlert('Please capture a valid photo.', 'error');
                 return;
             }
-            if (!video.videoWidth || !video.videoHeight) {
-                await video.play().catch(()=>{});
-                await new Promise(r=>setTimeout(r,250));
-            }
-
-            // Android/Chrome may expose the raw camera sensor frame in landscape even while
-            // the phone/UI is portrait. Normalize the saved selfie to the CURRENT UI orientation.
-            const sourceW = video.videoWidth || 1280;
-            const sourceH = video.videoHeight || 720;
-            const uiPortrait = window.innerHeight >= window.innerWidth;
-            const framePortrait = sourceH >= sourceW;
-            const needsQuarterTurn = uiPortrait !== framePortrait;
-            const maxLongSide = 640;
-            const outRawW = needsQuarterTurn ? sourceH : sourceW;
-            const outRawH = needsQuarterTurn ? sourceW : sourceH;
-            const scale = Math.min(1, maxLongSide / Math.max(outRawW, outRawH));
-            canvas.width = Math.max(1, Math.round(outRawW * scale));
-            canvas.height = Math.max(1, Math.round(outRawH * scale));
-
-            const ctx = canvas.getContext('2d', { alpha:false });
-            ctx.imageSmoothingEnabled = true;
-            ctx.imageSmoothingQuality = 'high';
-            ctx.setTransform(1,0,0,1,0,0);
-            ctx.clearRect(0,0,canvas.width,canvas.height);
-
-            if (needsQuarterTurn) {
-                // Determine which quarter-turn makes the camera sensor frame upright.
-                // On Android portrait captures the common sensor mapping is 90deg clockwise.
-                const angle = (screen.orientation && Number.isFinite(screen.orientation.angle))
-                    ? ((screen.orientation.angle % 360) + 360) % 360
-                    : (typeof window.orientation === 'number' ? ((window.orientation % 360)+360)%360 : 0);
-                const clockwise = angle === 270 ? false : true;
-                ctx.save();
-                if (clockwise) {
-                    ctx.translate(canvas.width, 0);
-                    ctx.rotate(Math.PI / 2);
-                } else {
-                    ctx.translate(0, canvas.height);
-                    ctx.rotate(-Math.PI / 2);
+            const canvas = document.getElementById('camera-canvas');
+            const preview = document.getElementById('photo-preview');
+            const video = document.getElementById('camera-video');
+            try {
+                let bitmap;
+                if (window.createImageBitmap) {
+                    try { bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch(e) { bitmap = await createImageBitmap(file); }
                 }
-                ctx.drawImage(video, 0, 0, sourceW, sourceH, 0, 0, canvas.height, canvas.width);
-                ctx.restore();
-            } else {
-                ctx.drawImage(video, 0, 0, sourceW, sourceH, 0, 0, canvas.width, canvas.height);
-            }
+                let source, sourceW, sourceH, revokeUrl = '';
+                if (bitmap) {
+                    source = bitmap; sourceW = bitmap.width; sourceH = bitmap.height;
+                } else {
+                    revokeUrl = URL.createObjectURL(file);
+                    source = await new Promise((resolve, reject) => {
+                        const img = new Image();
+                        img.onload = () => resolve(img);
+                        img.onerror = reject;
+                        img.src = revokeUrl;
+                    });
+                    sourceW = source.naturalWidth || source.width;
+                    sourceH = source.naturalHeight || source.height;
+                }
 
-            let photoQuality = 0.50;
-            capturedPhotoData = canvas.toDataURL('image/jpeg', photoQuality);
-            while (capturedPhotoData.length > 135000 && photoQuality > 0.30) {
-                photoQuality -= 0.06;
-                capturedPhotoData = canvas.toDataURL('image/jpeg', photoQuality);
+                // Keep substantially more detail than the old 640px/low-quality browser capture,
+                // while still keeping Firebase uploads practical on mobile data.
+                const maxLongSide = 1600;
+                const scale = Math.min(1, maxLongSide / Math.max(sourceW, sourceH));
+                canvas.width = Math.max(1, Math.round(sourceW * scale));
+                canvas.height = Math.max(1, Math.round(sourceH * scale));
+                const ctx = canvas.getContext('2d', { alpha:false });
+                ctx.setTransform(1,0,0,1,0,0);
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+
+                let quality = 0.86;
+                capturedPhotoData = canvas.toDataURL('image/jpeg', quality);
+                // Soft size ceiling prevents very large realtime-database writes.
+                while (capturedPhotoData.length > 600000 && quality > 0.58) {
+                    quality -= 0.06;
+                    capturedPhotoData = canvas.toDataURL('image/jpeg', quality);
+                }
+                if (bitmap && bitmap.close) bitmap.close();
+                if (revokeUrl) URL.revokeObjectURL(revokeUrl);
+
+                preview.src = capturedPhotoData;
+                preview.style.transform = 'none';
+                preview.style.display = 'block';
+                if (video) video.style.display = 'none';
+                stopCamera();
+                document.getElementById('btn-capture').classList.add('hidden');
+                document.getElementById('btn-recapture').classList.remove('hidden');
+                updateVisitSubmitState();
+                showAlert('Photo captured successfully.', 'success');
+            } catch (err) {
+                console.error('Native camera photo processing failed:', err);
+                showAlert('Photo processing failed. Please take the photo again.', 'error');
             }
-            preview.src = capturedPhotoData;
-            preview.style.transform = 'none';
-            preview.style.display = 'block';
-            video.style.display = 'none';
-            stopCamera();
-            document.getElementById('btn-capture').classList.add('hidden');
-            document.getElementById('btn-recapture').classList.remove('hidden');
-            updateVisitSubmitState();
+        }
+
+        function bindNativeCameraInput() {
+            const input = document.getElementById('native-camera-input');
+            if (!input || input.dataset.bound === '1') return;
+            input.dataset.bound = '1';
+            input.addEventListener('change', function(){
+                const file = this.files && this.files[0];
+                if (file) processNativeCameraPhoto(file);
+            });
         }
 
         function resetLivePhoto() {
@@ -2160,7 +2179,7 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
             document.getElementById('photo-preview').style.display = 'none';
             document.getElementById('camera-video').style.display = 'block';
             document.getElementById('btn-capture').classList.remove('hidden');
-            document.getElementById('btn-capture').innerText = '📷 Start Camera';
+            document.getElementById('btn-capture').innerText = '📷 Take Photo';
             document.getElementById('btn-recapture').classList.add('hidden');
 
             // Camera stays OFF after reset; user must press Take Selfie again.
@@ -3888,5 +3907,12 @@ if (document.readyState !== 'loading') {
 }
 </script>
 
-\n<script id="phone-camera-orientation-runtime">\n(function(){\n  let t=null;\n  function sync(){ clearTimeout(t); t=setTimeout(function(){\n    try { if (typeof syncPhoneCameraOrientation === 'function') syncPhoneCameraOrientation(); } catch(e) {}\n  },80); }\n  window.addEventListener('orientationchange', sync, {passive:true});\n  window.addEventListener('resize', sync, {passive:true});\n  try { if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', sync); } catch(e) {}\n  document.addEventListener('DOMContentLoaded', sync);\n})();\n</script>\n</body>
+\n<script id="phone-camera-orientation-runtime">\n(function(){\n  let t=null;\n  function sync(){ clearTimeout(t); t=setTimeout(function(){\n    try { if (typeof syncPhoneCameraOrientation === 'function') syncPhoneCameraOrientation(); } catch(e) {}\n  },80); }\n  window.addEventListener('orientationchange', sync, {passive:true});\n  window.addEventListener('resize', sync, {passive:true});\n  try { if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', sync); } catch(e) {}\n  document.addEventListener('DOMContentLoaded', sync);\n})();\n</script>\n
+<script id="native-android-camera-runtime">
+document.addEventListener('DOMContentLoaded', function(){
+  try { bindNativeCameraInput(); } catch(e) { console.warn('Native camera binding skipped:', e); }
+});
+if (document.readyState !== 'loading') { try { bindNativeCameraInput(); } catch(e) {} }
+</script>
+</body>
 </html>
