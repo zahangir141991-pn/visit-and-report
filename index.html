@@ -2096,23 +2096,46 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
                 await new Promise(r=>setTimeout(r,250));
             }
 
-            // IMPORTANT: Do not rotate the captured pixels using screen.orientation.
-            // Mobile browsers already deliver the camera frame in its correct visual orientation.
-            // Applying another 90/270 degree rotation made the saved selfie turn sideways when
-            // the phone was rotated. Capture the frame exactly as the native camera preview gives it.
+            // Android/Chrome may expose the raw camera sensor frame in landscape even while
+            // the phone/UI is portrait. Normalize the saved selfie to the CURRENT UI orientation.
             const sourceW = video.videoWidth || 1280;
             const sourceH = video.videoHeight || 720;
+            const uiPortrait = window.innerHeight >= window.innerWidth;
+            const framePortrait = sourceH >= sourceW;
+            const needsQuarterTurn = uiPortrait !== framePortrait;
             const maxLongSide = 640;
-            const scale = Math.min(1, maxLongSide / Math.max(sourceW, sourceH));
-            canvas.width = Math.max(1, Math.round(sourceW * scale));
-            canvas.height = Math.max(1, Math.round(sourceH * scale));
+            const outRawW = needsQuarterTurn ? sourceH : sourceW;
+            const outRawH = needsQuarterTurn ? sourceW : sourceH;
+            const scale = Math.min(1, maxLongSide / Math.max(outRawW, outRawH));
+            canvas.width = Math.max(1, Math.round(outRawW * scale));
+            canvas.height = Math.max(1, Math.round(outRawH * scale));
 
             const ctx = canvas.getContext('2d', { alpha:false });
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
             ctx.setTransform(1,0,0,1,0,0);
             ctx.clearRect(0,0,canvas.width,canvas.height);
-            ctx.drawImage(video, 0, 0, sourceW, sourceH, 0, 0, canvas.width, canvas.height);
+
+            if (needsQuarterTurn) {
+                // Determine which quarter-turn makes the camera sensor frame upright.
+                // On Android portrait captures the common sensor mapping is 90deg clockwise.
+                const angle = (screen.orientation && Number.isFinite(screen.orientation.angle))
+                    ? ((screen.orientation.angle % 360) + 360) % 360
+                    : (typeof window.orientation === 'number' ? ((window.orientation % 360)+360)%360 : 0);
+                const clockwise = angle === 270 ? false : true;
+                ctx.save();
+                if (clockwise) {
+                    ctx.translate(canvas.width, 0);
+                    ctx.rotate(Math.PI / 2);
+                } else {
+                    ctx.translate(0, canvas.height);
+                    ctx.rotate(-Math.PI / 2);
+                }
+                ctx.drawImage(video, 0, 0, sourceW, sourceH, 0, 0, canvas.height, canvas.width);
+                ctx.restore();
+            } else {
+                ctx.drawImage(video, 0, 0, sourceW, sourceH, 0, 0, canvas.width, canvas.height);
+            }
 
             let photoQuality = 0.50;
             capturedPhotoData = canvas.toDataURL('image/jpeg', photoQuality);
@@ -2121,6 +2144,7 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
                 capturedPhotoData = canvas.toDataURL('image/jpeg', photoQuality);
             }
             preview.src = capturedPhotoData;
+            preview.style.transform = 'none';
             preview.style.display = 'block';
             video.style.display = 'none';
             stopCamera();
