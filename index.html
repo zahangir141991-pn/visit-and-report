@@ -551,38 +551,22 @@ img,video,canvas,svg{max-width:100%;height:auto}
 </style>
 
 
-<style id="camera-orientation-lock-patch">
-/* Keep camera subject upright when the phone is rotated. */
-#camera-video{transform-origin:center center;transition:transform .12s ease;will-change:transform;}
+<style id="camera-native-orientation-fix">
+/* Use the browser/device camera native orientation. Do NOT rotate the live video with CSS. */
+#camera-video{transform:none!important;rotate:none!important;transform-origin:center center!important;object-fit:cover;}
 .camera-box{overflow:hidden;}
 </style>
-<script id="camera-orientation-lock-script">
+<script id="camera-native-orientation-script">
 (function(){
-  let cameraBaseAngle = null;
-  function deviceAngle(){
-    if (screen.orientation && Number.isFinite(screen.orientation.angle)) return screen.orientation.angle;
-    if (Number.isFinite(window.orientation)) return Number(window.orientation);
-    return 0;
-  }
-  function norm(a){ a=((a%360)+360)%360; if(a>180)a-=360; return a; }
-  window.__cameraOrientationBase = function(reset){
-    if(reset || cameraBaseAngle===null) cameraBaseAngle=deviceAngle();
-    return cameraBaseAngle;
-  };
-  window.__cameraOrientationDelta = function(){
-    if(cameraBaseAngle===null) cameraBaseAngle=deviceAngle();
-    return norm(deviceAngle()-cameraBaseAngle);
-  };
-  window.__applyCameraOrientationLock = function(){
+  function keepNativeCameraOrientation(){
     const v=document.getElementById('camera-video');
-    if(!v) return;
-    const d=window.__cameraOrientationDelta();
-    v.style.transform='rotate('+(-d)+'deg)';
-  };
-  function refresh(){ setTimeout(window.__applyCameraOrientationLock,80); }
-  window.addEventListener('orientationchange',refresh,{passive:true});
-  if(screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change',refresh);
-  window.addEventListener('resize',refresh,{passive:true});
+    if(v){ v.style.setProperty('transform','none','important'); v.style.removeProperty('rotate'); }
+  }
+  window.__cameraOrientationBase=function(){ return 0; };
+  window.__cameraOrientationDelta=function(){ return 0; };
+  window.__applyCameraOrientationLock=keepNativeCameraOrientation;
+  window.addEventListener('orientationchange',()=>setTimeout(keepNativeCameraOrientation,100),{passive:true});
+  window.addEventListener('resize',()=>setTimeout(keepNativeCameraOrientation,100),{passive:true});
 })();
 </script>
 
@@ -1977,6 +1961,8 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
                 video.srcObject = stream;
                 video.style.display = 'block';
                 await video.play().catch(()=>{});
+                video.style.setProperty('transform','none','important');
+                video.style.removeProperty('rotate');
                 document.getElementById('btn-capture').innerText = '🤳 Capture Selfie';
                 return true;
             } catch (err) {
@@ -2120,16 +2106,10 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
             canvas.height = Math.max(1, Math.round(sourceH * scale));
             const ctx = canvas.getContext('2d', { alpha:false });
             ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-            const cameraDelta = window.__cameraOrientationDelta ? window.__cameraOrientationDelta() : 0;
-            if (Math.abs(cameraDelta) === 90) {
-                const oldW=canvas.width, oldH=canvas.height; canvas.width=oldH; canvas.height=oldW;
-                const rctx=canvas.getContext('2d',{alpha:false}); rctx.imageSmoothingEnabled=true; rctx.imageSmoothingQuality='high';
-                rctx.save(); rctx.translate(canvas.width/2,canvas.height/2); rctx.rotate((-cameraDelta)*Math.PI/180);
-                rctx.drawImage(video,-oldW/2,-oldH/2,oldW,oldH); rctx.restore();
-            } else if (Math.abs(cameraDelta) === 180) {
-                ctx.save(); ctx.translate(canvas.width/2,canvas.height/2); ctx.rotate(Math.PI);
-                ctx.drawImage(video,-canvas.width/2,-canvas.height/2,canvas.width,canvas.height); ctx.restore();
-            } else { ctx.drawImage(video,0,0,canvas.width,canvas.height); }
+            // Draw the camera frame exactly in the orientation supplied by the browser/device.
+            // Artificial 90/180 degree rotation caused the subject/object to turn when the phone rotated.
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             // ~50-100 KB in most phones; dramatically reduces submit/load buffering.
             let photoQuality = 0.50;
             capturedPhotoData = canvas.toDataURL('image/jpeg', photoQuality);
