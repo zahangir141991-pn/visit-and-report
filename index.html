@@ -2096,39 +2096,23 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
                 await new Promise(r=>setTimeout(r,250));
             }
 
+            // IMPORTANT: Do not rotate the captured pixels using screen.orientation.
+            // Mobile browsers already deliver the camera frame in its correct visual orientation.
+            // Applying another 90/270 degree rotation made the saved selfie turn sideways when
+            // the phone was rotated. Capture the frame exactly as the native camera preview gives it.
             const sourceW = video.videoWidth || 1280;
             const sourceH = video.videoHeight || 720;
-            const orientation = getPhoneCameraOrientation();
-            // Browsers normally expose the live video already oriented. When the sensor dimensions and
-            // current phone orientation disagree, rotate the canvas so the saved selfie is upright too.
-            const sensorLandscape = sourceW >= sourceH;
-            const needsQuarterTurn = orientation.landscape !== sensorLandscape;
-            const rotatedW = needsQuarterTurn ? sourceH : sourceW;
-            const rotatedH = needsQuarterTurn ? sourceW : sourceH;
-            const maxW = orientation.landscape ? 640 : 480;
-            const maxH = orientation.landscape ? 480 : 640;
-            const scale = Math.min(1, maxW / rotatedW, maxH / rotatedH);
-            canvas.width = Math.max(1, Math.round(rotatedW * scale));
-            canvas.height = Math.max(1, Math.round(rotatedH * scale));
+            const maxLongSide = 640;
+            const scale = Math.min(1, maxLongSide / Math.max(sourceW, sourceH));
+            canvas.width = Math.max(1, Math.round(sourceW * scale));
+            canvas.height = Math.max(1, Math.round(sourceH * scale));
 
             const ctx = canvas.getContext('2d', { alpha:false });
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
-            ctx.save();
-            if (needsQuarterTurn) {
-                // Match the physical phone orientation, like the native camera app.
-                if (orientation.angle === 270 || orientation.angle === -90) {
-                    ctx.translate(0, canvas.height);
-                    ctx.rotate(-Math.PI / 2);
-                } else {
-                    ctx.translate(canvas.width, 0);
-                    ctx.rotate(Math.PI / 2);
-                }
-                ctx.drawImage(video, 0, 0, sourceW, sourceH, 0, 0, canvas.height, canvas.width);
-            } else {
-                ctx.drawImage(video, 0, 0, sourceW, sourceH, 0, 0, canvas.width, canvas.height);
-            }
-            ctx.restore();
+            ctx.setTransform(1,0,0,1,0,0);
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            ctx.drawImage(video, 0, 0, sourceW, sourceH, 0, 0, canvas.width, canvas.height);
 
             let photoQuality = 0.50;
             capturedPhotoData = canvas.toDataURL('image/jpeg', photoQuality);
