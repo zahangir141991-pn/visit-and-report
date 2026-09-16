@@ -2100,44 +2100,28 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
             const sourceW = video.videoWidth || 1280;
             const sourceH = video.videoHeight || 720;
 
-            // Android/WebView can display the live camera upright but expose the raw video
-            // frame to canvas in sensor orientation. Drawing that raw frame directly is what
-            // makes the saved selfie appear 90 degrees sideways. Match the captured frame to
-            // the CURRENT screen orientation before encoding it.
-            const portraitScreen = window.matchMedia ? window.matchMedia('(orientation: portrait)').matches : (window.innerHeight >= window.innerWidth);
-            const sourcePortrait = sourceH >= sourceW;
-            const rotate90 = portraitScreen !== sourcePortrait;
-            const orientedW = rotate90 ? sourceH : sourceW;
-            const orientedH = rotate90 ? sourceW : sourceH;
+            // IMPORTANT: never rotate the selfie according to phone/screen orientation.
+            // Android already supplies the camera frame in its native display orientation.
+            // Phone rotation must therefore NOT rotate the captured person/object.
+            const maxSide = 640;
+            const scale = Math.min(1, maxSide/sourceW, maxSide/sourceH);
+            canvas.width = Math.max(1, Math.round(sourceW*scale));
+            canvas.height = Math.max(1, Math.round(sourceH*scale));
+            const ctx = canvas.getContext('2d', {alpha:false});
+            ctx.setTransform(1,0,0,1,0,0);
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // Keep visit selfie small enough for fast mobile/Firebase use.
-            const maxW = portraitScreen ? 480 : 640;
-            const maxH = portraitScreen ? 640 : 480;
-            const scale = Math.min(1, maxW / orientedW, maxH / orientedH);
-            canvas.width = Math.max(1, Math.round(orientedW * scale));
-            canvas.height = Math.max(1, Math.round(orientedH * scale));
-            const ctx = canvas.getContext('2d', { alpha:false });
-            ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-            if (rotate90) {
-                // The reported Android sensor frame is landscape while the phone is portrait
-                // (or vice versa). Rotate the pixels clockwise once; do NOT rotate the preview
-                // element with CSS. This keeps the object/person upright in the saved photo.
-                ctx.translate(canvas.width, 0);
-                ctx.rotate(Math.PI / 2);
-                ctx.drawImage(video, 0, 0, canvas.height, canvas.width);
-            } else {
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            }
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
-            // ~50-100 KB in most phones; dramatically reduces submit/load buffering.
             let photoQuality = 0.50;
             capturedPhotoData = canvas.toDataURL('image/jpeg', photoQuality);
             while (capturedPhotoData.length > 135000 && photoQuality > 0.30) {
                 photoQuality -= 0.06;
                 capturedPhotoData = canvas.toDataURL('image/jpeg', photoQuality);
             }
+            preview.style.setProperty('transform','none','important');
+            preview.style.setProperty('rotate','none','important');
             preview.src = capturedPhotoData;
             preview.style.display = 'block';
             video.style.display = 'none';
