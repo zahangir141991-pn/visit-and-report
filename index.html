@@ -1940,6 +1940,8 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
                 catch(e) { stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }); }
                 video.srcObject = stream;
                 video.style.display = 'block';
+                video.classList.toggle('front-camera-preview', currentCameraFacing === 'user');
+                syncPhoneCameraOrientation();
                 await video.play().catch(()=>{});
                 document.getElementById('btn-capture').innerText = '🤳 Capture Selfie';
                 return true;
@@ -2061,6 +2063,25 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
             updateVisitSubmitState();
         }
 
+        function getPhoneCameraOrientation() {
+            // screen.orientation is the most reliable modern API; window.orientation covers older Android/iOS WebViews.
+            let angle = 0;
+            try {
+                if (screen.orientation && Number.isFinite(screen.orientation.angle)) angle = screen.orientation.angle;
+                else if (typeof window.orientation === 'number') angle = window.orientation;
+            } catch(e) {}
+            angle = ((angle % 360) + 360) % 360;
+            const landscape = window.matchMedia ? window.matchMedia('(orientation: landscape)').matches : innerWidth > innerHeight;
+            return { angle, landscape };
+        }
+
+        function syncPhoneCameraOrientation() {
+            const state = getPhoneCameraOrientation();
+            document.body.classList.toggle('camera-landscape', state.landscape);
+            const video = document.getElementById('camera-video');
+            if (video) video.classList.toggle('front-camera-preview', currentCameraFacing === 'user');
+        }
+
         async function captureLivePhoto() {
             const video = document.getElementById('camera-video');
             const canvas = document.getElementById('camera-canvas');
@@ -2074,19 +2095,41 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
                 await video.play().catch(()=>{});
                 await new Promise(r=>setTimeout(r,250));
             }
+
             const sourceW = video.videoWidth || 1280;
             const sourceH = video.videoHeight || 720;
-            // FINAL PHOTO OPTIMIZATION: keep visit selfie small enough for fast mobile/Firebase use.
-            const maxW = 480;
-            const maxH = 640;
-            const scale = Math.min(1, maxW / sourceW, maxH / sourceH);
-            canvas.width = Math.max(1, Math.round(sourceW * scale));
-            canvas.height = Math.max(1, Math.round(sourceH * scale));
+            const orientation = getPhoneCameraOrientation();
+            // Browsers normally expose the live video already oriented. When the sensor dimensions and
+            // current phone orientation disagree, rotate the canvas so the saved selfie is upright too.
+            const sensorLandscape = sourceW >= sourceH;
+            const needsQuarterTurn = orientation.landscape !== sensorLandscape;
+            const rotatedW = needsQuarterTurn ? sourceH : sourceW;
+            const rotatedH = needsQuarterTurn ? sourceW : sourceH;
+            const maxW = orientation.landscape ? 640 : 480;
+            const maxH = orientation.landscape ? 480 : 640;
+            const scale = Math.min(1, maxW / rotatedW, maxH / rotatedH);
+            canvas.width = Math.max(1, Math.round(rotatedW * scale));
+            canvas.height = Math.max(1, Math.round(rotatedH * scale));
+
             const ctx = canvas.getContext('2d', { alpha:false });
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            // ~50-100 KB in most phones; dramatically reduces submit/load buffering.
+            ctx.save();
+            if (needsQuarterTurn) {
+                // Match the physical phone orientation, like the native camera app.
+                if (orientation.angle === 270 || orientation.angle === -90) {
+                    ctx.translate(0, canvas.height);
+                    ctx.rotate(-Math.PI / 2);
+                } else {
+                    ctx.translate(canvas.width, 0);
+                    ctx.rotate(Math.PI / 2);
+                }
+                ctx.drawImage(video, 0, 0, sourceW, sourceH, 0, 0, canvas.height, canvas.width);
+            } else {
+                ctx.drawImage(video, 0, 0, sourceW, sourceH, 0, 0, canvas.width, canvas.height);
+            }
+            ctx.restore();
+
             let photoQuality = 0.50;
             capturedPhotoData = canvas.toDataURL('image/jpeg', photoQuality);
             while (capturedPhotoData.length > 135000 && photoQuality > 0.30) {
@@ -3837,5 +3880,5 @@ if (document.readyState !== 'loading') {
 }
 </script>
 
-</body>
+\n<script id="phone-camera-orientation-runtime">\n(function(){\n  let t=null;\n  function sync(){ clearTimeout(t); t=setTimeout(function(){\n    try { if (typeof syncPhoneCameraOrientation === 'function') syncPhoneCameraOrientation(); } catch(e) {}\n  },80); }\n  window.addEventListener('orientationchange', sync, {passive:true});\n  window.addEventListener('resize', sync, {passive:true});\n  try { if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', sync); } catch(e) {}\n  document.addEventListener('DOMContentLoaded', sync);\n})();\n</script>\n</body>
 </html>
