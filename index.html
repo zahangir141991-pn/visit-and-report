@@ -1987,14 +1987,7 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
                 const value = el ? String(el.value || '').trim() : '';
                 if (!el || !value) invalid.push(id);
             });
-            const locName = document.getElementById('gps-location-name');
-            const locValue = locName ? String(locName.value || '').trim() : '';
-            const gps = document.getElementById('gps-location');
-            const gpsValue = gps ? String(gps.value || '').trim() : '';
-            const badLocationName = !locValue || ['Getting location...','Location permission required','Location unavailable'].includes(locValue);
-            if (badLocationName || !gpsValue) {
-                if (!invalid.includes('gps-location-name')) invalid.push('gps-location-name');
-            }
+            // Location is mandatory for every visit.
             return { invalidFields:[...new Set(invalid)], selfieMissing:!capturedPhotoData };
         }
 
@@ -2254,7 +2247,7 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
                     btn.disabled = false;
                     btn.textContent = '📍 Allow Location';
                 }
-                showAlert('Location Block করা আছে। Chrome-এর 🔒 Lock icon → Site settings → Location → Allow করুন, তারপর page Reload করুন.', 'error');
+                showAlert('Location permission Block করা আছে। Chrome Site settings → Location → Allow করুন, তারপর আবার Submit করুন।', 'error');
             } else if (err && err.code === 2) {
                 nameInput.placeholder = 'Location unavailable — turn on Device Location';
                 nameInput.title = 'Turn on Windows/Android Location Services and try again.';
@@ -2469,6 +2462,26 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
         document.getElementById('visit-form').addEventListener('submit', async function(e) {
             e.preventDefault();
 
+            // Location is mandatory. If it is missing, ask the browser for permission
+            // directly from this Submit click and try to obtain the current GPS position.
+            const gpsEl = document.getElementById('gps-location');
+            const locationNameEl = document.getElementById('gps-location-name');
+            const locationMissing = !gpsEl || !String(gpsEl.value || '').trim() ||
+                !locationNameEl || !String(locationNameEl.value || '').trim() ||
+                String(locationNameEl.value || '').trim() === 'Getting location...';
+            if (locationMissing) {
+                showAlert('এই Visit Submit করতে Current Location প্রয়োজন। Location permission দিন।', 'error');
+                const gotLocation = await requestLocationPermission();
+                const gpsReady = gotLocation && gpsEl && String(gpsEl.value || '').trim() &&
+                    locationNameEl && String(locationNameEl.value || '').trim();
+                if (!gpsReady) {
+                    visitSubmitValidationAttempted = true;
+                    updateVisitSubmitState();
+                    try { locationNameEl.scrollIntoView({behavior:'smooth', block:'center'}); } catch(e) {}
+                    return;
+                }
+            }
+
             if (!isVisitFormComplete()) {
                 visitSubmitValidationAttempted = true;
                 const invalidState = updateVisitSubmitState();
@@ -2483,11 +2496,6 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
 
             if (!capturedPhotoData) {
                 showAlert('Visit Uddokta selfie is required!', 'error');
-                return;
-            }
-
-            if (!locationName || locationName === 'Getting location...') {
-                showAlert('Location Name is required!', 'error');
                 return;
             }
 
@@ -2602,7 +2610,7 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
                 clearVisitFormForNewVisit();
                 // Automatically prepare a fresh GPS location for the next visit after every successful submit.
                 setTimeout(() => {
-                    try { fetchGPS(); } catch (gpsError) { console.warn('Auto location refresh after submit failed:', gpsError); }
+                    try { if (lastGpsCoords) fetchGPS(false); } catch (gpsError) { console.warn('Auto location refresh after submit failed:', gpsError); }
                 }, 250);
             } catch (err) {
                 try {
