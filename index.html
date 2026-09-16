@@ -3709,52 +3709,49 @@ let firebaseListenersStarted = false;
             if (!btn || btn.dataset.safeLogoutBound === '1') return;
             btn.dataset.safeLogoutBound = '1';
 
-            let pressStartedOnButton = false;
+            let activePointerId = null;
+            let startX = 0, startY = 0;
             let moved = false;
-            let startX = 0;
-            let startY = 0;
-            const MOVE_LIMIT = 10;
+            const MOVE_LIMIT = 12;
 
-            const begin = (x, y) => {
-                pressStartedOnButton = true;
-                moved = false;
-                startX = Number(x || 0);
-                startY = Number(y || 0);
-            };
-            const move = (x, y) => {
-                if (!pressStartedOnButton) return;
-                if (Math.abs(Number(x || 0) - startX) > MOVE_LIMIT ||
-                    Math.abs(Number(y || 0) - startY) > MOVE_LIMIT) moved = true;
-            };
-
-            btn.addEventListener('touchstart', function(e) {
-                const t = e.touches && e.touches[0];
-                if (t) begin(t.clientX, t.clientY);
-            }, {passive:true});
-            btn.addEventListener('touchmove', function(e) {
-                const t = e.touches && e.touches[0];
-                if (t) move(t.clientX, t.clientY);
-            }, {passive:true});
-
-            btn.addEventListener('pointerdown', function(e) {
-                begin(e.clientX, e.clientY);
-            }, {passive:true});
-            btn.addEventListener('pointermove', function(e) {
-                move(e.clientX, e.clientY);
-            }, {passive:true});
-            btn.addEventListener('pointercancel', function() {
-                moved = true;
-                pressStartedOnButton = false;
-            }, {passive:true});
-
+            // Never let a synthetic click generated after a swipe perform logout.
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                const allowed = e.isTrusted && pressStartedOnButton && !moved &&
-                    (e.target === btn || btn.contains(e.target));
-                pressStartedOnButton = false;
+            }, true);
+
+            btn.addEventListener('pointerdown', function(e) {
+                if (e.pointerType === 'mouse' && e.button !== 0) return;
+                activePointerId = e.pointerId;
+                startX = e.clientX;
+                startY = e.clientY;
                 moved = false;
-                if (!allowed) return;
+            }, {passive:true});
+
+            btn.addEventListener('pointermove', function(e) {
+                if (activePointerId !== e.pointerId) return;
+                if (Math.abs(e.clientX - startX) > MOVE_LIMIT ||
+                    Math.abs(e.clientY - startY) > MOVE_LIMIT) moved = true;
+            }, {passive:true});
+
+            btn.addEventListener('pointercancel', function(e) {
+                if (activePointerId === e.pointerId) {
+                    activePointerId = null;
+                    moved = true;
+                }
+            }, {passive:true});
+
+            btn.addEventListener('pointerup', function(e) {
+                if (activePointerId !== e.pointerId) return;
+                const dx = Math.abs(e.clientX - startX);
+                const dy = Math.abs(e.clientY - startY);
+                const isRealTap = !moved && dx <= MOVE_LIMIT && dy <= MOVE_LIMIT &&
+                    (e.target === btn || btn.contains(e.target));
+                activePointerId = null;
+                moved = false;
+                if (!isRealTap) return;
+                e.preventDefault();
+                e.stopPropagation();
                 logout();
             });
         }
