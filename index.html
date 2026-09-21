@@ -8,7 +8,7 @@
     <!-- OpenStreetMap + Leaflet map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""></noscript>
-    <script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=FePIuprXigOxnBMXPiLAjDdGCcCrl629wwdJRP3humghamVxpOYQbFAG3C0ElmBxB_O69LY2l2o2nWvnw4pR9aoLNZYzgnlkkqZcOvwFlqOVo22S9U-MhAtDPP8FxRPIX5AXV0kUjWxQySq-aAh8DEwq6mevuqEPDZ67iN4gPIwi22_wgqLRvjyK59hKqVBY_O5RVgTyLKrEmToEPCdW_Q3HUo37iILPry8rbaUP7-R9JSNrmpGzwwAA_obf_0Ux7jAqW32Ou5Pk1I4k6Vgtlw" charset="UTF-8"></script><link rel="stylesheet" crossorigin="anonymous" href="https://gc.kis.v2.scr.kaspersky-labs.com/E3E8934C-235A-4B0E-825A-35A08381A191/abn/main.css?attr=aHR0cHM6Ly9jaGF0Z3B0LmNvbS9iYWNrZW5kLWFwaS9lc3R1YXJ5L2NvbnRlbnQ_aWQ9ZmlsZV8wMDAwMDAwMDkyMDA4MjExODkzZjM4YTMwZTRhNWFjMyZ0cz00OTcyMTEmcD1mcyZjaWQ9MSZzaWc9MzA2ZWVlMmQ0Y2JiZTM3MzZmNWY5NmI1ZmE2MWNiOGI2NWM5NDcxOTg3MjU3YmY3MWQ2ODVkMWYxMjczMTJiOSZ2PTA"/><script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=160iTo8lHToIsdtwv6G3cZg7Tf0BT-icthGGlvyIlOThH83a-sdWIZKe-drLKCdkipTdPZr67PgoN79XQeRtAt-ZKJcaUEW52HyFqzLKZRBY0P0s-KmHDYgxsKqJQifHnz0ZMFWxl5t2wPEE-3Wu3YwMYgiyoryAtbGxjtXZ0tswztDfG_WtDvaghMzmGTY8soX_PwwZaCKtXMUULNWZLN91hwoETTSF73nFa3UeSwioKK9KeGgdcj_6sL3ghJU0z2hqK_5INJw-grIJdmJRig" charset="UTF-8"></script><link rel="stylesheet" crossorigin="anonymous" href="https://gc.kis.v2.scr.kaspersky-labs.com/E3E8934C-235A-4B0E-825A-35A08381A191/abn/main.css?attr=aHR0cHM6Ly9jaGF0Z3B0LmNvbS9iYWNrZW5kLWFwaS9lc3R1YXJ5L2NvbnRlbnQ_aWQ9ZmlsZV8wMDAwMDAwMGM2Mzg4MjExOThmMGJjMjFmNDg2ZjJmYiZ0cz00OTcyMTEmcD1mcyZjaWQ9MSZzaWc9ZWYyYjUxNmFiYzRjZTU0OTI2MzU4NzE3YTA0MzdjMzRkYjgwMWVkYmU0Y2NiNWFkNGE0ODE0YmQ5ZmM2YTUwMCZ2PTA"/><script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <!-- Firebase Web SDK (v10.8.0) -->
     <script defer src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
@@ -1030,12 +1030,21 @@ img,video,canvas,svg{max-width:100%;height:auto}
         };
 
         let db = null;
+        let firebaseConnectionMonitorStarted = false;
+        function attachFirebaseConnectionMonitor() {
+            if (!db || firebaseConnectionMonitorStarted) return;
+            firebaseConnectionMonitorStarted = true;
+            db.ref('.info/connected').on('value', () => {
+                // Active Firebase listeners automatically reconcile after reconnect.
+            }, err => console.warn('Firebase connection monitor error:', err));
+        }
         function initializeFirebaseServices() {
             if (db) return db;
             try {
                 if (!window.firebase || typeof window.firebase.initializeApp !== 'function') return null;
                 if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
                 db = firebase.database();
+                attachFirebaseConnectionMonitor();
                 // If a user logged in while the deferred SDK was still loading,
                 // start realtime services as soon as Firebase becomes available.
                 if (document.body && document.body.classList.contains('app-logged-in')) {
@@ -1059,7 +1068,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-21-login-page-fast-v5';
+        const APP_CACHE_VERSION = '2026-09-21-full-bugfix-v6';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -2834,6 +2843,7 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
             const rows = Object.keys(data || {}).map(key => {
                 const r = Object.assign({}, data[key] || {});
                 r.reportId = r.reportId || key;
+                r.id = r.id || r.reportId;
                 // List/dashboard never needs Base64 image bytes.
                 if (r.photo) { r.hasPhoto = true; delete r.photo; }
                 return r;
@@ -2871,6 +2881,7 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
                         Object.keys(legacy).forEach(key => {
                             const x = Object.assign({}, legacy[key] || {});
                             x.reportId = x.reportId || key;
+                            x.id = x.id || x.reportId;
                             if (x.photo) { x.hasPhoto = true; delete x.photo; }
                             updates[key] = x;
                         });
@@ -2880,16 +2891,8 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
             }, err => console.warn('Visit report index sync error:', err));
         }
 
-        // Firebase connection status is realtime; when connection returns,
-        // the active listeners receive fresh data without a manual hard refresh.
-        if (db) {
-            db.ref('.info/connected').on('value', snapshot => {
-                if (snapshot.val() === true) {
-                    // Active Firebase listeners automatically deliver fresh data.
-                    // Do not force a second full Uddokta-master download here.
-                }
-            });
-        }
+        // initializeFirebaseServices() attaches the connection monitor after the
+        // deferred SDK becomes available.
 
         let visitReportMode = 'my';
 
@@ -2942,6 +2945,7 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
             Object.keys(data || {}).forEach(key => {
                 const r = Object.assign({}, data[key] || {});
                 r.reportId = r.reportId || key;
+                r.id = r.id || r.reportId;
                 if (r.photo) { r.hasPhoto = true; delete r.photo; }
                 const k = String(r.reportId || r.id || key);
                 map.set(k, Object.assign({}, map.get(k) || {}, r));
@@ -3363,8 +3367,9 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
             rows.forEach(r=>{
                 const tr=document.createElement('tr');
                 const idx=reportsData.indexOf(r);
+                const reportKey = String(r.reportId || r.id || '');
                 const isDss = role.role === 'DSS';
-                const reviewHtml = isDss && (r.festoonStatus==='Not OK'||r.bannerStatus==='Not OK'||r.fileStatus==='Not OK') ? `<div class="review-grid">${r.festoonStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${r.id}','OK','festoonStatus')">✓ Festoon OK</button>`:''}${r.bannerStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${r.id}','OK','bannerStatus')">✓ Banner OK</button>`:''}${r.fileStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${r.id}','OK','fileStatus')">✓ File OK</button>`:''}</div>` : `<span>${r.reviewStatus||'Pending'}</span>`;
+                const reviewHtml = isDss && reportKey && (r.festoonStatus==='Not OK'||r.bannerStatus==='Not OK'||r.fileStatus==='Not OK') ? `<div class="review-grid">${r.festoonStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${reportKey}','OK','festoonStatus')">✓ Festoon OK</button>`:''}${r.bannerStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${reportKey}','OK','bannerStatus')">✓ Banner OK</button>`:''}${r.fileStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${reportKey}','OK','fileStatus')">✓ File OK</button>`:''}</div>` : `<span>${r.reviewStatus||'Pending'}</span>`;
                 const updatedText = r.reviewUpdatedAt ? `<div class="review-update">Updated: ${r.reviewUpdatedAt}${r.reviewUpdatedBy?' · '+r.reviewUpdatedBy:''}</div>` : '';
                 tr.innerHTML=`<td data-label="Visit Time">${r.visitTime||(r.timestamp?new Date(r.timestamp).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}):'')}</td><td data-label="DSO">${r.dsoWallet||r.dsoNumber||''}</td><td data-label="Uddokta Name">${r.uddoktaName||''}</td><td data-label="Uddokta Number">${r.uddoktaNumber||''}</td><td data-label="Festoon">${r.festoonStatus||'Pending'}</td><td data-label="Banner">${r.bannerStatus||'Pending'}</td><td data-label="File">${r.fileStatus||'Pending'}</td><td data-label="Review" data-wide="1">${reviewHtml}${updatedText}</td><td data-label="Location" data-wide="1"><small>${r.locationName||r.gps||''}</small></td><td data-label="Photo">${(r.photo||r.hasPhoto)?`<button class="mobile-photo-btn" onclick="showVisitDetails(${idx})">Photo</button>`:'—'}</td><td data-label="Details"><button class="detail-btn" onclick="showVisitDetails(${idx})">View</button></td>`;
                 reportFragment.appendChild(tr);
@@ -3480,7 +3485,7 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
             const all = Object.values(window.visitNotices || {}).filter(canHandleNotice).sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));
             if (!all.length) { box.innerHTML='<div class="card empty-state">No notice found.</div>'; updateNoticeNavBadge(); return; }
             html = all.map(n => {
-                const report = reportsData.find(r => String(r.id)===String(n.reportId));
+                const report = reportsData.find(r => String(r.reportId || r.id)===String(n.reportId));
                 const canResolve = role.role==='DSS' && !n.resolved && report;
                 const updateInfo = n.resolved ? ' · Updated: ' + (n.resolvedAt||'—') + ' · By: ' + (n.resolvedBy||'—') : '';
                 const action = canResolve ? '<button class="btn btn-sm" style="margin-top:9px" onclick="resolveVisitNotice(\''+n.id+'\')">✓ DSS OK & Update</button>' : '<span class="notice-badge" style="margin-top:8px">'+(n.resolved?'Updated':'Action Required')+'</span>';
@@ -3529,7 +3534,7 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
         async function resolveVisitNotice(noticeId) {
             const role = getRoleInfo(); if (role.role!=='DSS') return;
             const n = (window.visitNotices||{})[noticeId]; if (!n) return;
-            const report = reportsData.find(r=>String(r.id)===String(n.reportId)); if (!report) return;
+            const report = reportsData.find(r=>String(r.reportId || r.id)===String(n.reportId)); if (!report) return;
             const now = new Date().toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true});
             const updates = { reviewUpdatedAt: now, reviewUpdatedBy: role.dssName };
             if (report.festoonStatus === 'Not OK') updates.festoonStatus = 'OK';
@@ -3537,7 +3542,10 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
             if (report.fileStatus === 'Not OK') updates.fileStatus = 'OK';
             updates.reviewStatus = 'DSS OK';
             try {
-                await db.ref('visit_reports/'+n.reportId).update(updates);
+                const indexUpdates = {};
+                indexUpdates['visit_reports/' + n.reportId] = updates;
+                indexUpdates['visit_reports_index/' + n.reportId] = updates;
+                await db.ref().update(indexUpdates);
                 await notifyReportOwner(n.reportId, Object.assign({}, report, updates), Object.keys(updates).filter(k=>k!=='reviewUpdatedAt' && k!=='reviewUpdatedBy'), role.dssName);
                 await db.ref('visit_notices/'+noticeId).update({resolved:true,resolvedAt:now,resolvedBy:role.dssName});
                 showAlert('Not OK itemগুলো OK করে Visit Report update করা হয়েছে.', 'success');
@@ -3547,13 +3555,16 @@ const EMBEDDED_UDDOKTA_DB = uddoktaDB.slice();
         async function updateVisitCheck(reportId, value, field) {
             const role = getRoleInfo();
             if (role.role !== 'DSS' || value !== 'OK') return;
-            const r = reportsData.find(x=>String(x.id)===String(reportId)); if (!r) return;
+            const r = reportsData.find(x=>String(x.reportId || x.id)===String(reportId)); if (!r) return;
             if (r[field] !== 'Not OK') return;
             const now = new Date().toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true});
             const updated = { [field]: 'OK', reviewUpdatedAt: now, reviewUpdatedBy: role.dssName };
             const next = Object.assign({}, r, updated);
             if (next.festoonStatus==='OK' && next.bannerStatus==='OK' && next.fileStatus==='OK') updated.reviewStatus='DSS OK';
-            await db.ref('visit_reports/'+reportId).update(updated);
+            const indexUpdates = {};
+            indexUpdates['visit_reports/' + reportId] = updated;
+            indexUpdates['visit_reports_index/' + reportId] = updated;
+            await db.ref().update(indexUpdates);
             await notifyReportOwner(reportId, Object.assign({}, r, updated), Object.keys(updated).filter(k=>k!=='reviewUpdatedAt' && k!=='reviewUpdatedBy'), role.dssName);
             if (updated.reviewStatus==='DSS OK') {
                 const notices=window.visitNotices||{};
@@ -4071,6 +4082,10 @@ async function saveMorningExcel(){
     const role=getRoleInfo();
     if(role.role!=='Admin'){alert('Only Admin can upload the Morning Excel file.');return;}
     if(!pendingMorningExcel){alert('Please select a valid Excel file first.');return;}
+    if(!db || !window.firebase || !firebase.database){
+        setMorningStatus('morning-upload-preview','Database is not connected. Check internet connection and try again.','error');
+        return;
+    }
     const btn=document.getElementById('btn-save-morning-excel');if(btn)btn.disabled=true;
     setMorningStatus('morning-upload-preview','Uploading morning data...');
     const payload={headers:pendingMorningExcel.headers,rows:pendingMorningExcel.rows,fileName:pendingMorningExcel.fileName,sheetName:pendingMorningExcel.sheetName,uploadedBy:String(currentUser||''),uploadedAt:firebase.database.ServerValue.TIMESTAMP,rowCount:pendingMorningExcel.rows.length,schemaVersion:2};
@@ -4078,7 +4093,6 @@ async function saveMorningExcel(){
     // open Morning Report immediately even while Firebase is syncing.
     try{localStorage.setItem('morning_report_current',JSON.stringify({...payload,uploadedAt:Date.now()}));}catch(e){}
     try{
-        if(!db)throw new Error('Database is not connected.');
         await db.ref('morning_report_current').set(payload);
         setMorningStatus('morning-upload-preview',`Upload successful. ${pendingMorningExcel.rows.length} rows saved. Previous Morning Excel has been replaced.`,'ok');
         alert('Morning Excel file uploaded successfully.');
