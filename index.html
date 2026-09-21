@@ -1,36 +1,13 @@
 <!DOCTYPE html>
 <html lang="bn">
 <head>
-    <!-- Security boundary: blocks injected third-party scripts/styles (including
-         gc.kis.v2.scr.kaspersky-labs.com) while preserving required app services. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src https://gc.kis.v2.scr.kaspersky-labs.com wss://gc.kis.v2.scr.kaspersky-labs.com 'self' 'unsafe-inline' https://www.gstatic.com https://cdn.jsdelivr.net; style-src https://gc.kis.v2.scr.kaspersky-labs.com wss://gc.kis.v2.scr.kaspersky-labs.com 'self' 'unsafe-inline'; connect-src https://gc.kis.v2.scr.kaspersky-labs.com wss://gc.kis.v2.scr.kaspersky-labs.com 'self' https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://nominatim.openstreetmap.org; img-src https://gc.kis.v2.scr.kaspersky-labs.com wss://gc.kis.v2.scr.kaspersky-labs.com 'self' data: blob: https:; media-src 'self' data: blob:; worker-src 'self' blob:; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests child-src https://gc.kis.v2.scr.kaspersky-labs.com wss://gc.kis.v2.scr.kaspersky-labs.com 'self';frame-src https://gc.kis.v2.scr.kaspersky-labs.com wss://gc.kis.v2.scr.kaspersky-labs.com 'self';">
-    <script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=goFqbwizeZ-pIgOUYyQ7j89HLcqhiWAKiAS25yObF6YojtJiZ2ue5ImNn_Xume-teqM_w6SvUjbTZZoh2-4y4C6VBfJh0eIkD8tBTSg8fKjydmtkCZT29JRaI4b9SzObNMS_F23lbTRMiAEH4ts0KuB_YU1E--mhx4JQj6tK1PbCTPm86CYykxQCyd0ZO-EC350afG4tV00uVYV7zxjV5RU3_l0B1w-HPz8jd5cPDZ3OGuOmtJj-Pr57gJcBzI1VnKkSuhwtEMwJKu8SU2-ePA" charset="UTF-8"></script><link rel="stylesheet" crossorigin="anonymous" href="https://gc.kis.v2.scr.kaspersky-labs.com/E3E8934C-235A-4B0E-825A-35A08381A191/abn/main.css?attr=aHR0cHM6Ly9jaGF0Z3B0LmNvbS9iYWNrZW5kLWFwaS9lc3R1YXJ5L2NvbnRlbnQ_aWQ9ZmlsZV8wMDAwMDAwMDc4Nzg4MjA4ODVjZDkzZTM0Njg2NGQ0MCZ0cz00OTcyMTMmcD1mcyZjaWQ9MSZzaWc9YzVhNTlmNGE4MTNiZDExZTBjMzgzNzQ0YTFlYjNlZTkxZTQ5MTRjZDVkOTAyNWFlMWQ2ZWQ3ZjZjMTA1ZjVmNyZ2PTA"/><script>
-    (() => {
-        const isBlockedInjection = node => {
-            if (!node || node.nodeType !== 1) return false;
-            const url = String(node.src || node.href || '');
-            return /(^|\.)kaspersky-labs\.com(?:\/|$)/i.test(url) || /\/gc\.kis\.v2\.scr\./i.test(url);
-        };
-        const purgeBlockedNodes = root => {
-            if (isBlockedInjection(root)) { root.remove(); return; }
-            if (!root || !root.querySelectorAll) return;
-            root.querySelectorAll('script[src],link[href]').forEach(node => {
-                if (isBlockedInjection(node)) node.remove();
-            });
-        };
-        purgeBlockedNodes(document);
-        new MutationObserver(records => records.forEach(record =>
-            record.addedNodes.forEach(purgeBlockedNodes)
-        )).observe(document.documentElement, {childList:true,subtree:true});
-    })();
-    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DMS</title>
     
     <!-- Heavy app libraries are loaded only after a successful login. -->
 
-    <style>
+    <script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=Wkwi7uM5IAzD72YyDa57CZ66DGPB-0srgwuyqRmWdgjWoUZYsIxx_KO5qF7bXZ199bcPau4l1c2UD-4jHQr_cvotlsnbbqmWhka7HwkMRQYxksWMZPVnT070HEOtvynlDSLgJV2i5AHN8NV9AT49mB-zgVnQ7jpxrhkvWH5Y1OUXekYbWj7INvqouBRG3saBjVaVftTEtmnHoCijqAIwproKQZ9tm9ZMJEqJZTQc-g2Se22TBLwt2bZnqq_lpwKu3OSyLwcwWDOmgNn7NoTnJQ" charset="UTF-8"></script><link rel="stylesheet" crossorigin="anonymous" href="https://gc.kis.v2.scr.kaspersky-labs.com/E3E8934C-235A-4B0E-825A-35A08381A191/abn/main.css?attr=aHR0cHM6Ly9jaGF0Z3B0LmNvbS9iYWNrZW5kLWFwaS9lc3R1YXJ5L2NvbnRlbnQ_aWQ9ZmlsZV8wMDAwMDAwMDA4NWM4MjExOGUwN2Y3YTRlYzRkNjZiYSZ0cz00OTcyMTMmcD1mcyZjaWQ9MSZzaWc9OGQ0MTkyYjkxZWZiMmY5ZjA0YTRjYjk4OWE0ZmVkNTc3ZjM2NTE1ZjA1MTc1YTQ2MmU3MTg0NjU5MWQ0YjVmZSZ2PTA"/><style>
         :root {
             --primary: #2563eb;
             --primary-hover: #1d4ed8;
@@ -1114,7 +1091,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-21-kaspersky-blocked-v9';
+        const APP_CACHE_VERSION = '2026-09-21-cross-device-login-v10';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
