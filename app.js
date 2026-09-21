@@ -115,7 +115,7 @@
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-21-report-auto-load-fix-v21';
+        const APP_CACHE_VERSION = '2026-09-21-afternoon-upload-only-v22';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -3477,38 +3477,29 @@ async function saveAfternoonExcel(){
     }catch(err){setMorningStatus('afternoon-upload-preview','Upload failed: '+err.message,'error');}
     finally{if(btn)btn.disabled=false;}
 }
-function canSeeAfternoonRow(row,headers,morningKeys){
+function canSeeAfternoonRow(row,headers){
     const role=getRoleInfo(),map=afternoonColumnMap(headers),wallet=map.dso>=0?normalizeScopeWallet(row[map.dso]):'';
     if(role.role==='Admin'||role.role==='DM')return true;
     if(role.role==='DSS')return getAssignedDsoWalletsForDss(role.dssName).has(wallet);
-    if(role.role==='DSO'){
-        // Morning Report is the authoritative Uddokta assignment for a DSO.
-        // Some Afternoon files use a different DSO number format, so do not
-        // discard an already Morning-matched Uddokta only because that cell differs.
-        const agentKey=map.agent>=0?reportAgentKey(row[map.agent]):'';
-        if(morningKeys instanceof Set&&agentKey)return morningKeys.has(agentKey);
-        return wallet===normalizeScopeWallet(role.dsoWallet);
-    }
+    if(role.role==='DSO')return wallet===normalizeScopeWallet(role.dsoWallet);
     return false;
 }
 async function loadAfternoonReport(){
-    const applyData=(data,morningData,source)=>{
+    const applyData=(data,source)=>{
         if(!data||!Array.isArray(data.headers)||!Array.isArray(data.rows))return false;
-        const morningKeys=visibleMorningAgentKeys(morningData);
-        const morningMatched=filterAfternoonRowsByMorning(data.rows,data.headers,morningKeys);
-        const scoped=morningMatched.filter(row=>Array.isArray(row)&&canSeeAfternoonRow(row,data.headers,morningKeys));
-        currentAfternoonReport={headers:data.headers,rows:scoped,fileName:data.fileName||'',morningAgentKeys};
+        // Afternoon/Evening Excel is the only data source for this report.
+        // Morning Report data must never remove or alter its uploaded rows.
+        const scoped=data.rows.filter(row=>Array.isArray(row)&&canSeeAfternoonRow(row,data.headers));
+        currentAfternoonReport={headers:data.headers,rows:scoped,fileName:data.fileName||''};
         populateAfternoonFilters();renderAfternoonReport();
-        const excluded=Math.max(0,data.rows.length-morningMatched.length);
-        setMorningStatus('afternoon-report-status',`${scoped.length} Morning-listed Uddokta rows loaded${data.fileName?' from '+data.fileName:''}${excluded?' • '+excluded+' non-Morning rows excluded':''}${source?' • '+source:''}.`,morningKeys.size?'ok':'error');return true;
+        setMorningStatus('afternoon-report-status',`${scoped.length} rows loaded only from the Afternoon/Evening upload${data.fileName?' • '+data.fileName:''}${source?' • '+source:''}.`,'ok');return true;
     };
-    let cached=null,morningCached=null;try{cached=JSON.parse(localStorage.getItem('afternoon_report_current')||'null');morningCached=JSON.parse(localStorage.getItem('morning_report_current')||'null');}catch(e){}
-    const cacheShown=applyData(cached,morningCached,'cached');if(!cacheShown)setMorningStatus('afternoon-report-status','Loading latest Morning and Afternoon/Evening reports...');
+    let cached=null;try{cached=JSON.parse(localStorage.getItem('afternoon_report_current')||'null');}catch(e){}
+    const cacheShown=applyData(cached,'cached');if(!cacheShown)setMorningStatus('afternoon-report-status','Loading latest Afternoon/Evening upload...');
     if(!db){if(!cacheShown){currentAfternoonReport={headers:[],rows:[]};renderAfternoonReport();setMorningStatus('afternoon-report-status','No Afternoon/Evening Excel file was found.','error');}return;}
     try{
-        const [afternoonSnap,morningSnap]=await Promise.all([db.ref('afternoon_report_current').once('value'),db.ref('morning_report_current').once('value')]);
-        const data=afternoonSnap.val(),morningData=morningSnap.val();
-        if(data&&Array.isArray(data.headers)&&Array.isArray(data.rows)){try{localStorage.setItem('afternoon_report_current',JSON.stringify(data));if(morningData)localStorage.setItem('morning_report_current',JSON.stringify(morningData));}catch(e){}applyData(data,morningData,'cloud synced');}
+        const afternoonSnap=await db.ref('afternoon_report_current').once('value'),data=afternoonSnap.val();
+        if(data&&Array.isArray(data.headers)&&Array.isArray(data.rows)){try{localStorage.setItem('afternoon_report_current',JSON.stringify(data));}catch(e){}applyData(data,'cloud synced');}
         else if(!cacheShown){currentAfternoonReport={headers:[],rows:[]};renderAfternoonReport();setMorningStatus('afternoon-report-status','No Afternoon/Evening Excel file was found.','error');}
     }catch(e){if(!cacheShown)setMorningStatus('afternoon-report-status','Afternoon/Evening Report could not load. Check internet connection.','error');}
 }
