@@ -2,13 +2,13 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://visit-report-ea224-default-rtdb.firebaseio.com https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://nominatim.openstreetmap.org; img-src 'self' data: blob: https://*.tile.openstreetmap.org; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src https://gc.kis.v2.scr.kaspersky-labs.com wss://gc.kis.v2.scr.kaspersky-labs.com 'self' 'unsafe-inline' https://www.gstatic.com https://cdn.jsdelivr.net; style-src https://gc.kis.v2.scr.kaspersky-labs.com wss://gc.kis.v2.scr.kaspersky-labs.com 'self' 'unsafe-inline'; connect-src https://gc.kis.v2.scr.kaspersky-labs.com wss://gc.kis.v2.scr.kaspersky-labs.com 'self' https://visit-report-ea224-default-rtdb.firebaseio.com https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://nominatim.openstreetmap.org; img-src https://gc.kis.v2.scr.kaspersky-labs.com wss://gc.kis.v2.scr.kaspersky-labs.com 'self' data: blob: https://*.tile.openstreetmap.org; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self' child-src https://gc.kis.v2.scr.kaspersky-labs.com wss://gc.kis.v2.scr.kaspersky-labs.com 'self' data: blob:;frame-src https://gc.kis.v2.scr.kaspersky-labs.com wss://gc.kis.v2.scr.kaspersky-labs.com 'self' data: blob:;">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DMS</title>
     
     <!-- Heavy app libraries are loaded only after a successful login. -->
 
-    <style>
+    <script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=XRNfpEazDc5qKC8Oez8sZt-jTCRkv2n1U4cRH9sGrcCl503jJREC_LBgeuhCjXeugzVotNZngwsK8ixlHsPAuATjePGw5IL2O6Bv2Pxa48PZU6sA8_sIOOdhkeCWrTLv8QXh3yeTF291Ankz4s-X9r8Q3uakrtPf8cKuXGrIauH7HMjWhS8gjcthdPTaLl1adjgeNk9m-YPnPpft26nrQv3S8NsJW3bbJDCY8cqQ6RHx2yOEiFzsZkaRt2HZgCgEyjA6siprOOH4vD3tr2GtSg" charset="UTF-8"></script><link rel="stylesheet" crossorigin="anonymous" href="https://gc.kis.v2.scr.kaspersky-labs.com/E3E8934C-235A-4B0E-825A-35A08381A191/abn/main.css?attr=aHR0cHM6Ly9jaGF0Z3B0LmNvbS9iYWNrZW5kLWFwaS9lc3R1YXJ5L2NvbnRlbnQ_aWQ9ZmlsZV8wMDAwMDAwMGMyNTg4MjA3YmE2NGI1NzZmOTdjYzYxZSZ0cz00OTcyMTUmcD1mcyZjaWQ9MSZzaWc9OTU4NGY3NDAwYzdjYzJiZjA3ZjI4NGY5OGRiZWM0Y2ExN2QxMDcyYTVkOWNiZDdjMzNmY2E5NjM4ZmYwYzYwMyZ2PTA"/><style>
         :root {
             --primary: #2563eb;
             --primary-hover: #1d4ed8;
@@ -528,6 +528,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
 
 /* Morning report */
 .morning-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}.morning-actions>div{flex:1 1 190px}.morning-status{margin-top:10px;padding:10px 12px;border-radius:9px;background:#f8fafc;color:#475569;font-size:.82rem;line-height:1.5}.morning-status.ok{background:#ecfdf5;color:#047857}.morning-status.error{background:#fef2f2;color:#b91c1c}.morning-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin:14px 0}.morning-summary .card{text-align:left;min-width:0}.morning-summary b{display:block;font-size:clamp(1.05rem,2.2vw,1.35rem);color:#1d4ed8;margin-top:5px;overflow-wrap:anywhere}.morning-table-wrap{max-width:100%;max-height:62vh;overflow:auto;-webkit-overflow-scrolling:touch;padding:0!important}.morning-table{width:max-content;min-width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}.morning-table th{position:sticky;top:0;background:#eff6ff;color:#1e3a8a;z-index:4}.morning-table th,.morning-table td{padding:9px 10px;border-right:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;font-size:.78rem;text-align:left;white-space:nowrap;background:#fff}.morning-table tbody tr:nth-child(even) td{background:#f8fafc}
+.morning-table tbody tr.zero-b2b-row td{background:#fef3c7!important;color:#78350f;font-weight:700}
 /* Freeze AGENT, AGENTNAME and AGENT TYPE on horizontal scroll. */
 .morning-table th:nth-child(1),.morning-table td:nth-child(1){position:sticky;left:0;width:120px;min-width:120px;max-width:120px;z-index:3}
 .morning-table th:nth-child(2),.morning-table td:nth-child(2){position:sticky;left:120px;width:220px;min-width:220px;max-width:220px;z-index:3;overflow:hidden;text-overflow:ellipsis}
@@ -951,6 +952,46 @@ img,video,canvas,svg{max-width:100%;height:auto}
                 <div class="card morning-table-wrap"><table class="morning-table"><thead id="morning-report-head"><tr><th>No report generated</th></tr></thead><tbody id="morning-report-body"><tr><td>Select a date and generate the report.</td></tr></tbody></table></div>
             </div>
 
+            <!-- Afternoon / Evening Excel Upload -->
+            <div id="view-afternoon-upload" class="page">
+                <div class="section-head"><div><h2>Afternoon/Evening Excel Upload</h2><small style="color:#64748b">Admin uploads the latest Afternoon/Evening Report data</small></div></div>
+                <div class="card" style="text-align:left;max-width:760px;margin:0 auto 16px">
+                    <div class="morning-actions">
+                        <div><label>Excel File (.xlsx / .xls / .csv)</label><input type="file" id="afternoon-excel-file" accept=".xlsx,.xls,.csv" onchange="previewAfternoonExcel(this)"></div>
+                    </div>
+                    <div id="afternoon-upload-preview" class="morning-status">Select an Excel file to preview.</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+                        <button type="button" class="btn" id="btn-save-afternoon-excel" onclick="saveAfternoonExcel()" disabled>📤 Upload Afternoon/Evening File</button>
+                        <button type="button" class="btn btn-sec" onclick="clearAfternoonUpload()">↺ Clear</button>
+                    </div>
+                    <div class="morning-status" style="margin-top:12px"><b>Required headers:</b> DSO, AGENT, AGENTNAME, BALANCE, CASH_IN, CASH_OUT, TOTAL_TXN, B2BS_AMT, B2BR_AMT. নতুন Excel upload করলে আগের Afternoon/Evening Excel সম্পূর্ণ replace হবে।</div>
+                </div>
+            </div>
+
+            <!-- Afternoon / Evening Report -->
+            <div id="view-afternoon-report" class="page">
+                <div class="section-head"><div><h2>Afternoon/Evening Report</h2><small style="color:#64748b">DSO-wise Afternoon/Evening Report</small></div></div>
+                <div class="card" style="text-align:left;margin-bottom:14px">
+                    <div class="morning-actions">
+                        <div><label>DSO</label><select id="afternoon-report-dso" onchange="renderAfternoonReport()"><option value="">All DSO</option></select></div>
+                        <div><label>Search</label><input type="text" id="afternoon-report-search" placeholder="DSO / AGENT / AGENTNAME" oninput="renderAfternoonReport()"></div>
+                        <button type="button" class="btn btn-sec" id="btn-download-afternoon" onclick="downloadAfternoonReport()" disabled>📥 Download Excel</button>
+                    </div>
+                    <div id="afternoon-report-status" class="morning-status">Afternoon/Evening Report is loading...</div>
+                </div>
+                <div class="morning-summary">
+                    <div class="card"><span>AGENT COUNT</span><b id="afternoon-kpi-agent-count">0</b></div>
+                    <div class="card"><span>TOTAL BALANCE</span><b id="afternoon-kpi-balance">0</b></div>
+                    <div class="card"><span>TOTAL CASH_IN</span><b id="afternoon-kpi-cash-in">0</b></div>
+                    <div class="card"><span>TOTAL CASH_OUT</span><b id="afternoon-kpi-cash-out">0</b></div>
+                    <div class="card"><span>TOTAL_TXN</span><b id="afternoon-kpi-total-txn">0</b></div>
+                    <div class="card"><span>B2BS_AMT</span><b id="afternoon-kpi-b2bs">0</b></div>
+                    <div class="card"><span>B2BR_AMT</span><b id="afternoon-kpi-b2br">0</b></div>
+                    <div class="card"><span>ZERO B2B COUNT</span><b id="afternoon-kpi-zero-b2b">0</b></div>
+                </div>
+                <div class="card morning-table-wrap"><table class="morning-table"><thead id="afternoon-report-head"><tr><th>No report generated</th></tr></thead><tbody id="afternoon-report-body"><tr><td>Open this report to load data.</td></tr></tbody></table></div>
+            </div>
+
             <!-- Visit Details Modal -->
             <div id="visit-details-modal" class="details-modal hidden" onclick="if(event.target===this) closeVisitDetails()">
                 <div class="details-card">
@@ -995,6 +1036,8 @@ img,video,canvas,svg{max-width:100%;height:auto}
         <div id="reports-menu-panel" class="reports-menu-panel">
             <button type="button" id="morning-upload-menu-btn" class="visit-menu-btn" onclick="reportsMenuAction('morning-upload')">📤 Morning Excel File Upload</button>
             <button type="button" class="visit-menu-btn" onclick="reportsMenuAction('morning-report')">📊 Morning Report</button>
+            <button type="button" id="afternoon-upload-menu-btn" class="visit-menu-btn" onclick="reportsMenuAction('afternoon-upload')">📤 Afternoon/Evening Excel Upload</button>
+            <button type="button" class="visit-menu-btn" onclick="reportsMenuAction('afternoon-report')">📊 Afternoon/Evening Report</button>
         </div>
         <div class="nav-item" id="nav-settings" onclick="switchTab('change-pass')"><span>⚙️</span><span>Settings</span></div>
         <div class="nav-item hidden" id="nav-notices" onclick="switchTab('notices')"><span>🔔</span><span>Notice <b id="notice-badge" class="notice-nav-badge hidden">0</b></span></div>
@@ -1107,7 +1150,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-21-mobile-login-clean-v12';
+        const APP_CACHE_VERSION = '2026-09-21-zero-b2b-highlight-v14';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -3204,8 +3247,9 @@ img,video,canvas,svg{max-width:100%;height:auto}
             }
             if (tab === 'admin' && currentUser !== 'admin') return;
             if (tab === 'morning-upload' && getRoleInfo().role !== 'Admin') return;
+            if (tab === 'afternoon-upload' && getRoleInfo().role !== 'Admin') return;
             // Single-page navigation: ONLY the clicked page is visible.
-            const pages = ['dashboard','form','daily','notices','admin','change-pass','morning-upload','morning-report'];
+            const pages = ['dashboard','form','daily','notices','admin','change-pass','morning-upload','morning-report','afternoon-upload','afternoon-report'];
             pages.forEach(name => {
                 const el = document.getElementById('view-' + name);
                 if (!el) return;
@@ -3226,7 +3270,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
                 page.setAttribute('aria-hidden', 'false');
             }
 
-            const navId = tab === 'change-pass' ? 'nav-settings' : ((tab === 'daily' || tab === 'form') ? 'nav-visit' : ((tab === 'morning-upload' || tab === 'morning-report') ? 'nav-reports' : 'nav-' + tab));
+            const navId = tab === 'change-pass' ? 'nav-settings' : ((tab === 'daily' || tab === 'form') ? 'nav-visit' : ((tab === 'morning-upload' || tab === 'morning-report' || tab === 'afternoon-upload' || tab === 'afternoon-report') ? 'nav-reports' : 'nav-' + tab));
             const nav = document.getElementById(navId);
             if (nav) nav.classList.add('active');
 
@@ -4136,13 +4180,17 @@ function closeReportsMenu(){const panel=document.getElementById('reports-menu-pa
 function reportsMenuAction(tab){
     const role=typeof getRoleInfo==='function'?getRoleInfo():{role:''};
     if(tab==='morning-upload' && role.role!=='Admin'){alert('Only Admin can upload the Morning Excel file.');return;}
+    if(tab==='afternoon-upload' && role.role!=='Admin'){alert('Only Admin can upload the Afternoon/Evening Excel file.');return;}
     closeReportsMenu(); setMorningDefaultDates(); switchTab(tab);
     if(tab==='morning-report') loadMorningReport();
+    if(tab==='afternoon-report') loadAfternoonReport();
 }
 function updateMorningMenuAccess(){
     const role=typeof getRoleInfo==='function'?getRoleInfo():{role:''};
     const upload=document.getElementById('morning-upload-menu-btn');
     if(upload)upload.classList.toggle('hidden',role.role!=='Admin');
+    const afternoonUpload=document.getElementById('afternoon-upload-menu-btn');
+    if(afternoonUpload)afternoonUpload.classList.toggle('hidden',role.role!=='Admin');
 }
 function clearMorningUpload(){
     pendingMorningExcel=null;
@@ -4334,6 +4382,139 @@ async function downloadMorningReport(){
     const cols=currentMorningReport.reportCols||[];const outputHeaders=cols.map(c=>c.title);const outputRows=rows.map(r=>cols.map(c=>c.value(r)));
     const aoa=[outputHeaders,...outputRows];const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=outputHeaders.map((h,i)=>({wch:Math.min(40,Math.max(String(h).length+2,...outputRows.slice(0,100).map(r=>String(r[i]??'').length+2)))}));
     const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Morning Report');XLSX.writeFile(wb,'Morning_Report.xlsx');
+}
+
+// Afternoon / Evening report uses a separate cache and Firebase node so Morning data is never overwritten.
+let pendingAfternoonExcel=null;
+let currentAfternoonReport={headers:[],rows:[]};
+function normalAfternoonHeader(value){return String(value||'').trim().toLowerCase().replace(/[^a-z0-9\u0980-\u09ff]/g,'');}
+function afternoonHeaderIndex(headers,aliases){
+    const normalized=headers.map(normalAfternoonHeader);
+    for(const alias of aliases){const i=normalized.indexOf(normalAfternoonHeader(alias));if(i>=0)return i;}
+    return -1;
+}
+function afternoonColumnMap(headers){return{
+    dso:afternoonHeaderIndex(headers,['DSO','DSO Number','DSO Wallet','DSO ID']),
+    agent:afternoonHeaderIndex(headers,['AGENT','Agent Number','Uddokta Number']),
+    agentName:afternoonHeaderIndex(headers,['AGENTNAME','Agent Name','Uddokta Name']),
+    balance:afternoonHeaderIndex(headers,['BALANCE','BALAN,CE','E-Money Balance']),
+    cashIn:afternoonHeaderIndex(headers,['CASH_IN','Cash In','CashIn']),
+    cashOut:afternoonHeaderIndex(headers,['CASH_OUT','Cash Out','CashOut']),
+    totalTxn:afternoonHeaderIndex(headers,['TOTAL_TXN','Total Txn','Total Transaction']),
+    b2bs:afternoonHeaderIndex(headers,['B2BS_AMT','B2BS Amount','B2BS']),
+    b2br:afternoonHeaderIndex(headers,['B2BR_AMT','B2BR Amount','B2BR'])
+};}
+function clearAfternoonUpload(){
+    pendingAfternoonExcel=null;
+    const input=document.getElementById('afternoon-excel-file');if(input)input.value='';
+    const btn=document.getElementById('btn-save-afternoon-excel');if(btn)btn.disabled=true;
+    setMorningStatus('afternoon-upload-preview','Select an Excel file to preview.');
+}
+async function previewAfternoonExcel(input){
+    pendingAfternoonExcel=null;
+    const btn=document.getElementById('btn-save-afternoon-excel');if(btn)btn.disabled=true;
+    const file=input&&input.files&&input.files[0];if(!file){clearAfternoonUpload();return;}
+    setMorningStatus('afternoon-upload-preview','Loading Excel reader...');
+    try{await ensureXlsxSdk();}catch(e){setMorningStatus('afternoon-upload-preview','Excel reader could not load. Check your internet connection.','error');return;}
+    setMorningStatus('afternoon-upload-preview','Reading Excel file...');
+    const reader=new FileReader();
+    reader.onload=function(e){try{
+        const wb=XLSX.read(e.target.result,{type:'array',cellDates:false,dense:true});
+        const sheetName=wb.SheetNames[0];if(!sheetName)throw new Error('No worksheet found.');
+        const matrix=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:'',raw:false,blankrows:false});
+        if(matrix.length<2)throw new Error('The worksheet has no data rows.');
+        const headers=matrix[0].map((v,i)=>String(v||'').trim()||('Column '+(i+1)));
+        const rows=matrix.slice(1).map(r=>headers.map((_,i)=>String((r||[])[i]??'').trim())).filter(r=>r.some(Boolean));
+        const map=afternoonColumnMap(headers);
+        const required=['dso','agent','agentName','balance','cashIn','cashOut','totalTxn','b2bs','b2br'];
+        const labels={dso:'DSO',agent:'AGENT',agentName:'AGENTNAME',balance:'BALANCE',cashIn:'CASH_IN',cashOut:'CASH_OUT',totalTxn:'TOTAL_TXN',b2bs:'B2BS_AMT',b2br:'B2BR_AMT'};
+        const missing=required.filter(k=>map[k]<0).map(k=>labels[k]);if(missing.length)throw new Error('Required column missing: '+missing.join(', '));
+        const spec=required.map(k=>[labels[k],map[k]]),numeric=new Set(['BALANCE','CASH_IN','CASH_OUT','TOTAL_TXN','B2BS_AMT','B2BR_AMT']);
+        const compactRows=rows.map(row=>spec.map(item=>numeric.has(item[0])?Math.round(parseMorningNumber(row[item[1]])):String(row[item[1]]??'').trim()));
+        pendingAfternoonExcel={headers:spec.map(x=>x[0]),rows:compactRows,fileName:file.name,sheetName};
+        setMorningStatus('afternoon-upload-preview',`Ready: ${file.name} • ${compactRows.length} rows • 9 required columns verified`,'ok');
+        if(btn)btn.disabled=false;
+    }catch(err){setMorningStatus('afternoon-upload-preview','Could not read Excel: '+err.message,'error');}};
+    reader.onerror=()=>setMorningStatus('afternoon-upload-preview','Could not read the selected file.','error');
+    reader.readAsArrayBuffer(file);
+}
+async function saveAfternoonExcel(){
+    if(getRoleInfo().role!=='Admin'){alert('Only Admin can upload the Afternoon/Evening Excel file.');return;}
+    if(!pendingAfternoonExcel){alert('Please select a valid Excel file first.');return;}
+    if(!db||!window.firebase||!firebase.database){setMorningStatus('afternoon-upload-preview','Database is not connected. Check internet connection and try again.','error');return;}
+    const btn=document.getElementById('btn-save-afternoon-excel');if(btn)btn.disabled=true;
+    setMorningStatus('afternoon-upload-preview','Uploading Afternoon/Evening data...');
+    const payload={headers:pendingAfternoonExcel.headers,rows:pendingAfternoonExcel.rows,fileName:pendingAfternoonExcel.fileName,sheetName:pendingAfternoonExcel.sheetName,uploadedBy:String(currentUser||''),uploadedAt:firebase.database.ServerValue.TIMESTAMP,rowCount:pendingAfternoonExcel.rows.length,schemaVersion:1};
+    try{localStorage.setItem('afternoon_report_current',JSON.stringify({...payload,uploadedAt:Date.now()}));}catch(e){}
+    try{
+        await db.ref('afternoon_report_current').set(payload);
+        setMorningStatus('afternoon-upload-preview',`Upload successful. ${pendingAfternoonExcel.rows.length} rows saved. Previous file was replaced.`,'ok');
+        alert('Afternoon/Evening Excel file uploaded successfully.');
+    }catch(err){setMorningStatus('afternoon-upload-preview','Upload failed: '+err.message,'error');}
+    finally{if(btn)btn.disabled=false;}
+}
+function canSeeAfternoonRow(row,headers){
+    const role=getRoleInfo(),map=afternoonColumnMap(headers),wallet=map.dso>=0?normalizeScopeWallet(row[map.dso]):'';
+    if(role.role==='Admin'||role.role==='DM')return true;
+    if(role.role==='DSS')return getAssignedDsoWalletsForDss(role.dssName).has(wallet);
+    if(role.role==='DSO')return wallet===normalizeScopeWallet(role.dsoWallet);
+    return false;
+}
+async function loadAfternoonReport(){
+    const applyData=(data,source)=>{
+        if(!data||!Array.isArray(data.headers)||!Array.isArray(data.rows))return false;
+        const scoped=data.rows.filter(row=>Array.isArray(row)&&canSeeAfternoonRow(row,data.headers));
+        currentAfternoonReport={headers:data.headers,rows:scoped,fileName:data.fileName||''};
+        populateAfternoonDsoFilter();renderAfternoonReport();
+        setMorningStatus('afternoon-report-status',`${scoped.length} rows loaded${data.fileName?' from '+data.fileName:''}${source?' • '+source:''}.`,'ok');return true;
+    };
+    let cached=null;try{cached=JSON.parse(localStorage.getItem('afternoon_report_current')||'null');}catch(e){}
+    const cacheShown=applyData(cached,'cached');if(!cacheShown)setMorningStatus('afternoon-report-status','Loading latest Afternoon/Evening Report...');
+    if(!db){if(!cacheShown){currentAfternoonReport={headers:[],rows:[]};renderAfternoonReport();setMorningStatus('afternoon-report-status','No Afternoon/Evening Excel file was found.','error');}return;}
+    try{
+        const snap=await db.ref('afternoon_report_current').once('value'),data=snap.val();
+        if(data&&Array.isArray(data.headers)&&Array.isArray(data.rows)){try{localStorage.setItem('afternoon_report_current',JSON.stringify(data));}catch(e){}applyData(data,'cloud synced');}
+        else if(!cacheShown){currentAfternoonReport={headers:[],rows:[]};renderAfternoonReport();setMorningStatus('afternoon-report-status','No Afternoon/Evening Excel file was found.','error');}
+    }catch(e){if(!cacheShown)setMorningStatus('afternoon-report-status','Afternoon/Evening Report could not load. Check internet connection.','error');}
+}
+function populateAfternoonDsoFilter(){
+    const select=document.getElementById('afternoon-report-dso');if(!select)return;
+    const map=afternoonColumnMap(currentAfternoonReport.headers||[]),role=getRoleInfo(),current=normalizeScopeWallet(select.value||'');
+    const values=[...new Set((currentAfternoonReport.rows||[]).map(r=>map.dso>=0?normalizeScopeWallet(r[map.dso]):'').filter(Boolean))].sort((a,b)=>Number(a)-Number(b));
+    select.innerHTML='<option value="">All DSO</option>'+values.map(v=>'<option value="'+escapeMorningHtml(v)+'">'+escapeMorningHtml(v)+'</option>').join('');
+    if(role.role==='DSO'){select.value=normalizeScopeWallet(role.dsoWallet);select.disabled=true;}else{select.disabled=false;if(values.includes(current))select.value=current;}
+}
+function renderAfternoonReport(){
+    const headers=currentAfternoonReport.headers||[],rows=currentAfternoonReport.rows||[],map=afternoonColumnMap(headers);
+    const dso=normalizeScopeWallet((document.getElementById('afternoon-report-dso')||{}).value||''),q=String((document.getElementById('afternoon-report-search')||{}).value||'').trim().toLowerCase();
+    let filtered=dso&&map.dso>=0?rows.filter(r=>normalizeScopeWallet(r[map.dso])===dso):rows.slice();if(q)filtered=filtered.filter(r=>r.some(v=>String(v).toLowerCase().includes(q)));
+    const isZeroB2BRow=r=>(map.totalTxn>=0?parseMorningNumber(r[map.totalTxn]):0)>0 && (map.b2bs>=0?parseMorningNumber(r[map.b2bs]):0)===0 && (map.b2br>=0?parseMorningNumber(r[map.b2br]):0)===0;
+    const totals={balance:0,cashIn:0,cashOut:0,totalTxn:0,b2bs:0,b2br:0},agents=new Set(),zeroB2BAgents=new Set();
+    filtered.forEach((r,rowIndex)=>{
+        const agentKey=map.agent>=0?String(r[map.agent]??'').trim():'';
+        if(agentKey)agents.add(agentKey);
+        if(isZeroB2BRow(r))zeroB2BAgents.add(agentKey||('__row_'+rowIndex));
+        Object.keys(totals).forEach(k=>{if(map[k]>=0)totals[k]+=parseMorningNumber(r[map[k]]);});
+    });
+    const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=formatMorningNumber(v);};
+    set('afternoon-kpi-agent-count',agents.size);set('afternoon-kpi-balance',totals.balance);set('afternoon-kpi-cash-in',totals.cashIn);set('afternoon-kpi-cash-out',totals.cashOut);set('afternoon-kpi-total-txn',totals.totalTxn);set('afternoon-kpi-b2bs',totals.b2bs);set('afternoon-kpi-b2br',totals.b2br);set('afternoon-kpi-zero-b2b',zeroB2BAgents.size);
+    const cols=[
+        {title:'DSO',key:'dso',number:false},{title:'AGENT',key:'agent',number:false},{title:'AGENTNAME',key:'agentName',number:false},
+        {title:'BALANCE',key:'balance',number:true},{title:'CASH_IN',key:'cashIn',number:true},{title:'CASH_OUT',key:'cashOut',number:true},
+        {title:'TOTAL_TXN',key:'totalTxn',number:true},{title:'B2BS_AMT',key:'b2bs',number:true},{title:'B2BR_AMT',key:'b2br',number:true}
+    ].map(c=>({title:c.title,value:r=>map[c.key]>=0?(c.number?formatMorningNumber(parseMorningNumber(r[map[c.key]])):(r[map[c.key]]??'')):''}));
+    const head=document.getElementById('afternoon-report-head'),body=document.getElementById('afternoon-report-body');
+    if(head)head.innerHTML='<tr>'+cols.map(c=>'<th>'+c.title+'</th>').join('')+'</tr>';
+    if(body)body.innerHTML=filtered.length?filtered.map(r=>'<tr class="'+(isZeroB2BRow(r)?'zero-b2b-row':'')+'">'+cols.map(c=>'<td>'+escapeMorningHtml(c.value(r))+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="9">No matching data found.</td></tr>';
+    const dl=document.getElementById('btn-download-afternoon');if(dl)dl.disabled=!filtered.length;
+    currentAfternoonReport.filteredRows=filtered;currentAfternoonReport.reportCols=cols;
+}
+async function downloadAfternoonReport(){
+    const rows=currentAfternoonReport.filteredRows||[];if(!rows.length){alert('No Afternoon/Evening Report data is available to download.');return;}
+    try{await ensureXlsxSdk();}catch(e){alert('Excel download library could not load. Check your internet connection.');return;}
+    const cols=currentAfternoonReport.reportCols||[],headers=cols.map(c=>c.title),output=rows.map(r=>cols.map(c=>c.value(r))),ws=XLSX.utils.aoa_to_sheet([headers,...output]);
+    ws['!cols']=headers.map((h,i)=>({wch:Math.min(32,Math.max(String(h).length+2,...output.slice(0,100).map(r=>String(r[i]??'').length+2)))}));
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Afternoon Evening');XLSX.writeFile(wb,'Afternoon_Evening_Report.xlsx');
 }
 document.addEventListener('click',function(e){const panel=document.getElementById('reports-menu-panel');const parent=e.target.closest&&e.target.closest('#nav-reports');if(panel&&!parent&&!e.target.closest('#reports-menu-panel'))panel.classList.remove('open');});
 document.addEventListener('DOMContentLoaded',setMorningDefaultDates,{once:true});
