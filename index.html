@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-21-clean-afternoon-view-v16">
+    <meta name="dms-app-version" content="2026-09-21-common-dss-dso-assignment-v17">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://visit-report-ea224-default-rtdb.firebaseio.com https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://nominatim.openstreetmap.org; img-src 'self' data: blob: https://*.tile.openstreetmap.org; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DMS</title>
@@ -957,16 +957,27 @@ img,video,canvas,svg{max-width:100%;height:auto}
                 </div>
             </div>
 
+            <!-- Common DSS / DSO Assignment Upload -->
+            <div id="view-assignment-upload" class="page">
+                <div class="section-head"><div><h2>DSS–DSO Assignment Upload</h2><small style="color:#64748b">এই common assignment সব report-এ ব্যবহার হবে</small></div></div>
+                <div class="card" style="text-align:left;max-width:760px;margin:0 auto 16px">
+                    <div class="morning-actions"><div><label>Excel File (.xlsx / .xls / .csv)</label><input type="file" id="assignment-excel-file" accept=".xlsx,.xls,.csv" onchange="previewAssignmentExcel(this)"></div></div>
+                    <div id="assignment-upload-status" class="morning-status">Select an Excel file. Required headers: DSS, DSO.</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+                        <button type="button" class="btn" id="btn-save-assignment" onclick="saveAssignmentExcel()" disabled>📤 Upload Common Assignment</button>
+                        <button type="button" class="btn btn-sec" onclick="clearAssignmentUpload()">↺ Clear</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Afternoon / Evening Report -->
             <div id="view-afternoon-report" class="page">
                 <div class="section-head"><div><h2>Afternoon/Evening Report</h2><small style="color:#64748b">DSO-wise Afternoon/Evening Report</small></div></div>
-                <div class="card hidden" aria-hidden="true" style="text-align:left;margin-bottom:14px">
+                <div id="afternoon-filter-card" class="card" style="text-align:left;margin-bottom:14px">
                     <div class="morning-actions">
+                        <div><label>DSS</label><select id="afternoon-report-dss" onchange="populateAfternoonDsoFilter();renderAfternoonReport()"><option value="">All DSS</option></select></div>
                         <div><label>DSO</label><select id="afternoon-report-dso" onchange="renderAfternoonReport()"><option value="">All DSO</option></select></div>
-                        <div><label>Search</label><input type="text" id="afternoon-report-search" placeholder="DSO / AGENT / AGENTNAME" oninput="renderAfternoonReport()"></div>
-                        <button type="button" class="btn btn-sec" id="btn-download-afternoon" onclick="downloadAfternoonReport()" disabled>📥 Download Excel</button>
                     </div>
-                    <div id="afternoon-report-status" class="morning-status">Afternoon/Evening Report is loading...</div>
                 </div>
                 <div class="morning-summary">
                     <div class="card"><span>AGENT COUNT</span><b id="afternoon-kpi-agent-count">0</b></div>
@@ -1027,6 +1038,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
             <button type="button" class="visit-menu-btn" onclick="reportsMenuAction('morning-report')">📊 Morning Report</button>
             <button type="button" id="afternoon-upload-menu-btn" class="visit-menu-btn" onclick="reportsMenuAction('afternoon-upload')">📤 Afternoon/Evening Excel Upload</button>
             <button type="button" class="visit-menu-btn" onclick="reportsMenuAction('afternoon-report')">📊 Afternoon/Evening Report</button>
+            <button type="button" id="assignment-upload-menu-btn" class="visit-menu-btn" onclick="reportsMenuAction('assignment-upload')">🔗 DSS–DSO Assignment Upload</button>
         </div>
         <div class="nav-item" id="nav-settings" onclick="switchTab('change-pass')"><span>⚙️</span><span>Settings</span></div>
         <div class="nav-item hidden" id="nav-notices" onclick="switchTab('notices')"><span>🔔</span><span>Notice <b id="notice-badge" class="notice-nav-badge hidden">0</b></span></div>
@@ -1048,6 +1060,6 @@ img,video,canvas,svg{max-width:100%;height:auto}
 
 
 
-    <script defer src="./app.js?v=16"></script>
+    <script defer src="./app.js?v=17"></script>
 </body>
 </html>
