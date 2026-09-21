@@ -115,7 +115,7 @@
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-21-realtime-report-filters-v23';
+        const APP_CACHE_VERSION = '2026-09-21-role-filter-access-v24';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -3325,7 +3325,9 @@ function morningAgentType(row,map){
 function populateMorningFilters(){
     const role=getRoleInfo(),dssSelect=document.getElementById('morning-report-dss');
     if(dssSelect){
-        const names=role.role==='DSS'?[String(role.dssName||'').trim().toUpperCase()]:[...dssDsoAssignmentIndex.keys()].sort();
+        const dssWrap=dssSelect.closest('div');
+        if(dssWrap)dssWrap.style.display=role.role==='DSO'?'none':'';
+        const names=role.role==='DSS'?[String(role.dssName||'').trim().toUpperCase()]:(role.role==='DSO'?[]:[...dssDsoAssignmentIndex.keys()].sort());
         const current=String(dssSelect.value||'').trim().toUpperCase();
         dssSelect.innerHTML='<option value="">All DSS</option>'+names.map(n=>'<option value="'+escapeMorningHtml(n)+'">'+escapeMorningHtml(n)+'</option>').join('');
         if(role.role==='DSS'){dssSelect.value=names[0]||'';dssSelect.disabled=true;}else{dssSelect.disabled=false;if(names.includes(current))dssSelect.value=current;}
@@ -3341,7 +3343,7 @@ function populateMorningDsoFilter(){
     const values=[...new Set(rows.map(r=>map.dso>=0?normalizeScopeWallet(r[map.dso]):'').filter(v=>v&&(!allowed||allowed.has(v))))].sort((a,b)=>Number(a)-Number(b));
     select.innerHTML='<option value="">All DSO</option>'+values.map(v=>'<option value="'+escapeMorningHtml(v)+'">'+escapeMorningHtml(v)+'</option>').join('');
     if(role.role==='DSO'){
-        const own=normalizeScopeWallet(role.dsoWallet);select.value=own;select.disabled=true;
+        const own=normalizeScopeWallet(role.dsoWallet);select.innerHTML='<option value="'+escapeMorningHtml(own)+'">'+escapeMorningHtml(own)+'</option>';select.value=own;select.disabled=true;
     }else{select.disabled=false;if(values.includes(current))select.value=current;}
 }
 function renderMorningReport(){
@@ -3580,7 +3582,7 @@ function populateAfternoonFilters(){
     // Every role keeps the filter card. Permission-scoped DSS/DSO selectors may be locked,
     // but Uddokta type and search remain usable for everyone.
     if(card)card.classList.remove('hidden');
-    if(dssSelect){const names=role.role==='DSS'?[String(role.dssName||'').trim().toUpperCase()]:[...dssDsoAssignmentIndex.keys()].sort();const current=String(dssSelect.value||'').trim().toUpperCase();dssSelect.innerHTML='<option value="">All DSS</option>'+names.map(n=>'<option value="'+escapeMorningHtml(n)+'">'+escapeMorningHtml(n)+'</option>').join('');if(role.role==='DSS'){dssSelect.value=names[0]||'';dssSelect.disabled=true;}else{dssSelect.disabled=false;if(names.includes(current))dssSelect.value=current;}}
+    if(dssSelect){const dssWrap=dssSelect.closest('div');if(dssWrap)dssWrap.style.display=role.role==='DSO'?'none':'';const names=role.role==='DSS'?[String(role.dssName||'').trim().toUpperCase()]:(role.role==='DSO'?[]:[...dssDsoAssignmentIndex.keys()].sort());const current=String(dssSelect.value||'').trim().toUpperCase();dssSelect.innerHTML='<option value="">All DSS</option>'+names.map(n=>'<option value="'+escapeMorningHtml(n)+'">'+escapeMorningHtml(n)+'</option>').join('');if(role.role==='DSS'){dssSelect.value=names[0]||'';dssSelect.disabled=true;}else{dssSelect.disabled=false;if(names.includes(current))dssSelect.value=current;}}
     populateAfternoonDsoFilter();
 }
 function populateAfternoonDsoFilter(){
@@ -3590,7 +3592,7 @@ function populateAfternoonDsoFilter(){
     const allowed=selectedDss?getAssignedDsoWalletsForDss(selectedDss):null;
     const values=[...new Set((currentAfternoonReport.rows||[]).map(r=>map.dso>=0?normalizeScopeWallet(r[map.dso]):'').filter(v=>v&&(!allowed||allowed.has(v))))].sort((a,b)=>Number(a)-Number(b));
     select.innerHTML='<option value="">All DSO</option>'+values.map(v=>'<option value="'+escapeMorningHtml(v)+'">'+escapeMorningHtml(v)+'</option>').join('');
-    if(role.role==='DSO'){select.value=normalizeScopeWallet(role.dsoWallet);select.disabled=true;}else{select.disabled=false;if(values.includes(current))select.value=current;}
+    if(role.role==='DSO'){const own=normalizeScopeWallet(role.dsoWallet);select.innerHTML='<option value="'+escapeMorningHtml(own)+'">'+escapeMorningHtml(own)+'</option>';select.value=own;select.disabled=true;}else{select.disabled=false;if(values.includes(current))select.value=current;}
 }
 function renderAfternoonReport(){
     const headers=currentAfternoonReport.headers||[],rows=currentAfternoonReport.rows||[],map=afternoonColumnMap(headers);
