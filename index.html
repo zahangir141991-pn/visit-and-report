@@ -7,7 +7,7 @@
     
     <!-- Heavy app libraries are loaded only after a successful login. -->
 
-    <script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=s9f2sfOpN1LqPkEL3KVHp4CotWggn8FbbX-RsJVV6I50JEIm3GMlGFP_gkKWbiOHp1wUnH4PQg3PQpRBXmsZ8MayKQiQpH9pwa5CBmPnfJKZZAgYkn-HthtPx5Sm7YP096TDoPC__wZAVbIQTXCzl4_uIUmrmWyCxtrqQHSyKWrXw1ASvBpalNhj5nfDcB0JpUy_s9AQQul-9UPt9FSkuBfCOqCHEeanZQCSaIPKFKocwmYtXVmLFMonP_xMuasuMAZzZZKsuO0aVQAFdfa1Uw" charset="UTF-8"></script><link rel="stylesheet" crossorigin="anonymous" href="https://gc.kis.v2.scr.kaspersky-labs.com/E3E8934C-235A-4B0E-825A-35A08381A191/abn/main.css?attr=aHR0cHM6Ly9jaGF0Z3B0LmNvbS9iYWNrZW5kLWFwaS9lc3R1YXJ5L2NvbnRlbnQ_aWQ9ZmlsZV8wMDAwMDAwMDZiN2M4MjExYTQzMmIwZDkxNzViNjhmZiZ0cz00OTcyMTImcD1mcyZjaWQ9MSZzaWc9OTFkNDY3NzU1ZGNlMWFhMjRiNDYxNjE3ZGI3ZmJkNDg4YjhlYjIzYmE5MTk4YTYwNjNjMmRhNzEzY2VmMTQ1NCZ2PTA"/><style>
+    <script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=Pta0WoBnba5rxg5DX5QUPtgkCJ9yffxTrqHFg8OwiV0z-84FAG_Rp3KTOPcwNJOhi5KAlb3m1Xlnv7qlmRu4_Z9ettPq_ljN2ITpaurcBCqyorucRvpiUg507Kt4_UYKNGi2SdGR8ai3PScehYVFQHEdMU0cIixTc69_YSpUXJlewsrshiWNR3diEFF-vUXlI1e6TcUFvSU-msoPy8FTus9vhckJiUpae1uxcFTvmkNsmi-pJ_LgVHU_oJl-6AGqF8v2qFaJZt7vPWe-gScVUQ" charset="UTF-8"></script><link rel="stylesheet" crossorigin="anonymous" href="https://gc.kis.v2.scr.kaspersky-labs.com/E3E8934C-235A-4B0E-825A-35A08381A191/abn/main.css?attr=aHR0cHM6Ly9jaGF0Z3B0LmNvbS9iYWNrZW5kLWFwaS9lc3R1YXJ5L2NvbnRlbnQ_aWQ9ZmlsZV8wMDAwMDAwMDhjYzg4MjA4YTlmZjc5NGQ3ZWFlYzUzMCZ0cz00OTcyMTImcD1mcyZjaWQ9MSZzaWc9ZmE1ZGU1ZTM0MjNmNjQyM2QzNTNmNWYzYzc3ZDlmNGU4Y2FhNGNiMTBhYjVkNTZkZDU1ZjE5ZGIwYTA4ZjhhZCZ2PTA"/><style>
         :root {
             --primary: #2563eb;
             --primary-hover: #1d4ed8;
@@ -298,7 +298,7 @@
 .nav-sidebar .sidebar-spacer{order:7;flex:1 1 auto;min-height:12px;}
 .nav-sidebar #sidebar-app-refresh{order:8;width:100%;flex:none;border:0;background:#eff6ff;color:#1d4ed8;border-radius:10px;padding:12px 13px;margin:4px 0;display:flex;align-items:center;gap:11px;font-size:.86rem;font-weight:800;cursor:pointer;text-align:left;box-sizing:border-box;}
 .nav-sidebar #sidebar-app-refresh:hover{background:#dbeafe;}
-.nav-sidebar #sidebar-logout{order:9;width:100%;flex:none;border:0;background:#fef2f2;color:#b91c1c;border-radius:10px;padding:12px 13px;margin:4px 0;display:flex;align-items:center;gap:11px;font-size:.86rem;font-weight:800;cursor:pointer;text-align:left;box-sizing:border-box;}
+.nav-sidebar #sidebar-logout{order:9;width:100%;flex:none;border:0;background:#fef2f2;color:#b91c1c;border-radius:10px;padding:12px 13px;margin:4px 0;display:flex;align-items:center;gap:11px;font-size:.86rem;font-weight:800;cursor:pointer;text-align:left;box-sizing:border-box;touch-action:pan-y;}
 .nav-sidebar #sidebar-logout:hover{background:#fee2e2;}
 .nav-sidebar .sidebar-hint{order:10;flex:none;font-size:.68rem;color:#94a3b8;text-align:center;padding:10px 4px;}
 #main-app{margin-left:230px;padding-bottom:20px;min-width:0;}
@@ -1091,7 +1091,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-21-mobile-login-ultrafast-v7';
+        const APP_CACHE_VERSION = '2026-09-21-session-stable-v8';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -1471,12 +1471,15 @@ img,video,canvas,svg{max-width:100%;height:auto}
             const button = document.getElementById('sidebar-app-refresh');
             if (button) { button.disabled = true; button.innerHTML = '⏳ <span>Checking Update...</span>'; }
             try {
-                const url = new URL(location.href);
-                url.searchParams.delete('_appcheck');
-                url.searchParams.set('_apprefresh', Date.now().toString());
-                location.replace(url.toString());
+                const updated = await checkForHostedAppUpdate(true);
+                if (!updated) {
+                    showAlert('App is already up to date.', 'success');
+                    closeMobileNav();
+                }
             } catch (e) {
-                location.reload();
+                showAlert('Update check failed. Please check your internet connection.', 'error');
+            } finally {
+                if (button) { button.disabled = false; button.innerHTML = '🔄 <span>Update App</span>'; }
             }
         }
 
@@ -1565,9 +1568,8 @@ img,video,canvas,svg{max-width:100%;height:auto}
                 setTimeout(loadPostLoginLibraries, 0);
                 try { switchTab('dashboard'); } catch (e) {}
                 setTimeout(() => { try { updateVisitSubmitState(); } catch (e) {} }, 300);
-                // Version checking is deliberately non-blocking. Slow/offline networks
-                // must never delay a valid local login.
-                setTimeout(() => { checkForHostedAppUpdate(true).catch(() => {}); }, 800);
+                // Updates are checked only when the user presses Update App.
+                // Automatic checks/reloads could interrupt an active mobile session.
             } finally {
                 loginInProgress = false;
                 if (loginButton) loginButton.disabled = false;
@@ -1617,11 +1619,8 @@ img,video,canvas,svg{max-width:100%;height:auto}
 
         function logout() {
             closeMobileNav();
-            // Force a fresh hosted-version check on the next login.
-            loginUpdateCheckDone = false;
             currentUser = null;
             document.body.classList.remove('app-logged-in');
-            try { clearVisitFormForNewVisit(); } catch (e) { console.warn('Visit form reset on logout skipped:', e); }
 
             // Reset the login screen so a previous failed-login alert
             // never appears automatically after logout.
@@ -1644,9 +1643,12 @@ img,video,canvas,svg{max-width:100%;height:auto}
             if (headerNameEl) headerNameEl.innerText = '';
             document.getElementById('login-pass').value = '';
             document.getElementById('login-user').focus();
-            // Logout also reloads the app with a unique URL, guaranteeing that
-            // the next login starts from the latest deployed HTML instead of cache.
-            setTimeout(() => { try { refreshAppToLatest(); } catch (e) {} }, 50);
+            // Show login instantly. Non-visible cleanup runs after the browser paints.
+            const cleanup = () => {
+                try { clearVisitFormForNewVisit(); } catch (e) { console.warn('Visit form reset on logout skipped:', e); }
+            };
+            if ('requestIdleCallback' in window) requestIdleCallback(cleanup, {timeout:500});
+            else setTimeout(cleanup, 0);
         }
 
         function changePassword() {
@@ -3960,13 +3962,11 @@ let firebaseListenersStarted = false;
             let activePointerId = null;
             let startX = 0, startY = 0;
             let moved = false;
-            const MOVE_LIMIT = 12;
+            let lastScrollAt = 0;
+            const MOVE_LIMIT = 18;
 
-            // Never let a synthetic click generated after a swipe perform logout.
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-            }, true);
+            // Capturing scroll also covers the independently scrolling mobile sidebar.
+            document.addEventListener('scroll', () => { lastScrollAt = Date.now(); moved = true; }, {capture:true,passive:true});
 
             btn.addEventListener('pointerdown', function(e) {
                 if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -3993,15 +3993,25 @@ let firebaseListenersStarted = false;
                 if (activePointerId !== e.pointerId) return;
                 const dx = Math.abs(e.clientX - startX);
                 const dy = Math.abs(e.clientY - startY);
-                const isRealTap = !moved && dx <= MOVE_LIMIT && dy <= MOVE_LIMIT &&
-                    (e.target === btn || btn.contains(e.target));
+                if (dx > MOVE_LIMIT || dy > MOVE_LIMIT) moved = true;
                 activePointerId = null;
+            }, {passive:true});
+
+            // Logout happens only on the browser's completed click—not pointerup.
+            // Any recent scroll/swipe cancels that click. Keyboard clicks remain valid.
+            btn.addEventListener('click', function(e) {
+                const keyboardClick = e.detail === 0;
+                const blockedByGesture = moved || (Date.now() - lastScrollAt) < 450;
                 moved = false;
-                if (!isRealTap) return;
+                if (!keyboardClick && blockedByGesture) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                }
                 e.preventDefault();
                 e.stopPropagation();
                 logout();
-            });
+            }, true);
         }
 
         if (document.readyState === 'loading') {
