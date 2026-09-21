@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-21-afternoon-upload-only-v22">
+    <meta name="dms-app-version" content="2026-09-21-realtime-report-filters-v23">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://visit-report-ea224-default-rtdb.firebaseio.com https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://nominatim.openstreetmap.org; img-src 'self' data: blob: https://*.tile.openstreetmap.org; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DMS</title>
@@ -922,10 +922,12 @@ img,video,canvas,svg{max-width:100%;height:auto}
             <!-- Morning Report -->
             <div id="view-morning-report" class="page">
                 <div class="section-head"><div><h2>Morning Report</h2><small style="color:#64748b">DSO-wise Morning Report</small></div></div>
-                <div class="card hidden" aria-hidden="true" style="text-align:left;margin-bottom:14px">
+                <div id="morning-filter-card" class="card" style="text-align:left;margin-bottom:14px">
                     <div class="morning-actions">
+                        <div><label>DSS</label><select id="morning-report-dss" onchange="populateMorningDsoFilter();renderMorningReport()"><option value="">All DSS</option></select></div>
                         <div><label>DSO</label><select id="morning-report-dso" onchange="renderMorningReport()"><option value="">All DSO</option></select></div>
-                        <div><label>Search</label><input type="text" id="morning-report-search" placeholder="DSO / DSS / Uddokta / any value" oninput="renderMorningReport()"></div>
+                        <div><label>Uddokta Type</label><select id="morning-report-agent-type" onchange="renderMorningReport()"><option value="all">All Uddokta</option><option value="zero-b2b">ZERO B2B</option><option value="cash-in">Cash In Uddokta</option><option value="cash-out">Cash Out Uddokta</option></select></div>
+                        <div><label>Uddokta Search</label><input type="search" id="morning-report-search" placeholder="Name / number search" oninput="renderMorningReport()"></div>
                         <button type="button" class="btn btn-sec" id="btn-download-morning" onclick="downloadMorningReport()" disabled>📥 Download Excel</button>
                     </div>
                     <div id="morning-report-status" class="morning-status">Morning Report is loading...</div>
@@ -977,7 +979,11 @@ img,video,canvas,svg{max-width:100%;height:auto}
                     <div class="morning-actions">
                         <div><label>DSS</label><select id="afternoon-report-dss" onchange="populateAfternoonDsoFilter();renderAfternoonReport()"><option value="">All DSS</option></select></div>
                         <div><label>DSO</label><select id="afternoon-report-dso" onchange="renderAfternoonReport()"><option value="">All DSO</option></select></div>
+                        <div><label>Uddokta Type</label><select id="afternoon-report-agent-type" onchange="renderAfternoonReport()"><option value="all">All Uddokta</option><option value="zero-b2b">ZERO B2B</option><option value="cash-in">Cash In Uddokta</option><option value="cash-out">Cash Out Uddokta</option></select></div>
+                        <div><label>Uddokta Search</label><input type="search" id="afternoon-report-search" placeholder="Name / number search" oninput="renderAfternoonReport()"></div>
+                        <button type="button" class="btn btn-sec" id="btn-download-afternoon" onclick="downloadAfternoonReport()" disabled>📥 Download Excel</button>
                     </div>
+                    <div id="afternoon-report-status" class="morning-status">Afternoon/Evening Report is loading...</div>
                 </div>
                 <div class="morning-summary">
                     <div class="card"><span>AGENT COUNT</span><b id="afternoon-kpi-agent-count">0</b></div>
@@ -1060,6 +1066,6 @@ img,video,canvas,svg{max-width:100%;height:auto}
 
 
 
-    <script defer src="./app.js?v=22"></script>
+    <script defer src="./app.js?v=23"></script>
 </body>
 </html>
