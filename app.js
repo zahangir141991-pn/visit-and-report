@@ -115,7 +115,7 @@
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-21-report-script-load-fix-v20';
+        const APP_CACHE_VERSION = '2026-09-21-report-auto-load-fix-v21';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -2253,6 +2253,12 @@
             const nav = document.getElementById(navId);
             if (nav) nav.classList.add('active');
 
+            // Start report loading as soon as its page becomes visible. Keep this
+            // before camera/dashboard work so an unrelated UI error cannot leave
+            // the report stuck on the static "No report generated" placeholder.
+            if (tab === 'morning-report') setTimeout(() => { try { loadMorningReport(); } catch (e) { console.error('Morning report load error:', e); } }, 0);
+            if (tab === 'afternoon-report') setTimeout(() => { try { loadAfternoonReport(); } catch (e) { console.error('Afternoon report load error:', e); } }, 0);
+
             // Camera must remain OFF unless the user explicitly starts selfie capture.
             if (tab !== 'form') stopCamera();
 
@@ -3161,9 +3167,12 @@ function reportsMenuAction(tab){
     if(tab==='morning-upload' && role.role!=='Admin'){alert('Only Admin can upload the Morning Excel file.');return;}
     if(tab==='afternoon-upload' && role.role!=='Admin'){alert('Only Admin can upload the Afternoon/Evening Excel file.');return;}
     if(tab==='assignment-upload' && role.role!=='Admin'){alert('Only Admin can upload the DSS–DSO Assignment Excel file.');return;}
-    closeReportsMenu(); setMorningDefaultDates(); switchTab(tab);
-    if(tab==='morning-report') loadMorningReport();
-    if(tab==='afternoon-report') loadAfternoonReport();
+    closeReportsMenu(); setMorningDefaultDates();
+    try{switchTab(tab);}catch(e){
+        console.error('Report navigation error:',e);
+        if(tab==='morning-report')setTimeout(()=>loadMorningReport(),0);
+        if(tab==='afternoon-report')setTimeout(()=>loadAfternoonReport(),0);
+    }
 }
 function updateMorningMenuAccess(){
     const role=typeof getRoleInfo==='function'?getRoleInfo():{role:''};
