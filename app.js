@@ -115,7 +115,7 @@
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-21-clean-afternoon-view-v16';
+        const APP_CACHE_VERSION = '2026-09-21-common-dss-dso-assignment-v17';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -279,10 +279,7 @@
             const info = getRoleInfo();
             if (info.role === 'Admin' || info.role === 'DM') return true;
             if (info.role === 'DSS') {
-                const a = String(r.dssName || '').trim().toUpperCase();
                 const allowed = String(info.dssName || '').trim().toUpperCase();
-                if (!a || !allowed || !(a === allowed || a.includes(allowed) || allowed.includes(a))) return false;
-                // DSS can see only visits of DSO(s) assigned to that DSS.
                 return dssHasAssignedDso(allowed, r.dsoWallet || r.dsoNumber);
             }
             if (info.role === 'DSO') return normalizeScopeWallet(r.dsoWallet || r.dsoNumber) === normalizeScopeWallet(info.dsoWallet);
@@ -947,7 +944,9 @@
 
         // Performance index: avoids scanning the full Uddokta master for every report row.
         let dssDsoAssignmentIndex = new Map();
+        let commonDssDsoAssignmentsLoaded = false;
         function rebuildDssDsoAssignmentIndex(rows) {
+            if (commonDssDsoAssignmentsLoaded) return;
             const next = new Map();
             (Array.isArray(rows) ? rows : []).forEach(item => {
                 const dss = String((item && item[3]) || '').trim().toUpperCase();
@@ -957,6 +956,19 @@
                 next.get(dss).add(dso);
             });
             dssDsoAssignmentIndex = next;
+        }
+        function applyCommonDssDsoAssignments(data) {
+            const values=Array.isArray(data)?data:Object.values(data||{}),next=new Map();
+            values.forEach(item=>{const dss=String((item&&item.dss)||'').trim().toUpperCase(),dso=normalizeScopeWallet(item&&item.dso);if(!dss||!dso)return;if(!next.has(dss))next.set(dss,new Set());next.get(dss).add(dso);});
+            if(!next.size)return false;
+            commonDssDsoAssignmentsLoaded=true;dssDsoAssignmentIndex=next;
+            try{localStorage.setItem('dss_dso_assignments_common',JSON.stringify(values));}catch(e){}
+            return true;
+        }
+        function listenCommonDssDsoAssignments(){
+            try{const cached=JSON.parse(localStorage.getItem('dss_dso_assignments_common')||'null');if(cached)applyCommonDssDsoAssignments(cached);}catch(e){}
+            if(!db)return;
+            db.ref('dss_dso_assignments_common').on('value',snap=>{if(applyCommonDssDsoAssignments(snap.val())){try{populateDsoFilter();populateMorningDsoFilter();populateAfternoonFilters();}catch(e){}}},err=>console.warn('Assignment sync error:',err));
         }
 
         let remoteMasterAuthorityMeta = null;
@@ -1070,6 +1082,7 @@
                 loadFastReportsCache();
             listenFirebaseData();
                 listenUddoktaMaster();
+                listenCommonDssDsoAssignments();
                 listenNotices();
                 listenUserUpdateNotices();
             }
@@ -2213,8 +2226,9 @@
             if (tab === 'admin' && currentUser !== 'admin') return;
             if (tab === 'morning-upload' && getRoleInfo().role !== 'Admin') return;
             if (tab === 'afternoon-upload' && getRoleInfo().role !== 'Admin') return;
+            if (tab === 'assignment-upload' && getRoleInfo().role !== 'Admin') return;
             // Single-page navigation: ONLY the clicked page is visible.
-            const pages = ['dashboard','form','daily','notices','admin','change-pass','morning-upload','morning-report','afternoon-upload','afternoon-report'];
+            const pages = ['dashboard','form','daily','notices','admin','change-pass','morning-upload','morning-report','afternoon-upload','afternoon-report','assignment-upload'];
             pages.forEach(name => {
                 const el = document.getElementById('view-' + name);
                 if (!el) return;
@@ -2235,7 +2249,7 @@
                 page.setAttribute('aria-hidden', 'false');
             }
 
-            const navId = tab === 'change-pass' ? 'nav-settings' : ((tab === 'daily' || tab === 'form') ? 'nav-visit' : ((tab === 'morning-upload' || tab === 'morning-report' || tab === 'afternoon-upload' || tab === 'afternoon-report') ? 'nav-reports' : 'nav-' + tab));
+            const navId = tab === 'change-pass' ? 'nav-settings' : ((tab === 'daily' || tab === 'form') ? 'nav-visit' : ((tab === 'morning-upload' || tab === 'morning-report' || tab === 'afternoon-upload' || tab === 'afternoon-report' || tab === 'assignment-upload') ? 'nav-reports' : 'nav-' + tab));
             const nav = document.getElementById(navId);
             if (nav) nav.classList.add('active');
 
@@ -3146,6 +3160,7 @@ function reportsMenuAction(tab){
     const role=typeof getRoleInfo==='function'?getRoleInfo():{role:''};
     if(tab==='morning-upload' && role.role!=='Admin'){alert('Only Admin can upload the Morning Excel file.');return;}
     if(tab==='afternoon-upload' && role.role!=='Admin'){alert('Only Admin can upload the Afternoon/Evening Excel file.');return;}
+    if(tab==='assignment-upload' && role.role!=='Admin'){alert('Only Admin can upload the DSS–DSO Assignment Excel file.');return;}
     closeReportsMenu(); setMorningDefaultDates(); switchTab(tab);
     if(tab==='morning-report') loadMorningReport();
     if(tab==='afternoon-report') loadAfternoonReport();
@@ -3156,6 +3171,8 @@ function updateMorningMenuAccess(){
     if(upload)upload.classList.toggle('hidden',role.role!=='Admin');
     const afternoonUpload=document.getElementById('afternoon-upload-menu-btn');
     if(afternoonUpload)afternoonUpload.classList.toggle('hidden',role.role!=='Admin');
+    const assignmentUpload=document.getElementById('assignment-upload-menu-btn');
+    if(assignmentUpload)assignmentUpload.classList.toggle('hidden',role.role!=='Admin');
 }
 function clearMorningUpload(){
     pendingMorningExcel=null;
@@ -3229,7 +3246,7 @@ async function saveMorningExcel(){
 function canSeeMorningRow(row, headers){
     const role=getRoleInfo(), map=morningColumnMap(headers);
     if(role.role==='Admin'||role.role==='DM')return true;
-    if(role.role==='DSS')return map.dss>=0 && namesMatch(row[map.dss],role.dssName);
+    if(role.role==='DSS')return map.dso>=0 && dssHasAssignedDso(role.dssName,row[map.dso]);
     if(role.role==='DSO')return map.dso>=0 && normalizeScopeWallet(row[map.dso])===normalizeScopeWallet(role.dsoWallet);
     return false;
 }
@@ -3350,6 +3367,18 @@ async function downloadMorningReport(){
 }
 
 // Afternoon / Evening report uses a separate cache and Firebase node so Morning data is never overwritten.
+let pendingAssignmentRows=null;
+function clearAssignmentUpload(){pendingAssignmentRows=null;const i=document.getElementById('assignment-excel-file');if(i)i.value='';const b=document.getElementById('btn-save-assignment');if(b)b.disabled=true;setMorningStatus('assignment-upload-status','Select an Excel file. Required headers: DSS, DSO.');}
+async function previewAssignmentExcel(input){
+    pendingAssignmentRows=null;const btn=document.getElementById('btn-save-assignment');if(btn)btn.disabled=true;const file=input&&input.files&&input.files[0];if(!file){clearAssignmentUpload();return;}
+    setMorningStatus('assignment-upload-status','Reading assignment Excel...');try{await ensureXlsxSdk();}catch(e){setMorningStatus('assignment-upload-status','Excel reader could not load.','error');return;}
+    const reader=new FileReader();reader.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array',dense:true}),sheet=wb.Sheets[wb.SheetNames[0]],matrix=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false,blankrows:false});if(matrix.length<2)throw new Error('No data rows found.');const headers=matrix[0].map(String),dssI=afternoonHeaderIndex(headers,['DSS','DSS Name']),dsoI=afternoonHeaderIndex(headers,['DSO','DSO Number','DSO Wallet']);if(dssI<0||dsoI<0)throw new Error('Required headers: DSS, DSO');const seen=new Set(),rows=[];matrix.slice(1).forEach(r=>{const dss=String(r[dssI]||'').trim().toUpperCase(),dso=normalizeScopeWallet(r[dsoI]);const key=dss+'|'+dso;if(dss&&dso&&!seen.has(key)){seen.add(key);rows.push({dss,dso});}});if(!rows.length)throw new Error('No valid DSS–DSO assignment found.');pendingAssignmentRows=rows;if(btn)btn.disabled=false;setMorningStatus('assignment-upload-status',`Ready: ${rows.length} unique DSS–DSO assignments.`,'ok');}catch(err){setMorningStatus('assignment-upload-status','Could not read Excel: '+err.message,'error');}};reader.readAsArrayBuffer(file);
+}
+async function saveAssignmentExcel(){
+    if(getRoleInfo().role!=='Admin'){alert('Only Admin can upload assignments.');return;}if(!pendingAssignmentRows){alert('Select a valid assignment Excel first.');return;}if(!db){setMorningStatus('assignment-upload-status','Database is not connected.','error');return;}
+    const payload={};pendingAssignmentRows.forEach((x,i)=>payload['assignment_'+i]={dss:x.dss,dso:x.dso});
+    try{await db.ref('dss_dso_assignments_common').set(payload);applyCommonDssDsoAssignments(pendingAssignmentRows);setMorningStatus('assignment-upload-status',`${pendingAssignmentRows.length} assignments uploaded. All reports now use this mapping.`,'ok');alert('Common DSS–DSO assignment updated successfully.');}catch(e){setMorningStatus('assignment-upload-status','Upload failed: '+e.message,'error');}
+}
 let pendingAfternoonExcel=null;
 let currentAfternoonReport={headers:[],rows:[]};
 function normalAfternoonHeader(value){return String(value||'').trim().toLowerCase().replace(/[^a-z0-9\u0980-\u09ff]/g,'');}
@@ -3430,7 +3459,7 @@ async function loadAfternoonReport(){
         if(!data||!Array.isArray(data.headers)||!Array.isArray(data.rows))return false;
         const scoped=data.rows.filter(row=>Array.isArray(row)&&canSeeAfternoonRow(row,data.headers));
         currentAfternoonReport={headers:data.headers,rows:scoped,fileName:data.fileName||''};
-        populateAfternoonDsoFilter();renderAfternoonReport();
+        populateAfternoonFilters();renderAfternoonReport();
         setMorningStatus('afternoon-report-status',`${scoped.length} rows loaded${data.fileName?' from '+data.fileName:''}${source?' • '+source:''}.`,'ok');return true;
     };
     let cached=null;try{cached=JSON.parse(localStorage.getItem('afternoon_report_current')||'null');}catch(e){}
@@ -3442,17 +3471,25 @@ async function loadAfternoonReport(){
         else if(!cacheShown){currentAfternoonReport={headers:[],rows:[]};renderAfternoonReport();setMorningStatus('afternoon-report-status','No Afternoon/Evening Excel file was found.','error');}
     }catch(e){if(!cacheShown)setMorningStatus('afternoon-report-status','Afternoon/Evening Report could not load. Check internet connection.','error');}
 }
+function populateAfternoonFilters(){
+    const role=getRoleInfo(),dssSelect=document.getElementById('afternoon-report-dss'),card=document.getElementById('afternoon-filter-card');
+    if(card)card.classList.toggle('hidden',role.role==='DSO');
+    if(dssSelect){const names=role.role==='DSS'?[String(role.dssName||'').trim().toUpperCase()]:[...dssDsoAssignmentIndex.keys()].sort();const current=String(dssSelect.value||'').trim().toUpperCase();dssSelect.innerHTML='<option value="">All DSS</option>'+names.map(n=>'<option value="'+escapeMorningHtml(n)+'">'+escapeMorningHtml(n)+'</option>').join('');if(role.role==='DSS'){dssSelect.value=names[0]||'';dssSelect.disabled=true;}else{dssSelect.disabled=false;if(names.includes(current))dssSelect.value=current;}}
+    populateAfternoonDsoFilter();
+}
 function populateAfternoonDsoFilter(){
     const select=document.getElementById('afternoon-report-dso');if(!select)return;
     const map=afternoonColumnMap(currentAfternoonReport.headers||[]),role=getRoleInfo(),current=normalizeScopeWallet(select.value||'');
-    const values=[...new Set((currentAfternoonReport.rows||[]).map(r=>map.dso>=0?normalizeScopeWallet(r[map.dso]):'').filter(Boolean))].sort((a,b)=>Number(a)-Number(b));
+    const selectedDss=String((document.getElementById('afternoon-report-dss')||{}).value||'').trim().toUpperCase();
+    const allowed=selectedDss?getAssignedDsoWalletsForDss(selectedDss):null;
+    const values=[...new Set((currentAfternoonReport.rows||[]).map(r=>map.dso>=0?normalizeScopeWallet(r[map.dso]):'').filter(v=>v&&(!allowed||allowed.has(v))))].sort((a,b)=>Number(a)-Number(b));
     select.innerHTML='<option value="">All DSO</option>'+values.map(v=>'<option value="'+escapeMorningHtml(v)+'">'+escapeMorningHtml(v)+'</option>').join('');
     if(role.role==='DSO'){select.value=normalizeScopeWallet(role.dsoWallet);select.disabled=true;}else{select.disabled=false;if(values.includes(current))select.value=current;}
 }
 function renderAfternoonReport(){
     const headers=currentAfternoonReport.headers||[],rows=currentAfternoonReport.rows||[],map=afternoonColumnMap(headers);
-    const dso=normalizeScopeWallet((document.getElementById('afternoon-report-dso')||{}).value||''),q=String((document.getElementById('afternoon-report-search')||{}).value||'').trim().toLowerCase();
-    let filtered=dso&&map.dso>=0?rows.filter(r=>normalizeScopeWallet(r[map.dso])===dso):rows.slice();if(q)filtered=filtered.filter(r=>r.some(v=>String(v).toLowerCase().includes(q)));
+    const role=getRoleInfo(),dss=String((document.getElementById('afternoon-report-dss')||{}).value||'').trim().toUpperCase(),dso=normalizeScopeWallet((document.getElementById('afternoon-report-dso')||{}).value||'');
+    let filtered=rows.slice();if(dss&&map.dso>=0){const allowed=getAssignedDsoWalletsForDss(dss);filtered=filtered.filter(r=>allowed.has(normalizeScopeWallet(r[map.dso])));}if(dso&&map.dso>=0)filtered=filtered.filter(r=>normalizeScopeWallet(r[map.dso])===dso);
     const isZeroB2BRow=r=>(map.totalTxn>=0?parseMorningNumber(r[map.totalTxn]):0)>0 && (map.b2bs>=0?parseMorningNumber(r[map.b2bs]):0)===0 && (map.b2br>=0?parseMorningNumber(r[map.b2br]):0)===0;
     const totals={balance:0,cashIn:0,cashOut:0,totalTxn:0,b2bs:0,b2br:0},agents=new Set(),zeroB2BAgents=new Set();
     filtered.forEach((r,rowIndex)=>{
@@ -3464,13 +3501,13 @@ function renderAfternoonReport(){
     const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=formatMorningNumber(v);};
     set('afternoon-kpi-agent-count',agents.size);set('afternoon-kpi-balance',totals.balance);set('afternoon-kpi-cash-in',totals.cashIn);set('afternoon-kpi-cash-out',totals.cashOut);set('afternoon-kpi-total-txn',totals.totalTxn);set('afternoon-kpi-b2bs',totals.b2bs);set('afternoon-kpi-b2br',totals.b2br);set('afternoon-kpi-zero-b2b',zeroB2BAgents.size);
     const cols=[
-        {title:'DSO',key:'dso',number:false},{title:'AGENT',key:'agent',number:false},{title:'AGENTNAME',key:'agentName',number:false},
+        ...(role.role==='DSO'?[]:[{title:'DSO',key:'dso',number:false}]),{title:'AGENT',key:'agent',number:false},{title:'AGENTNAME',key:'agentName',number:false},
         {title:'BALANCE',key:'balance',number:true},{title:'CASH_IN',key:'cashIn',number:true},{title:'CASH_OUT',key:'cashOut',number:true},
         {title:'TOTAL_TXN',key:'totalTxn',number:true},{title:'B2BS_AMT',key:'b2bs',number:true},{title:'B2BR_AMT',key:'b2br',number:true}
     ].map(c=>({title:c.title,value:r=>map[c.key]>=0?(c.number?formatMorningNumber(parseMorningNumber(r[map[c.key]])):(r[map[c.key]]??'')):''}));
     const head=document.getElementById('afternoon-report-head'),body=document.getElementById('afternoon-report-body');
     if(head)head.innerHTML='<tr>'+cols.map(c=>'<th>'+c.title+'</th>').join('')+'</tr>';
-    if(body)body.innerHTML=filtered.length?filtered.map(r=>'<tr class="'+(isZeroB2BRow(r)?'zero-b2b-row':'')+'">'+cols.map(c=>'<td>'+escapeMorningHtml(c.value(r))+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="9">No matching data found.</td></tr>';
+    if(body)body.innerHTML=filtered.length?filtered.map(r=>'<tr class="'+(isZeroB2BRow(r)?'zero-b2b-row':'')+'">'+cols.map(c=>'<td>'+escapeMorningHtml(c.value(r))+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+cols.length+'">No matching data found.</td></tr>';
     const dl=document.getElementById('btn-download-afternoon');if(dl)dl.disabled=!filtered.length;
     currentAfternoonReport.filteredRows=filtered;currentAfternoonReport.reportCols=cols;
 }
