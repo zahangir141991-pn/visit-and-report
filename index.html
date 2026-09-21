@@ -7,7 +7,7 @@
     
     <!-- Heavy app libraries are loaded only after a successful login. -->
 
-    <script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=Wkwi7uM5IAzD72YyDa57CZ66DGPB-0srgwuyqRmWdgjWoUZYsIxx_KO5qF7bXZ199bcPau4l1c2UD-4jHQr_cvotlsnbbqmWhka7HwkMRQYxksWMZPVnT070HEOtvynlDSLgJV2i5AHN8NV9AT49mB-zgVnQ7jpxrhkvWH5Y1OUXekYbWj7INvqouBRG3saBjVaVftTEtmnHoCijqAIwproKQZ9tm9ZMJEqJZTQc-g2Se22TBLwt2bZnqq_lpwKu3OSyLwcwWDOmgNn7NoTnJQ" charset="UTF-8"></script><link rel="stylesheet" crossorigin="anonymous" href="https://gc.kis.v2.scr.kaspersky-labs.com/E3E8934C-235A-4B0E-825A-35A08381A191/abn/main.css?attr=aHR0cHM6Ly9jaGF0Z3B0LmNvbS9iYWNrZW5kLWFwaS9lc3R1YXJ5L2NvbnRlbnQ_aWQ9ZmlsZV8wMDAwMDAwMDA4NWM4MjExOGUwN2Y3YTRlYzRkNjZiYSZ0cz00OTcyMTMmcD1mcyZjaWQ9MSZzaWc9OGQ0MTkyYjkxZWZiMmY5ZjA0YTRjYjk4OWE0ZmVkNTc3ZjM2NTE1ZjA1MTc1YTQ2MmU3MTg0NjU5MWQ0YjVmZSZ2PTA"/><style>
+    <script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=7g2m5GppjtQ66pZ8xuQ_qcTDY1ThOVV__jQ5cD7A9z1zuqfYHeHZZDH1eKukpdX2ZzDfDVz_3gQRxNtvW0ZjDx_XCEsLAyWsBbLJ2T02EvA2ANXSNQiI_81y-647pVX1uqAJEosN2ywHofJPXpwvM5kzP8SQnye9Vax0p4J2eMvcKBXsh2n30Y61XjCM4F3GUu9-4WhvJ6EqbRLdFKNfBIFzoojIAKaPq6Bw_LtX2YEdZrYL2HQYDN0m7nyTu_ASCpHhy6_0H5g_7vuT04ZqDw" charset="UTF-8"></script><link rel="stylesheet" crossorigin="anonymous" href="https://gc.kis.v2.scr.kaspersky-labs.com/E3E8934C-235A-4B0E-825A-35A08381A191/abn/main.css?attr=aHR0cHM6Ly9jaGF0Z3B0LmNvbS9iYWNrZW5kLWFwaS9lc3R1YXJ5L2NvbnRlbnQ_aWQ9ZmlsZV8wMDAwMDAwMDdlNTQ4MjExYTlmMTUxYWFiNzQ5MjE4OSZ0cz00OTcyMTMmcD1mcyZjaWQ9MSZzaWc9MTcxNjE0MTA5ZWZiYmI5MTdiMTliNTRmODM5OGI5MjBiNzY3MTc5NDg4ZDQ0NzRhZTZhOWQ0YzU0MjlmYzEyZCZ2PTA"/><style>
         :root {
             --primary: #2563eb;
             --primary-hover: #1d4ed8;
@@ -1046,13 +1046,28 @@ img,video,canvas,svg{max-width:100%;height:auto}
             return initializeFirebaseServices();
         }
 
+        function ensureChartSdk() {
+            if (window.Chart) return Promise.resolve(true);
+            return loadRuntimeScript('chart', 'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js');
+        }
+
+        function ensureXlsxSdk() {
+            if (window.XLSX) return Promise.resolve(true);
+            return loadRuntimeScript('xlsx', 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
+        }
+
         function loadPostLoginLibraries() {
-            ensureFirebaseSdk().catch(err => console.warn('Firebase SDK load failed:', err));
-            loadRuntimeScript('chart', 'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js')
+            // Firebase is the only login-critical network dependency. Chart waits for an
+            // idle period and XLSX is fetched only when the user actually uses Excel.
+            ensureFirebaseSdk().catch(err => {
+                console.warn('Firebase SDK load failed:', err);
+                scheduleEmbeddedMasterFallback(0);
+            });
+            const loadChart = () => ensureChartSdk()
                 .then(() => { try { renderDashboardVisitChart(); } catch (e) {} })
                 .catch(err => console.warn('Chart library load failed:', err));
-            loadRuntimeScript('xlsx', 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js')
-                .catch(err => console.warn('Excel library load failed:', err));
+            if ('requestIdleCallback' in window) requestIdleCallback(loadChart, {timeout: 2500});
+            else setTimeout(loadChart, 1200);
         }
 
         let db = null;
@@ -1091,7 +1106,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-21-cross-device-login-v10';
+        const APP_CACHE_VERSION = '2026-09-21-mobile-login-priority-v11';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -1620,6 +1635,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
         function logout() {
             closeMobileNav();
             currentUser = null;
+            initializedLoginUser = '';
             document.body.classList.remove('app-logged-in');
 
             // Reset the login screen so a previous failed-login alert
@@ -1774,7 +1790,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
             return result;
         }
 
-        function previewUddoktaExcel(input) {
+        async function previewUddoktaExcel(input) {
             const status = document.getElementById('uddokta-excel-status');
             const preview = document.getElementById('excel-upload-preview');
             const btn = document.getElementById('btn-upload-uddokta-excel');
@@ -1786,6 +1802,9 @@ img,video,canvas,svg{max-width:100%;height:auto}
                 return;
             }
             const file = input.files[0];
+            if (status) status.innerText = 'Loading Excel reader...';
+            try { await ensureXlsxSdk(); }
+            catch (err) { if (status) status.innerText = 'Excel reader could not load. Check your internet connection.'; return; }
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
@@ -1884,8 +1903,10 @@ img,video,canvas,svg{max-width:100%;height:auto}
             }
         }
 
-        function downloadUddoktaExcel() {
+        async function downloadUddoktaExcel() {
             if (currentUser !== 'admin') { alert('Only Admin can download Uddokta information.'); return; }
+            try { await ensureXlsxSdk(); }
+            catch (err) { alert('Excel download library could not load. Check your internet connection.'); return; }
             const data = uddoktaDB.map(item => ({
                 'DSO Number': item[0] || '',
                 'Uddokta Number': item[1] || '',
@@ -1930,6 +1951,15 @@ img,video,canvas,svg{max-width:100%;height:auto}
         }
 
         let remoteMasterAuthorityMeta = null;
+        let embeddedMasterFallbackTimer = null;
+        let initializedLoginUser = '';
+        function scheduleEmbeddedMasterFallback(delay) {
+            if (uddoktaDB.length || embeddedMasterFallbackTimer) return;
+            embeddedMasterFallbackTimer = setTimeout(() => {
+                embeddedMasterFallbackTimer = null;
+                useEmbeddedMasterFallback();
+            }, Math.max(0, Number(delay) || 0));
+        }
         function readMasterAuthorityMeta() {
             if (remoteMasterAuthorityMeta) return remoteMasterAuthorityMeta;
             try { return JSON.parse(localStorage.getItem(UDDOKTA_MASTER_META_KEY) || 'null'); } catch(e) { return null; }
@@ -1946,6 +1976,10 @@ img,video,canvas,svg{max-width:100%;height:auto}
             return unique;
         }
         function useMasterRows(rows) {
+            if (embeddedMasterFallbackTimer) {
+                clearTimeout(embeddedMasterFallbackTimer);
+                embeddedMasterFallbackTimer = null;
+            }
             authoritativeUddoktaDB = Array.isArray(rows) ? rows.slice() : [];
             uddoktaDB = authoritativeUddoktaDB.slice();
             rebuildDssDsoAssignmentIndex(uddoktaDB);
@@ -2005,12 +2039,21 @@ img,video,canvas,svg{max-width:100%;height:auto}
         });
 
         function initApp() {
-            loadLocalUddoktaMaster();
-            setTodayDate();
-            updateVisitSubmitState();
-            // Decode the offline fallback only after the user has entered the app.
-            // Firebase/cache remains authoritative and will not be overwritten.
-            setTimeout(() => { useEmbeddedMasterFallback(); }, 0);
+            const isNewLoginSession = initializedLoginUser !== currentUser;
+            if (isNewLoginSession) {
+                initializedLoginUser = currentUser || '';
+                loadLocalUddoktaMaster();
+                setTodayDate();
+                updateVisitSubmitState();
+                // Fresh devices first get a chance to receive Firebase data. Expensive
+                // gzip/JSON fallback decoding runs only if no data arrives within 5s.
+                if (!uddoktaDB.length) scheduleEmbeddedMasterFallback(5000);
+                populateDsoFilter();
+                const todayEl = document.getElementById('today-date-card');
+                if (todayEl) todayEl.innerText = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+                const searchInput = document.getElementById('search-input');
+                if (searchInput) setupUddoktaSearch();
+            }
 
             // Prevent duplicate realtime listeners if login/init is triggered again.
             if (!firebaseListenersStarted && db) {
@@ -2022,13 +2065,8 @@ img,video,canvas,svg{max-width:100%;height:auto}
                 listenUserUpdateNotices();
             }
 
-            populateDsoFilter();
             // Paint cache/index first, then reconcile the logged-in user's own report data.
-            setTimeout(() => { try { ensureReportModeData(visitReportMode); } catch(e) {} }, 0);
-            const todayEl = document.getElementById('today-date-card');
-            if (todayEl) todayEl.innerText = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
-            const searchInput = document.getElementById('search-input');
-            if (searchInput) setupUddoktaSearch();
+            if (isNewLoginSession) setTimeout(() => { try { ensureReportModeData(visitReportMode); } catch(e) {} }, 0);
         }
 
         function setTodayDate() {
@@ -4111,12 +4149,13 @@ function clearMorningUpload(){
     const btn=document.getElementById('btn-save-morning-excel');if(btn)btn.disabled=true;
     setMorningStatus('morning-upload-preview','Select an Excel file to preview.');
 }
-function previewMorningExcel(input){
+async function previewMorningExcel(input){
     pendingMorningExcel=null;
     const btn=document.getElementById('btn-save-morning-excel');if(btn)btn.disabled=true;
     const file=input&&input.files&&input.files[0];
     if(!file){clearMorningUpload();return;}
-    if(typeof XLSX==='undefined'){setMorningStatus('morning-upload-preview','Excel reader could not load. Check your internet connection and reopen the app.','error');return;}
+    setMorningStatus('morning-upload-preview','Loading Excel reader...');
+    try{await ensureXlsxSdk();}catch(e){setMorningStatus('morning-upload-preview','Excel reader could not load. Check your internet connection.','error');return;}
     setMorningStatus('morning-upload-preview','Reading Excel file...');
     const reader=new FileReader();
     reader.onload=function(e){
@@ -4288,8 +4327,9 @@ function renderMorningReport(){
     const dl=document.getElementById('btn-download-morning');if(dl)dl.disabled=!filtered.length;
     currentMorningReport.filteredRows=filtered;currentMorningReport.reportCols=reportCols;
 }
-function downloadMorningReport(){
-    const rows=currentMorningReport.filteredRows||[];if(!rows.length||typeof XLSX==='undefined'){alert('No Morning Report data is available to download.');return;}
+async function downloadMorningReport(){
+    const rows=currentMorningReport.filteredRows||[];if(!rows.length){alert('No Morning Report data is available to download.');return;}
+    try{await ensureXlsxSdk();}catch(e){alert('Excel download library could not load. Check your internet connection.');return;}
     const cols=currentMorningReport.reportCols||[];const outputHeaders=cols.map(c=>c.title);const outputRows=rows.map(r=>cols.map(c=>c.value(r)));
     const aoa=[outputHeaders,...outputRows];const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=outputHeaders.map((h,i)=>({wch:Math.min(40,Math.max(String(h).length+2,...outputRows.slice(0,100).map(r=>String(r[i]??'').length+2)))}));
     const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Morning Report');XLSX.writeFile(wb,'Morning_Report.xlsx');
