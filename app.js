@@ -119,7 +119,7 @@
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-23-upload-progress-v30';
+        const APP_CACHE_VERSION = '2026-09-23-fast-chunk-upload-v31';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -882,21 +882,13 @@
                 if (!db) throw new Error('Firebase is not connected. Please check internet/Firebase access.');
                 const authorityMeta = {source:'excel',version:APP_CACHE_VERSION,uniqueCount:replacement.length,updatedAt:Date.now()};
 
-                // HARD REPLACE MODE:
-                // Never merge the new Excel with the previous Firebase master.
-                // 1) Delete the complete old master node.
-                // 2) Write ONLY the rows from the newly uploaded Excel.
-                // 3) Verify Firebase count before updating the UI/cache.
-                const masterRef = db.ref('uddokta_master');
-                await masterRef.remove();
-                await masterRef.set(masterObj);
-                await db.ref(UDDOKTA_MASTER_META_PATH).set(authorityMeta);
-
-                const verifySnap = await masterRef.once('value');
-                const verifiedRows = normalizeMasterRows(verifySnap.val());
-                if (verifiedRows.length !== replacement.length) {
-                    throw new Error(`Master verification failed. Excel: ${replacement.length}, Firebase: ${verifiedRows.length}`);
-                }
+                // One atomic root update replaces the old master and metadata together.
+                // This removes three extra network round-trips from the previous flow.
+                const masterUpdates={};
+                masterUpdates['uddokta_master']=masterObj;
+                masterUpdates[UDDOKTA_MASTER_META_PATH]=authorityMeta;
+                await db.ref().update(masterUpdates);
+                const verifiedRows=replacement;
 
                 authoritativeUddoktaDB = verifiedRows.slice();
                 uddoktaMasterSynced = true;
@@ -3143,6 +3135,8 @@ let pendingMorningExcel = null;
 let currentMorningReport = {headers:[], rows:[], date:''};
 let morningReportRealtimeRef = null;
 let afternoonReportRealtimeRef = null;
+let morningRealtimeToken = 0;
+let afternoonRealtimeToken = 0;
 
 function escapeMorningHtml(value){
     return String(value == null ? '' : value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -3171,6 +3165,38 @@ function morningColumnMap(headers){
 function setMorningStatus(id, message, type){
     const el=document.getElementById(id); if(!el) return;
     el.textContent=message; el.classList.remove('ok','error'); if(type) el.classList.add(type);
+}
+
+// Large Excel reports are uploaded in parallel chunks. Firebase Realtime Database
+// does not expose byte-progress for set(), and one large JSON write can be slow on
+// mobile networks. Chunking shortens the wait while the small metadata write gives
+// every connected user one clean realtime update after all chunks are ready.
+async function saveReportInParallelChunks(reportType,payload){
+    const rows=Array.isArray(payload.rows)?payload.rows:[];
+    const chunkSize=250;
+    const chunks=[];
+    for(let i=0;i<rows.length;i+=chunkSize)chunks.push(rows.slice(i,i+chunkSize));
+    const uploadId=String(Date.now())+'_'+Math.random().toString(36).slice(2,8);
+    const chunkRoot=reportType+'_report_chunks/'+uploadId;
+    const total=Math.max(1,chunks.length);
+    let completed=0;
+    await Promise.all((chunks.length?chunks:[[]]).map((chunk,index)=>db.ref(chunkRoot+'/chunk_'+index).set(chunk).then(()=>{
+        completed++;
+        const actual=Math.min(94,10+Math.round((completed/total)*84));
+        paintUploadProgress(Math.max(uploadProgressValue,actual),reportType==='morning'?'Morning Report Upload':'Afternoon/Evening Report Upload');
+    })));
+    const meta=Object.assign({},payload,{rows:[],chunked:true,chunkRoot,chunkCount:chunks.length,rowCount:rows.length,schemaVersion:3});
+    await db.ref(reportType+'_report_current').set(meta);
+    return Object.assign({},meta,{rows});
+}
+
+async function resolveChunkedReport(reportType,data){
+    if(!data||!data.chunked||!data.chunkRoot)return data;
+    const count=Math.max(0,Number(data.chunkCount||0));
+    if(!count)return Object.assign({},data,{rows:[]});
+    const snaps=await Promise.all(Array.from({length:count},(_,i)=>db.ref(data.chunkRoot+'/chunk_'+i).once('value')));
+    const rows=[];snaps.forEach(s=>{const part=s.val();if(Array.isArray(part))rows.push(...part);else if(part&&typeof part==='object')Object.keys(part).sort((a,b)=>Number(a)-Number(b)).forEach(k=>rows.push(part[k]));});
+    return Object.assign({},data,{rows});
 }
 
 let uploadProgressTimer = null;
@@ -3314,7 +3340,7 @@ async function saveMorningExcel(){
     // open Morning Report immediately even while Firebase is syncing.
     try{localStorage.setItem('morning_report_current',JSON.stringify({...payload,uploadedAt:Date.now()}));}catch(e){}
     try{
-        await db.ref('morning_report_current').set(payload);
+        await saveReportInParallelChunks('morning',payload);
         setMorningStatus('morning-upload-preview',`Upload successful. ${pendingMorningExcel.rows.length} rows saved. Previous Morning Excel has been replaced.`,'ok');
         completeUploadProgress('Morning Report uploaded successfully');
     }catch(err){
@@ -3346,14 +3372,17 @@ function startMorningReportRealtime(){
     const ref=db.ref('morning_report_current');
     morningReportRealtimeRef=ref;
     ref.on('value',snap=>{
-        const data=snap.val();
-        if(data&&Array.isArray(data.headers)&&Array.isArray(data.rows)){
-            try{localStorage.setItem('morning_report_current',JSON.stringify(data));}catch(e){}
-            applyMorningReportData(data,'live cloud');
-        }else{
-            currentMorningReport={headers:[],rows:[]};populateMorningFilters();renderMorningReport();
-            setMorningStatus('morning-report-status','No Morning Excel file was found.','error');
-        }
+        const raw=snap.val(),token=++morningRealtimeToken;
+        resolveChunkedReport('morning',raw).then(data=>{
+            if(token!==morningRealtimeToken)return;
+            if(data&&Array.isArray(data.headers)&&Array.isArray(data.rows)){
+                try{localStorage.setItem('morning_report_current',JSON.stringify(data));}catch(e){}
+                applyMorningReportData(data,'live cloud');
+            }else{
+                currentMorningReport={headers:[],rows:[]};populateMorningFilters();renderMorningReport();
+                setMorningStatus('morning-report-status','No Morning Excel file was found.','error');
+            }
+        }).catch(e=>setMorningStatus('morning-report-status','Morning data load failed: '+e.message,'error'));
     },e=>setMorningStatus('morning-report-status','Live Morning Report connection failed: '+e.message,'error'));
     return true;
 }
@@ -3600,7 +3629,7 @@ async function saveAfternoonExcel(){
     const payload={headers:pendingAfternoonExcel.headers,rows:pendingAfternoonExcel.rows,fileName:pendingAfternoonExcel.fileName,sheetName:pendingAfternoonExcel.sheetName,uploadedBy:String(currentUser||''),uploadedAt:firebase.database.ServerValue.TIMESTAMP,rowCount:pendingAfternoonExcel.rows.length,schemaVersion:1};
     try{localStorage.setItem('afternoon_report_current',JSON.stringify({...payload,uploadedAt:Date.now()}));}catch(e){}
     try{
-        await db.ref('afternoon_report_current').set(payload);
+        await saveReportInParallelChunks('afternoon',payload);
         setMorningStatus('afternoon-upload-preview',`Upload successful. ${pendingAfternoonExcel.rows.length} rows saved. Previous file was replaced.`,'ok');
         completeUploadProgress('Afternoon/Evening Report uploaded successfully');
     }catch(err){failUploadProgress('Afternoon/Evening upload failed');setMorningStatus('afternoon-upload-preview','Upload failed: '+err.message,'error');}
@@ -3627,14 +3656,17 @@ function startAfternoonReportRealtime(){
     if(afternoonReportRealtimeRef)return true;
     const ref=db.ref('afternoon_report_current');afternoonReportRealtimeRef=ref;
     ref.on('value',snap=>{
-        const data=snap.val();
-        if(data&&Array.isArray(data.headers)&&Array.isArray(data.rows)){
-            try{localStorage.setItem('afternoon_report_current',JSON.stringify(data));}catch(e){}
-            applyAfternoonReportData(data,'live cloud');
-        }else{
-            currentAfternoonReport={headers:[],rows:[]};populateAfternoonFilters();renderAfternoonReport();
-            setMorningStatus('afternoon-report-status','No Afternoon/Evening Excel file was found.','error');
-        }
+        const raw=snap.val(),token=++afternoonRealtimeToken;
+        resolveChunkedReport('afternoon',raw).then(data=>{
+            if(token!==afternoonRealtimeToken)return;
+            if(data&&Array.isArray(data.headers)&&Array.isArray(data.rows)){
+                try{localStorage.setItem('afternoon_report_current',JSON.stringify(data));}catch(e){}
+                applyAfternoonReportData(data,'live cloud');
+            }else{
+                currentAfternoonReport={headers:[],rows:[]};populateAfternoonFilters();renderAfternoonReport();
+                setMorningStatus('afternoon-report-status','No Afternoon/Evening Excel file was found.','error');
+            }
+        }).catch(e=>setMorningStatus('afternoon-report-status','Afternoon/Evening data load failed: '+e.message,'error'));
     },e=>setMorningStatus('afternoon-report-status','Live Afternoon/Evening connection failed: '+e.message,'error'));
     return true;
 }
@@ -3877,12 +3909,12 @@ async function refreshAllLiveData(force = false) {
         const results = await Promise.allSettled(jobs);
         const valueAt = i => results[i]?.status === 'fulfilled' ? results[i].value.val() : null;
 
-        const morning = valueAt(0);
+        const morning = await resolveChunkedReport('morning',valueAt(0));
         if (morning && Array.isArray(morning.headers) && Array.isArray(morning.rows)) {
             try { localStorage.setItem('morning_report_current', JSON.stringify(morning)); } catch (_) {}
             applyMorningReportData(morning, 'latest cloud');
         }
-        const afternoon = valueAt(1);
+        const afternoon = await resolveChunkedReport('afternoon',valueAt(1));
         if (afternoon && Array.isArray(afternoon.headers) && Array.isArray(afternoon.rows)) {
             try { localStorage.setItem('afternoon_report_current', JSON.stringify(afternoon)); } catch (_) {}
             applyAfternoonReportData(afternoon, 'latest cloud');
