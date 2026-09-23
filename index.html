@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-23-kyc-tracker-v25">
+    <meta name="dms-app-version" content="2026-09-23-kyc-wallet-uddokta-v26">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://visit-report-ea224-default-rtdb.firebaseio.com https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://nominatim.openstreetmap.org; img-src 'self' data: blob: https://*.tile.openstreetmap.org; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DMS</title>
@@ -1008,6 +1008,8 @@ img,video,canvas,svg{max-width:100%;height:auto}
                 <div id="kyc-alert" class="alert"></div>
                 <form id="kyc-form" class="card" style="text-align:left">
                     <div class="kyc-form-grid">
+                        <div class="form-group"><label>DSO Wallet</label><select id="kyc-dso-wallet" required><option value="">Select DSO Wallet</option></select></div>
+                        <div class="form-group"><label>Uddokta Number</label><input type="text" id="kyc-uddokta-number" required inputmode="numeric" maxlength="11" placeholder="01XXXXXXXXX"></div>
                         <div class="form-group"><label>Shop Name</label><input type="text" id="kyc-shop-name" required placeholder="Enter shop name"></div>
                         <div class="form-group"><label>Owner Name</label><input type="text" id="kyc-owner-name" required placeholder="Enter owner name"></div>
                         <div class="form-group"><label>Owner Contact Number</label><input type="text" id="kyc-owner-contact" required inputmode="numeric" maxlength="11" placeholder="01XXXXXXXXX"></div>
@@ -1024,7 +1026,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
             <div id="view-kyc-status" class="page">
                 <div class="section-head"><div><h2>KYC Status</h2><small style="color:#64748b">Track submitted KYC applications in real time</small></div><button type="button" class="btn btn-sm btn-sec" onclick="renderKycStatus()">↻ Refresh</button></div>
                 <div class="card" style="text-align:left;margin-bottom:14px"><div class="filter-grid"><div><label>Status</label><select id="kyc-filter-status" onchange="renderKycStatus()"><option value="">All Status</option><option value="Admin Receive">Admin Receive</option><option value="Mail Send">Mail Send</option><option value="Active">Active</option><option value="Rejection">Rejection</option></select></div><div><label>Search</label><input type="search" id="kyc-filter-search" placeholder="Shop / owner / mobile / thana / bazar" oninput="renderKycStatus()"></div></div></div>
-                <div class="table-responsive"><table class="reports-table kyc-table"><thead><tr><th>Collection Date</th><th>Shop Name</th><th>Owner Name</th><th>Contact Number</th><th>Thana</th><th>Bazar Name</th><th>Picture</th><th>Location</th><th>Submitted By</th><th>Status</th><th>Rejection Reason</th></tr></thead><tbody id="kyc-status-body"><tr><td colspan="11">Loading KYC data...</td></tr></tbody></table></div>
+                <div class="table-responsive"><table class="reports-table kyc-table"><thead><tr><th>Collection Date</th><th>DSO Wallet</th><th>Uddokta Number</th><th>Shop Name</th><th>Owner Name</th><th>Contact Number</th><th>Thana</th><th>Bazar Name</th><th>Picture</th><th>Location</th><th>Submitted By</th><th>Status</th><th>Rejection Reason</th></tr></thead><tbody id="kyc-status-body"><tr><td colspan="13">Loading KYC data...</td></tr></tbody></table></div>
             </div>
 
             <!-- Visit Details Modal -->
@@ -1100,6 +1102,6 @@ img,video,canvas,svg{max-width:100%;height:auto}
 
 
 
-    <script defer src="./app.js?v=25"></script>
+    <script defer src="./app.js?v=26"></script>
 </body>
 </html>
