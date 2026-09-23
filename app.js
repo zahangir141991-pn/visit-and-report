@@ -119,7 +119,7 @@
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-24-smart-refresh-v37';
+        const APP_CACHE_VERSION = '2026-09-24-data-recovery-v39';
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -157,8 +157,8 @@
 
         clearStaleAppCache();
 
-        // Keep report caches as an instant/fallback view. Realtime cloud listeners
-        // reconcile them after login; deleting them here made older reports appear lost.
+        // Keep the last known-good data available while Firebase reconnects. Realtime
+        // listeners replace it with the latest cloud snapshot as soon as it arrives.
         function clearRuntimeDataCaches() {
             try { localStorage.setItem('dms_last_cloud_sync_request',String(Date.now())); } catch (_) {}
         }
@@ -3201,6 +3201,22 @@ let firebaseListenersStarted = false;
             }, true);
         }
 
+        // Stop the mobile browser's pull-to-refresh at the top of the app. A native
+        // page reload would otherwise clear the in-memory login and look like logout.
+        function preventMobilePullToRefresh() {
+            if (document.documentElement.dataset.pullRefreshGuard === '1') return;
+            document.documentElement.dataset.pullRefreshGuard = '1';
+            let startY = 0;
+            document.addEventListener('touchstart', e => {
+                if (e.touches.length === 1) startY = e.touches[0].clientY;
+            }, {passive:true});
+            document.addEventListener('touchmove', e => {
+                if (!document.body.classList.contains('app-logged-in') || e.touches.length !== 1) return;
+                const top = Math.max(document.documentElement.scrollTop || 0, document.body.scrollTop || 0, window.scrollY || 0);
+                if (top <= 0 && e.touches[0].clientY > startY + 6) e.preventDefault();
+            }, {passive:false});
+        }
+
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initializeAuthAndFormUI, { once:true });
         } else {
@@ -4124,7 +4140,9 @@ document.addEventListener('click',function(e){
 /* ---- bundled inline script 6 ---- */
 document.addEventListener('DOMContentLoaded', function(){
     try { bindSafeLogoutButton(); } catch(e) { console.warn('Safe logout binding skipped:', e); }
+    try { preventMobilePullToRefresh(); } catch(e) { console.warn('Pull refresh guard skipped:', e); }
 }, {once:true});
 if (document.readyState !== 'loading') {
     try { bindSafeLogoutButton(); } catch(e) {}
+    try { preventMobilePullToRefresh(); } catch(e) {}
 }
