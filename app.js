@@ -124,7 +124,7 @@
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-24-server-refresh-v42';
+        const APP_CACHE_VERSION = '2026-09-24-login-full-sync-v43';
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -621,6 +621,53 @@
             return true;
         }
 
+        let loginServerSyncPromise = null;
+        async function refreshAllDataFromServerOnLogin() {
+            if (!currentUser || !document.body?.classList.contains('app-logged-in')) return false;
+            if (loginServerSyncPromise) return loginServerSyncPromise;
+
+            const morningTask = firebaseRestReadFresh('morning_report_current').then(raw => resolveChunkedReport('morning', raw)).then(data => {
+                if (data?.headers && data?.rows) {
+                    try { localStorage.setItem('morning_report_current', JSON.stringify(data)); } catch (_) {}
+                    applyMorningReportData(data, 'login server sync');
+                }
+            });
+            const afternoonTask = firebaseRestReadFresh('afternoon_report_current').then(raw => resolveChunkedReport('afternoon', raw)).then(data => {
+                if (data?.headers && data?.rows) {
+                    try { localStorage.setItem('afternoon_report_current', JSON.stringify(data)); } catch (_) {}
+                    applyAfternoonReportData(data, 'login server sync');
+                }
+            });
+            const visitsTask = firebaseRestReadFresh('visit_reports_index').then(async data => {
+                if (!data || !Object.keys(data).length) data = await firebaseRestReadFresh('visit_reports', '?orderBy=%22timestamp%22&limitToLast=500');
+                applyLightReportSnapshot(data || {});
+            });
+            const masterTask = Promise.all([
+                firebaseRestReadFresh(UDDOKTA_MASTER_META_PATH), firebaseRestReadFresh('uddokta_master')
+            ]).then(([meta, master]) => {
+                if (meta) remoteMasterAuthorityMeta = meta;
+                if (master) acceptFirebaseMasterIfAuthoritative(master);
+            });
+            const assignmentTask = firebaseRestReadFresh('dss_dso_assignments_common').then(data => {
+                if (data) applyCommonDssDsoAssignments(data);
+            });
+            const kycTask = firebaseRestReadFresh('new_uddokta_kyc').then(data => {
+                kycRecords = Object.keys(data || {}).map(id => Object.assign({id}, data[id] || {}))
+                    .sort((a,b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+                renderKycStatus();
+            });
+
+            loginServerSyncPromise = Promise.allSettled([
+                visitsTask, masterTask, assignmentTask, kycTask, morningTask, afternoonTask
+            ]).then(results => {
+                const successCount = results.filter(x => x.status === 'fulfilled').length;
+                if (!successCount) throw new Error('No server dataset could be refreshed');
+                try { renderReports(); updateDashboard(false); } catch (_) {}
+                return true;
+            }).finally(() => { loginServerSyncPromise = null; });
+            return loginServerSyncPromise;
+        }
+
         async function refreshAppToLatest() {
             const button = document.getElementById('sidebar-app-refresh');
             if (button) { button.disabled = true; button.innerHTML = '⏳ <span>Refreshing Data...</span>'; }
@@ -722,6 +769,11 @@
                 }
                 // Start network/data libraries only after the app shell is visible.
                 setTimeout(loadPostLoginLibraries, 0);
+                // Highest-priority fresh sync: every login receives current server data
+                // without waiting for cookies/cache cleanup or a manual refresh.
+                setTimeout(() => refreshAllDataFromServerOnLogin().catch(err => {
+                    console.warn('Login server sync failed; realtime fallback remains active:', err);
+                }), 0);
                 try { switchTab('dashboard'); } catch (e) {}
                 setTimeout(() => { try { updateVisitSubmitState(); } catch (e) {} }, 300);
                 // No automatic page reload after login. Data can be refreshed safely
