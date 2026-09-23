@@ -124,7 +124,7 @@
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-24-responsive-excel-table-v44';
+        const APP_CACHE_VERSION = '2026-09-24-active-page-live-v45';
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -622,6 +622,37 @@
         }
 
         let loginServerSyncPromise = null;
+        let serverUpdatePollTimer = null;
+        let serverUpdatePollBusy = false;
+        let lastServerUpdateSignature = '';
+        function stopServerUpdatePolling() {
+            if (serverUpdatePollTimer) clearTimeout(serverUpdatePollTimer);
+            serverUpdatePollTimer = null; serverUpdatePollBusy = false;
+        }
+        async function pollServerUpdateSignal() {
+            if (!currentUser || !document.body?.classList.contains('app-logged-in')) { stopServerUpdatePolling(); return; }
+            if (serverUpdatePollBusy) return;
+            if (serverUpdatePollTimer) clearTimeout(serverUpdatePollTimer);
+            serverUpdatePollTimer = null;
+            serverUpdatePollBusy = true;
+            try {
+                const signal = await firebaseRestReadFresh('dms_live_update_signal');
+                const signature = signal ? [signal.type,signal.revision,signal.uploadId,signal.reportId,signal.recordId].map(v=>String(v||'')).join('|') : '';
+                if (signature && lastServerUpdateSignature && signature !== lastServerUpdateSignature) {
+                    try { scopedReportLoads.clear(); } catch (_) {}
+                    await refreshVisiblePageDataFast();
+                }
+                if (signature) lastServerUpdateSignature = signature;
+            } catch (e) { console.warn('Background update check skipped:', e); }
+            finally {
+                serverUpdatePollBusy = false;
+                if (currentUser && document.body?.classList.contains('app-logged-in')) serverUpdatePollTimer = setTimeout(pollServerUpdateSignal, 5000);
+            }
+        }
+        function startServerUpdatePolling() {
+            stopServerUpdatePolling();
+            serverUpdatePollTimer = setTimeout(pollServerUpdateSignal, 1000);
+        }
         async function refreshAllDataFromServerOnLogin() {
             if (!currentUser || !document.body?.classList.contains('app-logged-in')) return false;
             if (loginServerSyncPromise) return loginServerSyncPromise;
@@ -774,6 +805,7 @@
                 setTimeout(() => refreshAllDataFromServerOnLogin().catch(err => {
                     console.warn('Login server sync failed; realtime fallback remains active:', err);
                 }), 0);
+                startServerUpdatePolling();
                 try { switchTab('dashboard'); } catch (e) {}
                 setTimeout(() => { try { updateVisitSubmitState(); } catch (e) {} }, 300);
                 // No automatic page reload after login. Data can be refreshed safely
@@ -827,6 +859,8 @@
 
         function logout() {
             closeMobileNav();
+            stopServerUpdatePolling();
+            lastServerUpdateSignature = '';
             currentUser = null;
             initializedLoginUser = '';
             document.body.classList.remove('app-logged-in');
@@ -1241,6 +1275,7 @@
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden && document.body?.classList.contains('app-logged-in')) {
                 try { refreshAllLiveData(); } catch (_) {}
+                try { pollServerUpdateSignal(); } catch (_) {}
             }
         });
         window.addEventListener('storage', (event) => {
