@@ -119,7 +119,7 @@
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-23-auto-cache-refresh-v34';
+        const APP_CACHE_VERSION = '2026-09-24-report-restore-v35';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -149,15 +149,10 @@
 
         clearStaleAppCache();
 
-        // Clear only generated data caches; keep passwords and user settings.
-        // This gives every login a fresh cloud view without asking users to delete
-        // browser cookies/site data manually.
+        // Keep report caches as an instant/fallback view. Realtime cloud listeners
+        // reconcile them after login; deleting them here made older reports appear lost.
         function clearRuntimeDataCaches() {
-            [UDDOKTA_CACHE_KEY,UDDOKTA_CACHE_META_KEY,UDDOKTA_MASTER_META_KEY,REPORTS_CACHE_KEY,
-             'morning_report_current','afternoon_report_current','dss_dso_assignments_common'].forEach(key=>{
-                try { localStorage.removeItem(key); } catch (_) {}
-            });
-            reportsData=[];
+            try { localStorage.setItem('dms_last_cloud_sync_request',String(Date.now())); } catch (_) {}
         }
 
         // Remove obsolete browser-managed app caches/service workers once this
@@ -3964,7 +3959,8 @@ async function refreshAllLiveData(force = false) {
             db.ref('visit_reports_index').once('value'),
             db.ref('uddokta_master').once('value'),
             db.ref(UDDOKTA_MASTER_META_PATH).once('value'),
-            db.ref('dss_dso_assignments_common').once('value')
+            db.ref('dss_dso_assignments_common').once('value'),
+            db.ref('new_uddokta_kyc').once('value')
         ];
         const results = await Promise.allSettled(jobs);
         const valueAt = i => results[i]?.status === 'fulfilled' ? results[i].value.val() : null;
@@ -3980,7 +3976,15 @@ async function refreshAllLiveData(force = false) {
             applyAfternoonReportData(afternoon, 'latest cloud');
         }
         const reportIndex = valueAt(2);
-        if (reportIndex && typeof reportIndex === 'object') applyLightReportSnapshot(reportIndex);
+        if (reportIndex && typeof reportIndex === 'object' && Object.keys(reportIndex).length) {
+            applyLightReportSnapshot(reportIndex);
+        } else {
+            try {
+                const legacySnap=await db.ref('visit_reports').orderByChild('timestamp').limitToLast(500).once('value');
+                const legacy=legacySnap.val()||{};
+                if(Object.keys(legacy).length)applyLightReportSnapshot(legacy);
+            } catch(e) { console.warn('Visit report recovery load failed:',e); }
+        }
 
         const master = valueAt(3), masterMeta = valueAt(4);
         if (masterMeta) remoteMasterAuthorityMeta = masterMeta;
@@ -3988,6 +3992,11 @@ async function refreshAllLiveData(force = false) {
 
         const assignments = valueAt(5);
         if (assignments) applyCommonDssDsoAssignments(assignments);
+        const kycCloud = valueAt(6);
+        if (kycCloud && typeof kycCloud === 'object') {
+            kycRecords=Object.keys(kycCloud).map(id=>Object.assign({id},kycCloud[id]||{})).sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));
+            renderKycStatus();
+        }
         return true;
     })().catch(err => {
         console.warn('Live data refresh failed:', err);
