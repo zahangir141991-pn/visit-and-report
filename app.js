@@ -119,7 +119,7 @@
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-24-data-recovery-v39';
+        const APP_CACHE_VERSION = '2026-09-24-realtime-sync-v40';
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -2008,6 +2008,7 @@
                 multi['visit_reports/' + reportId] = reportForDb;
                 multi['visit_reports_index/' + reportId] = reportForDb;
                 if (photoForDb) multi['visit_report_photos/' + reportId] = photoForDb;
+                multi['dms_live_update_signal'] = {type:'visit',revision:Date.now(),reportId};
                 await db.ref().update(multi);
                 newReport.hasPhoto = !!photoForDb;
                 const anyNotOk = [newReport.festoonStatus,newReport.bannerStatus,newReport.fileStatus].includes('Not OK');
@@ -2790,6 +2791,7 @@
                 const indexUpdates = {};
                 indexUpdates['visit_reports/' + n.reportId] = updates;
                 indexUpdates['visit_reports_index/' + n.reportId] = updates;
+                indexUpdates['dms_live_update_signal'] = {type:'visit-review',revision:Date.now(),reportId:n.reportId};
                 await db.ref().update(indexUpdates);
                 await notifyReportOwner(n.reportId, Object.assign({}, report, updates), Object.keys(updates).filter(k=>k!=='reviewUpdatedAt' && k!=='reviewUpdatedBy'), role.dssName);
                 await db.ref('visit_notices/'+noticeId).update({resolved:true,resolvedAt:now,resolvedBy:role.dssName});
@@ -2809,6 +2811,7 @@
             const indexUpdates = {};
             indexUpdates['visit_reports/' + reportId] = updated;
             indexUpdates['visit_reports_index/' + reportId] = updated;
+            indexUpdates['dms_live_update_signal'] = {type:'visit-review',revision:Date.now(),reportId};
             await db.ref().update(indexUpdates);
             await notifyReportOwner(reportId, Object.assign({}, r, updated), Object.keys(updated).filter(k=>k!=='reviewUpdatedAt' && k!=='reviewUpdatedBy'), role.dssName);
             if (updated.reviewStatus==='DSS OK') {
@@ -3988,7 +3991,7 @@ async function submitKyc(event){
     try{
         const role=getRoleInfo(),ref=db.ref('new_uddokta_kyc').push(),id=ref.key,dsoWallet=selectedDsoWallet,dssName=role.role==='DSS'?String(role.dssName||'').trim().toUpperCase():getDssNameForWallet(dsoWallet);
         const record={id,collectionDate:getDhakaToday(),dsoWallet,uddoktaNumber,shopName:document.getElementById('kyc-shop-name').value.trim(),ownerName:document.getElementById('kyc-owner-name').value.trim(),ownerContact:contact,thana:document.getElementById('kyc-thana').value.trim(),bazarName:document.getElementById('kyc-bazar-name').value.trim(),locationName,gps,submittedBy:String(currentUser||''),submitterRole:role.role,dssName,status:'Admin Receive',rejectionReason:'',hasPhoto:true,createdAt:firebase.database.ServerValue.TIMESTAMP,updatedAt:firebase.database.ServerValue.TIMESTAMP};
-        const updates={};updates['new_uddokta_kyc/'+id]=record;updates['new_uddokta_kyc_photos/'+id]=kycPictureData;await db.ref().update(updates);
+        const updates={};updates['new_uddokta_kyc/'+id]=record;updates['new_uddokta_kyc_photos/'+id]=kycPictureData;updates['dms_live_update_signal']={type:'kyc',revision:Date.now(),recordId:id};await db.ref().update(updates);
         clearKycForm();kycAlert('KYC successfully submitted.','success');setTimeout(()=>switchTab('kyc-status'),350);
     }catch(e){kycAlert('KYC submit failed: '+e.message,'error');}
     finally{if(btn){btn.disabled=false;btn.textContent='Submit KYC';}}
@@ -4018,7 +4021,7 @@ function renderKycStatus(){
 async function updateKycStatus(id,status){
     if(getRoleInfo().role!=='Admin'||!db)return;const record=kycRecords.find(r=>String(r.id)===String(id));if(!record)return;
     let reason='';if(status==='Rejection'){reason=prompt('Rejection reason লিখুন:',record.rejectionReason||'')||'';reason=reason.trim();if(!reason){renderKycStatus();kycAlert('Rejection reason বাধ্যতামূলক।','error');return;}}
-    try{await db.ref('new_uddokta_kyc/'+id).update({status,rejectionReason:status==='Rejection'?reason:'',statusUpdatedBy:String(currentUser||''),statusUpdatedAt:new Date().toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}),updatedAt:firebase.database.ServerValue.TIMESTAMP});kycAlert('KYC status updated.','success');}catch(e){renderKycStatus();kycAlert('Status update failed: '+e.message,'error');}
+    try{const updates={};updates['new_uddokta_kyc/'+id+'/status']=status;updates['new_uddokta_kyc/'+id+'/rejectionReason']=status==='Rejection'?reason:'';updates['new_uddokta_kyc/'+id+'/statusUpdatedBy']=String(currentUser||'');updates['new_uddokta_kyc/'+id+'/statusUpdatedAt']=new Date().toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true});updates['new_uddokta_kyc/'+id+'/updatedAt']=firebase.database.ServerValue.TIMESTAMP;updates['dms_live_update_signal']={type:'kyc-status',revision:Date.now(),recordId:id};await db.ref().update(updates);kycAlert('KYC status updated.','success');}catch(e){renderKycStatus();kycAlert('Status update failed: '+e.message,'error');}
 }
 async function showKycPicture(id){
     const modal=document.getElementById('visit-details-modal'),box=document.getElementById('visit-details-content');if(!modal||!box||!db)return;modal.classList.remove('hidden');box.innerHTML='<div style="padding:20px;text-align:center">Loading picture...</div>';
@@ -4040,7 +4043,11 @@ function startLiveUpdateSignal(){
         const signal=snap.val();
         if(!liveUpdateSignalReady){liveUpdateSignalReady=true;return;}
         if(!signal||!document.body?.classList.contains('app-logged-in'))return;
-        setTimeout(()=>{try{refreshAllLiveData(true);}catch(_){}},120);
+        try { scopedReportLoads.clear(); } catch (_) {}
+        setTimeout(()=>{
+            refreshVisiblePageDataFast().catch(err=>console.warn('Visible realtime refresh failed:',err));
+            try{refreshAllLiveData(true);}catch(_){}
+        },50);
     },err=>console.warn('Live update signal error:',err));
 }
 async function refreshAllLiveData(force = false) {
