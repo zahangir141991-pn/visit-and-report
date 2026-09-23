@@ -124,7 +124,7 @@
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-24-login-full-sync-v43';
+        const APP_CACHE_VERSION = '2026-09-24-responsive-excel-table-v44';
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -3643,6 +3643,35 @@ function parseMorningNumber(value){
     const cleaned=String(value??'').replace(/,/g,'').replace(/[^0-9.\-]/g,''); const n=Number(cleaned); return Number.isFinite(n)?n:0;
 }
 function formatMorningNumber(n){return Math.round(Number(n||0)).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:0});}
+const reportTableUi={morning:{sortKey:'',sortDir:1,filters:{}},afternoon:{sortKey:'',sortDir:1,filters:{}}};
+function setReportTableSort(report,key){
+    const state=reportTableUi[report];if(!state)return;
+    if(state.sortKey===key)state.sortDir*=-1;else{state.sortKey=key;state.sortDir=1;}
+    report==='morning'?renderMorningReport():renderAfternoonReport();
+}
+function setReportColumnFilter(report,key,value){
+    const state=reportTableUi[report];if(!state)return;state.filters[key]=String(value||'').trim().toLowerCase();
+    report==='morning'?renderMorningReport():renderAfternoonReport();
+}
+function clearReportTableFilters(report){
+    const state=reportTableUi[report];if(!state)return;state.filters={};state.sortKey='';state.sortDir=1;
+    report==='morning'?renderMorningReport():renderAfternoonReport();
+}
+function applyReportTableUi(report,rows,cols){
+    const state=reportTableUi[report]||{filters:{},sortKey:'',sortDir:1};let output=rows.slice();
+    Object.keys(state.filters||{}).forEach(key=>{const q=state.filters[key];if(!q)return;const col=cols.find(c=>c.key===key);if(col)output=output.filter(r=>String(col.value(r)).toLowerCase().includes(q));});
+    const sortCol=cols.find(c=>c.key===state.sortKey);if(sortCol)output.sort((a,b)=>{const av=sortCol.value(a),bv=sortCol.value(b),an=parseMorningNumber(av),bn=parseMorningNumber(bv),numeric=sortCol.number===true;const cmp=numeric?(an-bn):String(av).localeCompare(String(bv),undefined,{numeric:true,sensitivity:'base'});return cmp*state.sortDir;});
+    return output;
+}
+function reportHeaderHtml(report,cols){
+    const state=reportTableUi[report]||{filters:{}};
+    return '<tr>'+cols.map(c=>{const cls=c.key==='agent'?'agent-col':(c.key==='agentName'?'agent-name-col':(c.key==='dso'?'dso-col':''));const icon=state.sortKey===c.key?(state.sortDir===1?'▲':'▼'):'↕';return '<th class="'+cls+'"><div class="table-head-box"><button type="button" class="table-sort-btn" onclick="setReportTableSort(\''+report+'\',\''+c.key+'\')"><span>'+escapeMorningHtml(c.title)+'</span><span>'+icon+'</span></button><input class="table-filter-input" value="'+escapeMorningHtml((state.filters||{})[c.key]||'')+'" placeholder="Filter..." onchange="setReportColumnFilter(\''+report+'\',\''+c.key+'\',this.value)" onkeydown="if(event.key===\'Enter\'){this.blur()}"></div></th>';}).join('')+'</tr>';
+}
+function reportCellHtml(col,row){
+    const value=String(col.value(row)??''),cls=col.key==='agent'?'agent-col':(col.key==='agentName'?'agent-name-col':(col.key==='dso'?'dso-col':''));
+    if(col.key==='agentName')return '<td class="'+cls+'" title="'+escapeMorningHtml(value)+'"><span class="agent-name-text">'+escapeMorningHtml(value)+'</span></td>';
+    return '<td class="'+cls+'" title="'+escapeMorningHtml(value)+'">'+escapeMorningHtml(value)+'</td>';
+}
 function morningRatioInfo(row,map){
     const txn=map.mtdTxn>=0?parseMorningNumber(row[map.mtdTxn]):0;
     const cashIn=map.mtdCashIn>=0?parseMorningNumber(row[map.mtdCashIn]):0;
@@ -3725,16 +3754,18 @@ function renderMorningReport(){
     set('morning-kpi-balance',formatMorningNumber(balance));
     const head=document.getElementById('morning-report-head'),body=document.getElementById('morning-report-body');
     const reportCols=[
-        {title:'AGENT',value:r=>map.agent>=0?(r[map.agent]??''):''},
-        {title:'AGENTNAME',value:r=>map.agentName>=0?(r[map.agentName]??''):''},
-        {title:'AGENT TYPE',value:r=>morningAgentType(r,map)},
-        {title:'BALANCE',value:r=>map.balance>=0?formatMorningNumber(parseMorningNumber(r[map.balance])):''},
-        {title:'MTD_TXN',value:r=>map.mtdTxn>=0?formatMorningNumber(parseMorningNumber(r[map.mtdTxn])):''},
-        {title:'MTD ISLAMIC CICO',value:r=>map.islamicCico>=0?formatMorningNumber(parseMorningNumber(r[map.islamicCico])):''},
-        {title:'LAST_DAY_TXN',value:r=>map.lastDayTxn>=0?formatMorningNumber(parseMorningNumber(r[map.lastDayTxn])):''}
+        {title:'AGENT',key:'agent',value:r=>map.agent>=0?(r[map.agent]??''):''},
+        {title:'AGENTNAME',key:'agentName',value:r=>map.agentName>=0?(r[map.agentName]??''):''},
+        {title:'AGENT TYPE',key:'agentType',value:r=>morningAgentType(r,map)},
+        {title:'BALANCE',key:'balance',number:true,value:r=>map.balance>=0?formatMorningNumber(parseMorningNumber(r[map.balance])):''},
+        {title:'MTD_TXN',key:'mtdTxn',number:true,value:r=>map.mtdTxn>=0?formatMorningNumber(parseMorningNumber(r[map.mtdTxn])):''},
+        {title:'MTD ISLAMIC CICO',key:'islamicCico',number:true,value:r=>map.islamicCico>=0?formatMorningNumber(parseMorningNumber(r[map.islamicCico])):''},
+        {title:'LAST_DAY_TXN',key:'lastDayTxn',number:true,value:r=>map.lastDayTxn>=0?formatMorningNumber(parseMorningNumber(r[map.lastDayTxn])):''}
     ];
-    if(head)head.innerHTML='<tr>'+reportCols.map(c=>'<th>'+c.title+'</th>').join('')+'</tr>';
-    if(body)body.innerHTML=filtered.length?filtered.map(r=>'<tr>'+reportCols.map(c=>'<td>'+escapeMorningHtml(c.value(r))+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="7">No matching data found.</td></tr>';
+    filtered=applyReportTableUi('morning',filtered,reportCols);
+    const table=document.getElementById('morning-report-table');if(table){table.style.setProperty('--agent-left','0px');table.style.setProperty('--name-left','var(--agent-width)');}
+    if(head)head.innerHTML=reportHeaderHtml('morning',reportCols);
+    if(body)body.innerHTML=filtered.length?filtered.map(r=>'<tr>'+reportCols.map(c=>reportCellHtml(c,r)).join('')+'</tr>').join(''):'<tr><td colspan="7">No matching data found.</td></tr>';
     const dl=document.getElementById('btn-download-morning');if(dl)dl.disabled=!filtered.length;
     currentMorningReport.filteredRows=filtered;currentMorningReport.reportCols=reportCols;
 }
@@ -3956,13 +3987,15 @@ function renderAfternoonReport(){
     set('afternoon-kpi-agent-count',agents.size);set('afternoon-kpi-balance',totals.balance);set('afternoon-kpi-cash-in',totals.cashIn);set('afternoon-kpi-cash-out',totals.cashOut);set('afternoon-kpi-total-txn',totals.totalTxn);set('afternoon-kpi-b2bs',totals.b2bs);set('afternoon-kpi-b2br',totals.b2br);set('afternoon-kpi-zero-b2b',zeroB2BAgents.size);
     const cols=[
         ...(role.role==='DSO'?[]:[{title:'DSO',key:'dso',number:false}]),{title:'AGENT',key:'agent',number:false},{title:'AGENTNAME',key:'agentName',number:false},
-        {title:'AGENT TYPE',custom:r=>getType(r).label},
+        {title:'AGENT TYPE',key:'agentType',custom:r=>getType(r).label},
         {title:'BALANCE',key:'balance',number:true},{title:'CASH_IN',key:'cashIn',number:true},{title:'CASH_OUT',key:'cashOut',number:true},
         {title:'TOTAL_TXN',key:'totalTxn',number:true},{title:'B2BS_AMT',key:'b2bs',number:true},{title:'B2BR_AMT',key:'b2br',number:true}
-    ].map(c=>({title:c.title,value:r=>c.custom?c.custom(r):(map[c.key]>=0?(c.number?formatMorningNumber(parseMorningNumber(r[map[c.key]])):(r[map[c.key]]??'')):'')}));
+    ].map(c=>({title:c.title,key:c.key,number:c.number===true,value:r=>c.custom?c.custom(r):(map[c.key]>=0?(c.number?formatMorningNumber(parseMorningNumber(r[map[c.key]])):(r[map[c.key]]??'')):'')}));
     const head=document.getElementById('afternoon-report-head'),body=document.getElementById('afternoon-report-body');
-    if(head)head.innerHTML='<tr>'+cols.map(c=>'<th>'+c.title+'</th>').join('')+'</tr>';
-    if(body)body.innerHTML=filtered.length?filtered.map(r=>'<tr class="'+(isZeroB2BRow(r)?'zero-b2b-row':'')+'">'+cols.map(c=>'<td>'+escapeMorningHtml(c.value(r))+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+cols.length+'">No matching data found.</td></tr>';
+    filtered=applyReportTableUi('afternoon',filtered,cols);
+    const table=document.getElementById('afternoon-report-table');if(table){table.style.setProperty('--agent-left',role.role==='DSO'?'0px':'var(--dso-width)');table.style.setProperty('--name-left',role.role==='DSO'?'var(--agent-width)':'calc(var(--dso-width) + var(--agent-width))');}
+    if(head)head.innerHTML=reportHeaderHtml('afternoon',cols);
+    if(body)body.innerHTML=filtered.length?filtered.map(r=>'<tr class="'+(isZeroB2BRow(r)?'zero-b2b-row':'')+'">'+cols.map(c=>reportCellHtml(c,r)).join('')+'</tr>').join(''):'<tr><td colspan="'+cols.length+'">No matching data found.</td></tr>';
     const dl=document.getElementById('btn-download-afternoon');if(dl)dl.disabled=!filtered.length;
     currentAfternoonReport.filteredRows=filtered;currentAfternoonReport.reportCols=cols;
 }
