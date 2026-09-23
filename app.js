@@ -119,7 +119,7 @@
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-24-manual-data-refresh-v36';
+        const APP_CACHE_VERSION = '2026-09-24-smart-refresh-v37';
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -511,15 +511,95 @@
             return false;
         }
 
+        function firebaseValueOnce(path, queryBuilder) {
+            const ref = typeof queryBuilder === 'function' ? queryBuilder(db.ref(path)) : db.ref(path);
+            return Promise.race([
+                ref.once('value').then(snapshot => snapshot.val()),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Refresh timed out')), 8000))
+            ]);
+        }
+
+        function sameCloudVersion(raw, current) {
+            return !!(raw && current && Array.isArray(current.rows) && current.rows.length &&
+                Number(raw.uploadedAt || 0) === Number(current.uploadedAt || 0));
+        }
+
+        async function refreshVisiblePageDataFast() {
+            const activeId = document.querySelector('#main-app .page.active')?.id || 'view-dashboard';
+            if (activeId === 'view-morning-report' || activeId === 'view-morning-upload') {
+                const raw = await firebaseValueOnce('morning_report_current');
+                if (!sameCloudVersion(raw, currentMorningReport)) {
+                    const data = await resolveChunkedReport('morning', raw);
+                    if (data?.headers && data?.rows) {
+                        try { localStorage.setItem('morning_report_current', JSON.stringify(data)); } catch (_) {}
+                        applyMorningReportData(data, 'latest cloud');
+                    }
+                } else renderMorningReport();
+                return true;
+            }
+            if (activeId === 'view-afternoon-report' || activeId === 'view-afternoon-upload') {
+                const [afternoonRaw, morningRaw] = await Promise.all([
+                    firebaseValueOnce('afternoon_report_current'), firebaseValueOnce('morning_report_current')
+                ]);
+                const loads = [];
+                if (!sameCloudVersion(afternoonRaw, currentAfternoonReport)) loads.push(resolveChunkedReport('afternoon', afternoonRaw).then(data => {
+                    if (data?.headers && data?.rows) {
+                        try { localStorage.setItem('afternoon_report_current', JSON.stringify(data)); } catch (_) {}
+                        applyAfternoonReportData(data, 'latest cloud');
+                    }
+                }));
+                if (!sameCloudVersion(morningRaw, currentMorningReport)) loads.push(resolveChunkedReport('morning', morningRaw).then(data => {
+                    if (data?.headers && data?.rows) {
+                        try { localStorage.setItem('morning_report_current', JSON.stringify(data)); } catch (_) {}
+                        applyMorningReportData(data, 'latest cloud');
+                    }
+                }));
+                await Promise.all(loads);
+                renderAfternoonReport();
+                return true;
+            }
+            if (activeId === 'view-kyc-status' || activeId === 'view-kyc-collection') {
+                const data = await firebaseValueOnce('new_uddokta_kyc');
+                kycRecords = Object.keys(data || {}).map(id => Object.assign({id}, data[id] || {}))
+                    .sort((a,b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+                renderKycStatus();
+                return true;
+            }
+            if (activeId === 'view-dashboard' || activeId === 'view-daily') {
+                let data = await firebaseValueOnce('visit_reports_index');
+                if (!data || !Object.keys(data).length) {
+                    data = await firebaseValueOnce('visit_reports', ref => ref.orderByChild('timestamp').limitToLast(500));
+                }
+                applyLightReportSnapshot(data || {});
+                if (activeId === 'view-daily') {
+                    firebaseValueOnce('dss_dso_assignments_common').then(data => {
+                        if (data) applyCommonDssDsoAssignments(data);
+                    }).catch(() => {});
+                    Promise.resolve().then(() => ensureReportModeData(visitReportMode)).catch(() => {});
+                    renderReports();
+                } else updateDashboard(false);
+                return true;
+            }
+            if (activeId === 'view-form' || activeId === 'view-admin' || activeId === 'view-assignment-upload') {
+                const meta = await firebaseValueOnce(UDDOKTA_MASTER_META_PATH);
+                const localVersion = Number(remoteMasterAuthorityMeta?.updatedAt || 0);
+                const cloudVersion = Number(meta?.updatedAt || 0);
+                if (!uddoktaDB.length || !localVersion || cloudVersion !== localVersion) {
+                    const master = await firebaseValueOnce('uddokta_master');
+                    if (master) acceptFirebaseMasterIfAuthoritative(master);
+                }
+                if (meta) remoteMasterAuthorityMeta = meta;
+                return true;
+            }
+            return true;
+        }
+
         async function refreshAppToLatest() {
             const button = document.getElementById('sidebar-app-refresh');
             if (button) { button.disabled = true; button.innerHTML = '⏳ <span>Refreshing Data...</span>'; }
             try {
                 await ensureFirebaseSdk();
-                try { scopedReportLoads.clear(); } catch (_) {}
-                await refreshAllLiveData(true);
-                try { await ensureReportModeData(visitReportMode); } catch (_) {}
-                try { renderMorningReport();renderAfternoonReport();renderKycStatus();renderReports();updateDashboard(false); } catch (_) {}
+                await refreshVisiblePageDataFast();
                 showAlert('সব data সফলভাবে update হয়েছে।', 'success');
                 closeMobileNav();
             } catch (e) {
