@@ -115,7 +115,7 @@
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-23-kyc-wallet-uddokta-v26';
+        const APP_CACHE_VERSION = '2026-09-23-kyc-camera-only-v27';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -2264,6 +2264,7 @@
 
             // Camera must remain OFF unless the user explicitly starts selfie capture.
             if (tab !== 'form') stopCamera();
+            if (tab !== 'kyc-collection' && typeof stopKycShopCamera === 'function') stopKycShopCamera();
 
             if (tab === 'form') {
                 // Camera stays OFF. Start one GPS request only when the form needs it.
@@ -3644,6 +3645,7 @@ document.addEventListener('DOMContentLoaded',setMorningDefaultDates,{once:true})
 let kycPictureData='';
 let kycRecords=[];
 let kycRealtimeRef=null;
+let kycCameraStream=null;
 
 function toggleKycMenu(event){
     if(event){event.preventDefault();event.stopPropagation();}
@@ -3678,10 +3680,26 @@ function fileToCompressedKycImage(file){
         reader.onload=()=>{const img=new Image();img.onerror=()=>reject(new Error('Invalid picture.'));img.onload=()=>{try{const scale=Math.min(1,900/img.width,900/img.height);const c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.width*scale));c.height=Math.max(1,Math.round(img.height*scale));const x=c.getContext('2d',{alpha:false});x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.drawImage(img,0,0,c.width,c.height);let q=.72,out=c.toDataURL('image/jpeg',q);while(out.length>280000&&q>.38){q-=.07;out=c.toDataURL('image/jpeg',q);}resolve(out);}catch(e){reject(e);}};img.src=reader.result;};reader.readAsDataURL(file);
     });
 }
-async function previewKycPicture(input){
-    const file=input&&input.files&&input.files[0],preview=document.getElementById('kyc-picture-preview');kycPictureData='';
-    if(!file){if(preview){preview.src='';preview.style.display='none';}return;}
-    try{kycPictureData=await fileToCompressedKycImage(file);if(preview){preview.src=kycPictureData;preview.style.display='block';}}catch(e){if(input)input.value='';kycAlert(e.message,'error');}
+async function startKycShopCamera(){
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){kycAlert('Camera is not supported in this browser.','error');return;}
+    stopKycShopCamera();kycPictureData='';
+    const video=document.getElementById('kyc-camera-video'),preview=document.getElementById('kyc-picture-preview'),start=document.getElementById('btn-kyc-camera-start'),capture=document.getElementById('btn-kyc-camera-capture'),retake=document.getElementById('btn-kyc-camera-retake');
+    try{
+        kycCameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
+        video.srcObject=kycCameraStream;await video.play();video.style.display='block';if(preview){preview.src='';preview.style.display='none';}start?.classList.add('hidden');capture?.classList.remove('hidden');retake?.classList.add('hidden');
+    }catch(e){kycCameraStream=null;kycAlert('Camera permission দিন এবং আবার চেষ্টা করুন।','error');}
+}
+function stopKycShopCamera(){
+    if(kycCameraStream){kycCameraStream.getTracks().forEach(t=>t.stop());kycCameraStream=null;}
+    const video=document.getElementById('kyc-camera-video');if(video){video.pause();video.srcObject=null;video.style.display='none';}
+}
+function captureKycShopPhoto(){
+    const video=document.getElementById('kyc-camera-video'),canvas=document.getElementById('kyc-camera-canvas'),preview=document.getElementById('kyc-picture-preview');
+    if(!video||!canvas||!video.videoWidth){kycAlert('আগে camera চালু করুন।','error');return;}
+    const scale=Math.min(1,900/video.videoWidth,900/video.videoHeight);canvas.width=Math.max(1,Math.round(video.videoWidth*scale));canvas.height=Math.max(1,Math.round(video.videoHeight*scale));const x=canvas.getContext('2d',{alpha:false});x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.drawImage(video,0,0,canvas.width,canvas.height);let q=.72,out=canvas.toDataURL('image/jpeg',q);while(out.length>280000&&q>.38){q-=.07;out=canvas.toDataURL('image/jpeg',q);}kycPictureData=out;stopKycShopCamera();if(preview){preview.src=out;preview.style.display='block';}document.getElementById('btn-kyc-camera-start')?.classList.add('hidden');document.getElementById('btn-kyc-camera-capture')?.classList.add('hidden');document.getElementById('btn-kyc-camera-retake')?.classList.remove('hidden');
+}
+function resetKycShopPhoto(){
+    kycPictureData='';const preview=document.getElementById('kyc-picture-preview');if(preview){preview.src='';preview.style.display='none';}document.getElementById('btn-kyc-camera-retake')?.classList.add('hidden');document.getElementById('btn-kyc-camera-start')?.classList.remove('hidden');startKycShopCamera();
 }
 async function fetchKycLocation(showError=true){
     const btn=document.getElementById('btn-kyc-location'),name=document.getElementById('kyc-location-name'),value=document.getElementById('kyc-location');
@@ -3701,8 +3719,9 @@ function getDssNameForWallet(wallet){
     const w=normalizeScopeWallet(wallet);for(const [dss,set] of dssDsoAssignmentIndex.entries()){if(set&&set.has(w))return dss;}return '';
 }
 function clearKycForm(){
-    document.getElementById('kyc-form')?.reset();kycPictureData='';
+    document.getElementById('kyc-form')?.reset();kycPictureData='';stopKycShopCamera();
     const p=document.getElementById('kyc-picture-preview');if(p){p.src='';p.style.display='none';}
+    document.getElementById('btn-kyc-camera-start')?.classList.remove('hidden');document.getElementById('btn-kyc-camera-capture')?.classList.add('hidden');document.getElementById('btn-kyc-camera-retake')?.classList.add('hidden');
     const n=document.getElementById('kyc-location-name'),v=document.getElementById('kyc-location');if(n)n.value='';if(v)v.value='';populateKycDsoWallets();
 }
 async function submitKyc(event){
@@ -3717,7 +3736,7 @@ async function submitKyc(event){
     if(accessRole.role==='DSS'&&!getAssignedDsoWalletsForDss(accessRole.dssName).has(selectedDsoWallet)){kycAlert('শুধু assigned DSO Wallet নির্বাচন করা যাবে।','error');return;}
     if(!/^01\d{9}$/.test(uddoktaNumber)){kycAlert('সঠিক ১১ সংখ্যার Uddokta Number দিন।','error');return;}
     if(!/^01\d{9}$/.test(contact)){kycAlert('সঠিক ১১ সংখ্যার Owner Contact Number দিন।','error');return;}
-    if(!kycPictureData){kycAlert('Picture upload করুন।','error');return;}
+    if(!kycPictureData){kycAlert('Camera দিয়ে Shop Photo তুলুন।','error');return;}
     const gps=document.getElementById('kyc-location').value.trim(),locationName=document.getElementById('kyc-location-name').value.trim();
     if(!gps||!locationName){kycAlert('Location নিতে হবে।','error');return;}
     const btn=document.getElementById('btn-kyc-submit');if(btn){btn.disabled=true;btn.textContent='Submitting...';}
