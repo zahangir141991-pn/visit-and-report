@@ -124,7 +124,7 @@
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-24-full-data-fix-v41';
+        const APP_CACHE_VERSION = '2026-09-24-server-refresh-v42';
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -516,12 +516,36 @@
             return false;
         }
 
-        function firebaseValueOnce(path, queryBuilder) {
-            const ref = typeof queryBuilder === 'function' ? queryBuilder(db.ref(path)) : db.ref(path);
-            return Promise.race([
-                ref.once('value').then(snapshot => snapshot.val()),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Refresh timed out')), 8000))
-            ]);
+        async function firebaseRestReadFresh(path, queryString = '') {
+            const clean = String(path || '').split('/').filter(Boolean).map(encodeURIComponent).join('/');
+            const base = String(firebaseConfig.databaseURL || '').replace(/\/$/, '');
+            const url = `${base}/${clean}.json${queryString || '?timeout=12s'}`;
+            const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            const timer = controller ? setTimeout(() => controller.abort(), 12000) : null;
+            try {
+                const response = await fetch(url, {
+                    method:'GET', cache:'no-store', credentials:'omit',
+                    headers:{'Cache-Control':'no-cache, no-store, max-age=0','Pragma':'no-cache'},
+                    signal:controller ? controller.signal : undefined
+                });
+                if (!response.ok) throw new Error(`Server read failed (${response.status})`);
+                return await response.json();
+            } finally { if (timer) clearTimeout(timer); }
+        }
+
+        async function firebaseValueOnce(path, queryBuilder) {
+            try {
+                const query = path === 'visit_reports' && typeof queryBuilder === 'function'
+                    ? '?orderBy=%22timestamp%22&limitToLast=500' : '';
+                return await firebaseRestReadFresh(path, query);
+            } catch (restError) {
+                if (!db) throw restError;
+                const ref = typeof queryBuilder === 'function' ? queryBuilder(db.ref(path)) : db.ref(path);
+                return Promise.race([
+                    ref.once('value').then(snapshot => snapshot.val()),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Refresh timed out')), 8000))
+                ]);
+            }
         }
 
         function sameCloudVersion(raw, current) {
@@ -533,13 +557,11 @@
             const activeId = document.querySelector('#main-app .page.active')?.id || 'view-dashboard';
             if (activeId === 'view-morning-report' || activeId === 'view-morning-upload') {
                 const raw = await firebaseValueOnce('morning_report_current');
-                if (!sameCloudVersion(raw, currentMorningReport)) {
-                    const data = await resolveChunkedReport('morning', raw);
-                    if (data?.headers && data?.rows) {
-                        try { localStorage.setItem('morning_report_current', JSON.stringify(data)); } catch (_) {}
-                        applyMorningReportData(data, 'latest cloud');
-                    }
-                } else renderMorningReport();
+                const data = await resolveChunkedReport('morning', raw);
+                if (data?.headers && data?.rows) {
+                    try { localStorage.setItem('morning_report_current', JSON.stringify(data)); } catch (_) {}
+                    applyMorningReportData(data, 'latest server');
+                }
                 return true;
             }
             if (activeId === 'view-afternoon-report' || activeId === 'view-afternoon-upload') {
@@ -547,16 +569,16 @@
                     firebaseValueOnce('afternoon_report_current'), firebaseValueOnce('morning_report_current')
                 ]);
                 const loads = [];
-                if (!sameCloudVersion(afternoonRaw, currentAfternoonReport)) loads.push(resolveChunkedReport('afternoon', afternoonRaw).then(data => {
+                loads.push(resolveChunkedReport('afternoon', afternoonRaw).then(data => {
                     if (data?.headers && data?.rows) {
                         try { localStorage.setItem('afternoon_report_current', JSON.stringify(data)); } catch (_) {}
-                        applyAfternoonReportData(data, 'latest cloud');
+                        applyAfternoonReportData(data, 'latest server');
                     }
                 }));
-                if (!sameCloudVersion(morningRaw, currentMorningReport)) loads.push(resolveChunkedReport('morning', morningRaw).then(data => {
+                loads.push(resolveChunkedReport('morning', morningRaw).then(data => {
                     if (data?.headers && data?.rows) {
                         try { localStorage.setItem('morning_report_current', JSON.stringify(data)); } catch (_) {}
-                        applyMorningReportData(data, 'latest cloud');
+                        applyMorningReportData(data, 'latest server');
                     }
                 }));
                 await Promise.all(loads);
@@ -603,7 +625,9 @@
             const button = document.getElementById('sidebar-app-refresh');
             if (button) { button.disabled = true; button.innerHTML = '⏳ <span>Refreshing Data...</span>'; }
             try {
-                await ensureFirebaseSdk();
+                // REST reads bypass Firebase/browser/localStorage caches. The SDK
+                // reconnects in parallel so realtime listeners remain active.
+                ensureFirebaseSdk().catch(() => {});
                 await refreshVisiblePageDataFast();
                 showAlert('সব data সফলভাবে update হয়েছে।', 'success');
                 closeMobileNav();
@@ -3350,8 +3374,10 @@ async function resolveChunkedReport(reportType,data){
     if(!count)return Object.assign({},data,{rows:[]});
     const expected=Math.max(0,Number(data.rowCount||0));
     for(let attempt=0;attempt<4;attempt++){
-        const snaps=await Promise.all(Array.from({length:count},(_,i)=>db.ref(data.chunkRoot+'/chunk_'+i).once('value')));
-        const rows=[];snaps.forEach(s=>{const part=s.val();if(Array.isArray(part))rows.push(...part);else if(part&&typeof part==='object')Object.keys(part).sort((a,b)=>Number(a)-Number(b)).forEach(k=>rows.push(part[k]));});
+        const parts=await Promise.all(Array.from({length:count},(_,i)=>firebaseRestReadFresh(data.chunkRoot+'/chunk_'+i).catch(async err=>{
+            if(!db)throw err;const snap=await db.ref(data.chunkRoot+'/chunk_'+i).once('value');return snap.val();
+        })));
+        const rows=[];parts.forEach(part=>{if(Array.isArray(part))rows.push(...part);else if(part&&typeof part==='object')Object.keys(part).sort((a,b)=>Number(a)-Number(b)).forEach(k=>rows.push(part[k]));});
         if(!expected||rows.length>=expected)return Object.assign({},data,{rows:expected?rows.slice(0,expected):rows});
         await new Promise(resolve=>setTimeout(resolve,300*(attempt+1)));
     }
