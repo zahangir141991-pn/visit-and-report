@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-23-kyc-wallet-uddokta-v26">
+    <meta name="dms-app-version" content="2026-09-23-kyc-camera-only-v27">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://visit-report-ea224-default-rtdb.firebaseio.com https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://nominatim.openstreetmap.org; img-src 'self' data: blob: https://*.tile.openstreetmap.org; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DMS</title>
@@ -513,7 +513,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%;width:100%;min-width:32
 body{width:100%;min-width:320px;min-height:100vh;min-height:100dvh;overflow-x:hidden;-webkit-overflow-scrolling:touch}
 button,input,select,textarea{font:inherit;-webkit-border-radius:8px;border-radius:8px}
 button,.nav-item,.visit-menu-btn{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-.kyc-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.kyc-form-grid .form-group{margin:0}.kyc-wide{grid-column:1/-1}.kyc-photo-preview{display:none;max-width:260px;max-height:220px;margin-top:10px;border-radius:12px;border:1px solid var(--border);object-fit:cover}.kyc-table{min-width:1250px}.kyc-status-select{min-width:135px}.kyc-reason{max-width:220px;white-space:normal}.kyc-location-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:7px}@media(max-width:700px){.kyc-form-grid{grid-template-columns:1fr}.kyc-wide{grid-column:auto}}
+.kyc-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.kyc-form-grid .form-group{margin:0}.kyc-wide{grid-column:1/-1}.kyc-photo-preview{display:none;width:100%;max-width:420px;max-height:320px;margin-top:10px;border-radius:12px;border:1px solid var(--border);object-fit:cover}.kyc-camera-video{display:none;width:100%;max-width:420px;max-height:320px;margin-top:10px;border-radius:12px;background:#0f172a;object-fit:cover}.kyc-camera-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}.kyc-table{min-width:1250px}.kyc-status-select{min-width:135px}.kyc-reason{max-width:220px;white-space:normal}.kyc-location-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:7px}@media(max-width:700px){.kyc-form-grid{grid-template-columns:1fr}.kyc-wide{grid-column:auto}}
 img,video,canvas,svg{max-width:100%;height:auto}
 .container{width:100%;max-width:100%}
 .section-head>*{min-width:0}
@@ -1015,7 +1015,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
                         <div class="form-group"><label>Owner Contact Number</label><input type="text" id="kyc-owner-contact" required inputmode="numeric" maxlength="11" placeholder="01XXXXXXXXX"></div>
                         <div class="form-group"><label>Thana</label><input type="text" id="kyc-thana" required placeholder="Enter thana"></div>
                         <div class="form-group"><label>Bazar Name</label><input type="text" id="kyc-bazar-name" required placeholder="Enter bazar name"></div>
-                        <div class="form-group"><label>Picture Upload</label><input type="file" id="kyc-picture" accept="image/*" capture="environment" required onchange="previewKycPicture(this)"><img id="kyc-picture-preview" class="kyc-photo-preview" alt="KYC picture preview"></div>
+                        <div class="form-group"><label>Shop Photo (Camera Only)</label><video id="kyc-camera-video" class="kyc-camera-video" autoplay playsinline muted></video><canvas id="kyc-camera-canvas" class="hidden"></canvas><img id="kyc-picture-preview" class="kyc-photo-preview" alt="Shop photo preview"><div class="kyc-camera-actions"><button type="button" class="btn btn-sec" id="btn-kyc-camera-start" onclick="startKycShopCamera()">📷 Start Camera</button><button type="button" class="btn hidden" id="btn-kyc-camera-capture" onclick="captureKycShopPhoto()">📸 Capture Shop Photo</button><button type="button" class="btn btn-sec hidden" id="btn-kyc-camera-retake" onclick="resetKycShopPhoto()">🔄 Retake</button></div></div>
                         <div class="form-group kyc-wide"><label>Location</label><input type="text" id="kyc-location-name" readonly required placeholder="Location name will appear here"><input type="hidden" id="kyc-location"><div class="kyc-location-actions"><button type="button" class="btn btn-sec" id="btn-kyc-location" onclick="fetchKycLocation()">📍 Get Location</button></div></div>
                     </div>
                     <button type="submit" class="btn" id="btn-kyc-submit" style="width:100%;margin-top:14px;min-height:50px">Submit KYC</button>
@@ -1102,6 +1102,6 @@ img,video,canvas,svg{max-width:100%;height:auto}
 
 
 
-    <script defer src="./app.js?v=26"></script>
+    <script defer src="./app.js?v=27"></script>
 </body>
 </html>
