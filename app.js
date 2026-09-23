@@ -119,7 +119,7 @@
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-23-upload-progress-v29';
+        const APP_CACHE_VERSION = '2026-09-23-upload-progress-v30';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -3199,7 +3199,13 @@ function paintUploadProgress(value,label){
 }
 function beginUploadProgress(label){
     if(uploadProgressTimer)clearInterval(uploadProgressTimer);paintUploadProgress(3,label||'Uploading file...');
-    uploadProgressTimer=setInterval(()=>{if(uploadProgressValue<92){const step=uploadProgressValue<45?5:(uploadProgressValue<75?3:1);paintUploadProgress(Math.min(92,uploadProgressValue+step));}},180);
+    uploadProgressTimer=setInterval(()=>{
+        if(uploadProgressValue>=99)return;
+        const step=uploadProgressValue<45?5:(uploadProgressValue<80?3:1);
+        const next=Math.min(99,uploadProgressValue+step);
+        const statusLabel=next>=95?'Server-এ data save হচ্ছে...':(label||'Uploading file...');
+        paintUploadProgress(next,statusLabel);
+    },280);
 }
 function showUploadPopup(message,isError=false){
     ensureUploadProgressUI();const popup=document.getElementById('global-upload-popup');if(uploadPopupTimer)clearTimeout(uploadPopupTimer);
