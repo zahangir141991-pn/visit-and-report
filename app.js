@@ -119,7 +119,7 @@
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-23-live-sync-v28';
+        const APP_CACHE_VERSION = '2026-09-23-upload-progress-v29';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -847,6 +847,7 @@
             const status = document.getElementById('uddokta-excel-status');
             btn.disabled = true;
             btn.innerText = 'Uploading...';
+            beginUploadProgress('Uddokta Master Upload');
             try {
                 // REPLACE MODE: the newly uploaded Excel file becomes the complete Uddokta master.
                 // Previous Uddokta information is fully cleared from the master and replaced.
@@ -905,8 +906,10 @@
                 renderReports();
                 try { updateDashboard(); } catch (e) {}
                 if (status) status.innerText = `Update successful — ${verifiedRows.length} unique Uddokta records verified in Firebase. Previous master was fully deleted.`;
+                completeUploadProgress('Uddokta Master uploaded successfully');
             } catch (err) {
                 if (status) status.innerText = 'Upload failed: ' + err.message;
+                failUploadProgress('Uddokta Master upload failed');
                 alert('Excel upload failed: ' + err.message);
             } finally {
                 btn.disabled = true;
@@ -3169,6 +3172,47 @@ function setMorningStatus(id, message, type){
     const el=document.getElementById(id); if(!el) return;
     el.textContent=message; el.classList.remove('ok','error'); if(type) el.classList.add(type);
 }
+
+let uploadProgressTimer = null;
+let uploadProgressValue = 0;
+let uploadPopupTimer = null;
+function ensureUploadProgressUI(){
+    if(!document.getElementById('global-upload-progress-style')){
+        const style=document.createElement('style');style.id='global-upload-progress-style';style.textContent=`
+        #global-upload-progress{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:10020;width:min(92vw,440px);background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:14px 16px;box-shadow:0 12px 35px rgba(15,23,42,.24);display:none}
+        #global-upload-progress .up-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:9px;font-size:.9rem;font-weight:800;color:#0f172a}
+        #global-upload-progress .up-track{height:14px;border-radius:999px;background:#e2e8f0;overflow:hidden}
+        #global-upload-progress .up-fill{height:100%;width:0;background:linear-gradient(90deg,#0284c7,#16a34a);border-radius:999px;transition:width .18s ease}
+        #global-upload-popup{position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:10030;max-width:92vw;background:#15803d;color:#fff;border-radius:12px;padding:13px 20px;box-shadow:0 10px 28px rgba(0,0,0,.25);font-weight:800;text-align:center;display:none}
+        #global-upload-popup.error{background:#b91c1c}`;document.head.appendChild(style);
+    }
+    if(!document.getElementById('global-upload-progress')){
+        const box=document.createElement('div');box.id='global-upload-progress';box.innerHTML='<div class="up-head"><span class="up-label">Uploading file...</span><span class="up-percent">0%</span></div><div class="up-track"><div class="up-fill"></div></div>';document.body.appendChild(box);
+    }
+    if(!document.getElementById('global-upload-popup')){const popup=document.createElement('div');popup.id='global-upload-popup';document.body.appendChild(popup);}
+}
+function paintUploadProgress(value,label){
+    ensureUploadProgressUI();uploadProgressValue=Math.max(0,Math.min(100,Math.round(value)));
+    const box=document.getElementById('global-upload-progress');box.style.display='block';
+    if(label)box.querySelector('.up-label').textContent=label;
+    box.querySelector('.up-percent').textContent=uploadProgressValue+'%';box.querySelector('.up-fill').style.width=uploadProgressValue+'%';
+}
+function beginUploadProgress(label){
+    if(uploadProgressTimer)clearInterval(uploadProgressTimer);paintUploadProgress(3,label||'Uploading file...');
+    uploadProgressTimer=setInterval(()=>{if(uploadProgressValue<92){const step=uploadProgressValue<45?5:(uploadProgressValue<75?3:1);paintUploadProgress(Math.min(92,uploadProgressValue+step));}},180);
+}
+function showUploadPopup(message,isError=false){
+    ensureUploadProgressUI();const popup=document.getElementById('global-upload-popup');if(uploadPopupTimer)clearTimeout(uploadPopupTimer);
+    popup.textContent=message;popup.classList.toggle('error',!!isError);popup.style.display='block';
+    uploadPopupTimer=setTimeout(()=>{popup.style.display='none';},2000);
+}
+function completeUploadProgress(message='Upload Successfully'){
+    if(uploadProgressTimer)clearInterval(uploadProgressTimer);uploadProgressTimer=null;paintUploadProgress(100,'Upload complete');showUploadPopup('✅ '+message,false);
+    setTimeout(()=>{const box=document.getElementById('global-upload-progress');if(box)box.style.display='none';},650);
+}
+function failUploadProgress(message='Upload failed'){
+    if(uploadProgressTimer)clearInterval(uploadProgressTimer);uploadProgressTimer=null;const box=document.getElementById('global-upload-progress');if(box)box.style.display='none';showUploadPopup('❌ '+message,true);
+}
 function setMorningDefaultDates(){
     return;
 }
@@ -3258,6 +3302,7 @@ async function saveMorningExcel(){
     }
     const btn=document.getElementById('btn-save-morning-excel');if(btn)btn.disabled=true;
     setMorningStatus('morning-upload-preview','Uploading morning data...');
+    beginUploadProgress('Morning Report Upload');
     const payload={headers:pendingMorningExcel.headers,rows:pendingMorningExcel.rows,fileName:pendingMorningExcel.fileName,sheetName:pendingMorningExcel.sheetName,uploadedBy:String(currentUser||''),uploadedAt:firebase.database.ServerValue.TIMESTAMP,rowCount:pendingMorningExcel.rows.length,schemaVersion:2};
     // Save the compact report locally before the network round-trip, so this device can
     // open Morning Report immediately even while Firebase is syncing.
@@ -3265,8 +3310,9 @@ async function saveMorningExcel(){
     try{
         await db.ref('morning_report_current').set(payload);
         setMorningStatus('morning-upload-preview',`Upload successful. ${pendingMorningExcel.rows.length} rows saved. Previous Morning Excel has been replaced.`,'ok');
-        alert('Morning Excel file uploaded successfully.');
+        completeUploadProgress('Morning Report uploaded successfully');
     }catch(err){
+        failUploadProgress('Morning Report upload failed');
         try{localStorage.setItem('morning_report_current',JSON.stringify({...payload,uploadedAt:Date.now()}));setMorningStatus('morning-upload-preview','Network save failed; a local backup was saved. Error: '+err.message,'error');}catch(e){setMorningStatus('morning-upload-preview','Upload failed: '+err.message,'error');}
     }finally{if(btn)btn.disabled=false;}
 }
@@ -3439,7 +3485,8 @@ async function previewAssignmentExcel(input){
 async function saveAssignmentExcel(){
     if(getRoleInfo().role!=='Admin'){alert('Only Admin can upload assignments.');return;}if(!pendingAssignmentRows){alert('Select a valid assignment Excel first.');return;}if(!db){setMorningStatus('assignment-upload-status','Database is not connected.','error');return;}
     const payload={};pendingAssignmentRows.forEach((x,i)=>payload['assignment_'+i]={dss:x.dss,dso:x.dso});
-    try{await db.ref('dss_dso_assignments_common').set(payload);applyCommonDssDsoAssignments(pendingAssignmentRows);setMorningStatus('assignment-upload-status',`${pendingAssignmentRows.length} assignments uploaded. All reports now use this mapping.`,'ok');alert('Common DSS–DSO assignment updated successfully.');}catch(e){setMorningStatus('assignment-upload-status','Upload failed: '+e.message,'error');}
+    beginUploadProgress('DSS–DSO Assignment Upload');
+    try{await db.ref('dss_dso_assignments_common').set(payload);applyCommonDssDsoAssignments(pendingAssignmentRows);setMorningStatus('assignment-upload-status',`${pendingAssignmentRows.length} assignments uploaded. All reports now use this mapping.`,'ok');completeUploadProgress('DSS–DSO Assignment uploaded successfully');}catch(e){failUploadProgress('Assignment upload failed');setMorningStatus('assignment-upload-status','Upload failed: '+e.message,'error');}
 }
 let pendingAfternoonExcel=null;
 let currentAfternoonReport={headers:[],rows:[]};
@@ -3543,13 +3590,14 @@ async function saveAfternoonExcel(){
     if(!db||!window.firebase||!firebase.database){setMorningStatus('afternoon-upload-preview','Database is not connected. Check internet connection and try again.','error');return;}
     const btn=document.getElementById('btn-save-afternoon-excel');if(btn)btn.disabled=true;
     setMorningStatus('afternoon-upload-preview','Uploading Afternoon/Evening data...');
+    beginUploadProgress('Afternoon/Evening Report Upload');
     const payload={headers:pendingAfternoonExcel.headers,rows:pendingAfternoonExcel.rows,fileName:pendingAfternoonExcel.fileName,sheetName:pendingAfternoonExcel.sheetName,uploadedBy:String(currentUser||''),uploadedAt:firebase.database.ServerValue.TIMESTAMP,rowCount:pendingAfternoonExcel.rows.length,schemaVersion:1};
     try{localStorage.setItem('afternoon_report_current',JSON.stringify({...payload,uploadedAt:Date.now()}));}catch(e){}
     try{
         await db.ref('afternoon_report_current').set(payload);
         setMorningStatus('afternoon-upload-preview',`Upload successful. ${pendingAfternoonExcel.rows.length} rows saved. Previous file was replaced.`,'ok');
-        alert('Afternoon/Evening Excel file uploaded successfully.');
-    }catch(err){setMorningStatus('afternoon-upload-preview','Upload failed: '+err.message,'error');}
+        completeUploadProgress('Afternoon/Evening Report uploaded successfully');
+    }catch(err){failUploadProgress('Afternoon/Evening upload failed');setMorningStatus('afternoon-upload-preview','Upload failed: '+err.message,'error');}
     finally{if(btn)btn.disabled=false;}
 }
 function canSeeAfternoonRow(row,headers){
