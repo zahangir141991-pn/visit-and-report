@@ -115,7 +115,7 @@
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-23-kyc-tracker-v25';
+        const APP_CACHE_VERSION = '2026-09-23-kyc-wallet-uddokta-v26';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -2259,7 +2259,7 @@
             // the report stuck on the static "No report generated" placeholder.
             if (tab === 'morning-report') setTimeout(() => { try { loadMorningReport(); } catch (e) { console.error('Morning report load error:', e); } }, 0);
             if (tab === 'afternoon-report') setTimeout(() => { try { loadAfternoonReport(); } catch (e) { console.error('Afternoon report load error:', e); } }, 0);
-            if (tab === 'kyc-collection') setTimeout(() => { try { fetchKycLocation(false); } catch (e) {} }, 0);
+            if (tab === 'kyc-collection') setTimeout(() => { try { populateKycDsoWallets(); fetchKycLocation(false); } catch (e) {} }, 0);
             if (tab === 'kyc-status') { startKycRealtime(); renderKycStatus(); }
 
             // Camera must remain OFF unless the user explicitly starts selfie capture.
@@ -3655,6 +3655,17 @@ function toggleKycMenu(event){
 }
 function closeKycMenu(){document.getElementById('kyc-menu-panel')?.classList.remove('open');}
 function kycMenuAction(tab){closeKycMenu();switchTab(tab);}
+function populateKycDsoWallets(){
+    const select=document.getElementById('kyc-dso-wallet');if(!select)return;
+    const role=getRoleInfo();let wallets=[];
+    if(role.role==='DSO')wallets=[normalizeScopeWallet(role.dsoWallet)];
+    else if(role.role==='DSS')wallets=Array.from(getAssignedDsoWalletsForDss(role.dssName));
+    else if(role.role==='Admin'||role.role==='DM')for(let n=801;n<=845;n++)wallets.push('01332517'+String(n));
+    wallets=[...new Set(wallets.map(normalizeScopeWallet).filter(Boolean))].sort((a,b)=>Number(a)-Number(b));
+    const current=normalizeScopeWallet(select.value||'');
+    select.innerHTML=(role.role==='DSO'?'':'<option value="">Select DSO Wallet</option>')+wallets.map(w=>'<option value="'+escapeMorningHtml(w)+'">'+escapeMorningHtml(w.slice(-3))+'</option>').join('');
+    if(role.role==='DSO'){select.value=wallets[0]||'';select.disabled=true;}else{select.disabled=false;if(wallets.includes(current))select.value=current;}
+}
 function kycAlert(message,type='success'){
     const el=document.getElementById('kyc-alert');if(!el)return;
     el.className='alert alert-'+type;el.textContent=message;el.style.display='block';
@@ -3692,20 +3703,27 @@ function getDssNameForWallet(wallet){
 function clearKycForm(){
     document.getElementById('kyc-form')?.reset();kycPictureData='';
     const p=document.getElementById('kyc-picture-preview');if(p){p.src='';p.style.display='none';}
-    const n=document.getElementById('kyc-location-name'),v=document.getElementById('kyc-location');if(n)n.value='';if(v)v.value='';
+    const n=document.getElementById('kyc-location-name'),v=document.getElementById('kyc-location');if(n)n.value='';if(v)v.value='';populateKycDsoWallets();
 }
 async function submitKyc(event){
     event.preventDefault();const form=document.getElementById('kyc-form');if(!form||!form.reportValidity())return;
     if(!db){kycAlert('Database is not connected.','error');return;}
     const contact=String(document.getElementById('kyc-owner-contact').value||'').replace(/\D/g,'');
+    const uddoktaNumber=String(document.getElementById('kyc-uddokta-number').value||'').replace(/\D/g,'');
+    const selectedDsoWallet=normalizeScopeWallet(document.getElementById('kyc-dso-wallet').value||'');
+    if(!selectedDsoWallet){kycAlert('DSO Wallet নির্বাচন করুন।','error');return;}
+    const accessRole=getRoleInfo();
+    if(accessRole.role==='DSO'&&selectedDsoWallet!==normalizeScopeWallet(accessRole.dsoWallet)){kycAlert('নিজের DSO Wallet ছাড়া submit করা যাবে না।','error');return;}
+    if(accessRole.role==='DSS'&&!getAssignedDsoWalletsForDss(accessRole.dssName).has(selectedDsoWallet)){kycAlert('শুধু assigned DSO Wallet নির্বাচন করা যাবে।','error');return;}
+    if(!/^01\d{9}$/.test(uddoktaNumber)){kycAlert('সঠিক ১১ সংখ্যার Uddokta Number দিন।','error');return;}
     if(!/^01\d{9}$/.test(contact)){kycAlert('সঠিক ১১ সংখ্যার Owner Contact Number দিন।','error');return;}
     if(!kycPictureData){kycAlert('Picture upload করুন।','error');return;}
     const gps=document.getElementById('kyc-location').value.trim(),locationName=document.getElementById('kyc-location-name').value.trim();
     if(!gps||!locationName){kycAlert('Location নিতে হবে।','error');return;}
     const btn=document.getElementById('btn-kyc-submit');if(btn){btn.disabled=true;btn.textContent='Submitting...';}
     try{
-        const role=getRoleInfo(),ref=db.ref('new_uddokta_kyc').push(),id=ref.key,dsoWallet=role.role==='DSO'?normalizeScopeWallet(role.dsoWallet):'',dssName=role.role==='DSS'?String(role.dssName||'').trim().toUpperCase():getDssNameForWallet(dsoWallet);
-        const record={id,collectionDate:getDhakaToday(),shopName:document.getElementById('kyc-shop-name').value.trim(),ownerName:document.getElementById('kyc-owner-name').value.trim(),ownerContact:contact,thana:document.getElementById('kyc-thana').value.trim(),bazarName:document.getElementById('kyc-bazar-name').value.trim(),locationName,gps,submittedBy:String(currentUser||''),submitterRole:role.role,dsoWallet,dssName,status:'Admin Receive',rejectionReason:'',hasPhoto:true,createdAt:firebase.database.ServerValue.TIMESTAMP,updatedAt:firebase.database.ServerValue.TIMESTAMP};
+        const role=getRoleInfo(),ref=db.ref('new_uddokta_kyc').push(),id=ref.key,dsoWallet=selectedDsoWallet,dssName=role.role==='DSS'?String(role.dssName||'').trim().toUpperCase():getDssNameForWallet(dsoWallet);
+        const record={id,collectionDate:getDhakaToday(),dsoWallet,uddoktaNumber,shopName:document.getElementById('kyc-shop-name').value.trim(),ownerName:document.getElementById('kyc-owner-name').value.trim(),ownerContact:contact,thana:document.getElementById('kyc-thana').value.trim(),bazarName:document.getElementById('kyc-bazar-name').value.trim(),locationName,gps,submittedBy:String(currentUser||''),submitterRole:role.role,dssName,status:'Admin Receive',rejectionReason:'',hasPhoto:true,createdAt:firebase.database.ServerValue.TIMESTAMP,updatedAt:firebase.database.ServerValue.TIMESTAMP};
         const updates={};updates['new_uddokta_kyc/'+id]=record;updates['new_uddokta_kyc_photos/'+id]=kycPictureData;await db.ref().update(updates);
         clearKycForm();kycAlert('KYC successfully submitted.','success');setTimeout(()=>switchTab('kyc-status'),350);
     }catch(e){kycAlert('KYC submit failed: '+e.message,'error');}
@@ -3730,8 +3748,8 @@ function kycStatusControl(r){
 function renderKycStatus(){
     const body=document.getElementById('kyc-status-body');if(!body)return;
     const status=String((document.getElementById('kyc-filter-status')||{}).value||''),q=String((document.getElementById('kyc-filter-search')||{}).value||'').trim().toLowerCase();
-    let rows=kycRecords.filter(canSeeKycRecord);if(status)rows=rows.filter(r=>(r.status||'Admin Receive')===status);if(q)rows=rows.filter(r=>[r.shopName,r.ownerName,r.ownerContact,r.thana,r.bazarName,r.submittedBy].some(v=>String(v||'').toLowerCase().includes(q)));
-    body.innerHTML=rows.length?rows.map(r=>'<tr><td data-label="Collection Date">'+escapeMorningHtml(r.collectionDate||'')+'</td><td data-label="Shop Name">'+escapeMorningHtml(r.shopName||'')+'</td><td data-label="Owner Name">'+escapeMorningHtml(r.ownerName||'')+'</td><td data-label="Contact Number">'+escapeMorningHtml(r.ownerContact||'')+'</td><td data-label="Thana">'+escapeMorningHtml(r.thana||'')+'</td><td data-label="Bazar Name">'+escapeMorningHtml(r.bazarName||'')+'</td><td data-label="Picture">'+(r.hasPhoto?'<button type="button" class="btn btn-sm btn-sec" onclick="showKycPicture(\''+escapeMorningHtml(r.id)+'\')">View</button>':'—')+'</td><td data-label="Location" class="kyc-reason">'+escapeMorningHtml(r.locationName||r.gps||'')+'</td><td data-label="Submitted By">'+escapeMorningHtml(r.submittedBy||'')+'</td><td data-label="Status">'+kycStatusControl(r)+'</td><td data-label="Rejection Reason" class="kyc-reason">'+escapeMorningHtml(r.rejectionReason||'—')+'</td></tr>').join(''):'<tr><td colspan="11" class="empty-state">No KYC record found.</td></tr>';
+    let rows=kycRecords.filter(canSeeKycRecord);if(status)rows=rows.filter(r=>(r.status||'Admin Receive')===status);if(q)rows=rows.filter(r=>[r.dsoWallet,r.uddoktaNumber,r.shopName,r.ownerName,r.ownerContact,r.thana,r.bazarName,r.submittedBy].some(v=>String(v||'').toLowerCase().includes(q)));
+    body.innerHTML=rows.length?rows.map(r=>'<tr><td data-label="Collection Date">'+escapeMorningHtml(r.collectionDate||'')+'</td><td data-label="DSO Wallet">'+escapeMorningHtml(r.dsoWallet?String(r.dsoWallet).slice(-3):'')+'</td><td data-label="Uddokta Number">'+escapeMorningHtml(r.uddoktaNumber||'')+'</td><td data-label="Shop Name">'+escapeMorningHtml(r.shopName||'')+'</td><td data-label="Owner Name">'+escapeMorningHtml(r.ownerName||'')+'</td><td data-label="Contact Number">'+escapeMorningHtml(r.ownerContact||'')+'</td><td data-label="Thana">'+escapeMorningHtml(r.thana||'')+'</td><td data-label="Bazar Name">'+escapeMorningHtml(r.bazarName||'')+'</td><td data-label="Picture">'+(r.hasPhoto?'<button type="button" class="btn btn-sm btn-sec" onclick="showKycPicture(\''+escapeMorningHtml(r.id)+'\')">View</button>':'—')+'</td><td data-label="Location" class="kyc-reason">'+escapeMorningHtml(r.locationName||r.gps||'')+'</td><td data-label="Submitted By">'+escapeMorningHtml(r.submittedBy||'')+'</td><td data-label="Status">'+kycStatusControl(r)+'</td><td data-label="Rejection Reason" class="kyc-reason">'+escapeMorningHtml(r.rejectionReason||'—')+'</td></tr>').join(''):'<tr><td colspan="13" class="empty-state">No KYC record found.</td></tr>';
 }
 async function updateKycStatus(id,status){
     if(getRoleInfo().role!=='Admin'||!db)return;const record=kycRecords.find(r=>String(r.id)===String(id));if(!record)return;
