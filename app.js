@@ -115,7 +115,7 @@
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-21-role-filter-access-v24';
+        const APP_CACHE_VERSION = '2026-09-23-kyc-tracker-v25';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -2210,6 +2210,7 @@
         function switchTab(tab) {
             if (tab === 'settings') tab = 'change-pass';
             closeVisitMenu();
+            if (typeof closeKycMenu === 'function') closeKycMenu();
             closeMobileNav();
             // Never allow app navigation before successful login.
             if (!currentUser) {
@@ -2228,7 +2229,7 @@
             if (tab === 'afternoon-upload' && getRoleInfo().role !== 'Admin') return;
             if (tab === 'assignment-upload' && getRoleInfo().role !== 'Admin') return;
             // Single-page navigation: ONLY the clicked page is visible.
-            const pages = ['dashboard','form','daily','notices','admin','change-pass','morning-upload','morning-report','afternoon-upload','afternoon-report','assignment-upload'];
+            const pages = ['dashboard','form','daily','notices','admin','change-pass','morning-upload','morning-report','afternoon-upload','afternoon-report','assignment-upload','kyc-collection','kyc-status'];
             pages.forEach(name => {
                 const el = document.getElementById('view-' + name);
                 if (!el) return;
@@ -2237,7 +2238,7 @@
                 el.setAttribute('aria-hidden', 'true');
             });
 
-            ['dashboard','form','daily','notices','admin','settings','reports'].forEach(name => {
+            ['dashboard','form','daily','notices','admin','settings','reports','kyc'].forEach(name => {
                 const nav = document.getElementById('nav-' + name);
                 if (nav) nav.classList.remove('active');
             });
@@ -2249,7 +2250,7 @@
                 page.setAttribute('aria-hidden', 'false');
             }
 
-            const navId = tab === 'change-pass' ? 'nav-settings' : ((tab === 'daily' || tab === 'form') ? 'nav-visit' : ((tab === 'morning-upload' || tab === 'morning-report' || tab === 'afternoon-upload' || tab === 'afternoon-report' || tab === 'assignment-upload') ? 'nav-reports' : 'nav-' + tab));
+            const navId = tab === 'change-pass' ? 'nav-settings' : ((tab === 'daily' || tab === 'form') ? 'nav-visit' : ((tab === 'morning-upload' || tab === 'morning-report' || tab === 'afternoon-upload' || tab === 'afternoon-report' || tab === 'assignment-upload') ? 'nav-reports' : ((tab === 'kyc-collection' || tab === 'kyc-status') ? 'nav-kyc' : 'nav-' + tab)));
             const nav = document.getElementById(navId);
             if (nav) nav.classList.add('active');
 
@@ -2258,6 +2259,8 @@
             // the report stuck on the static "No report generated" placeholder.
             if (tab === 'morning-report') setTimeout(() => { try { loadMorningReport(); } catch (e) { console.error('Morning report load error:', e); } }, 0);
             if (tab === 'afternoon-report') setTimeout(() => { try { loadAfternoonReport(); } catch (e) { console.error('Afternoon report load error:', e); } }, 0);
+            if (tab === 'kyc-collection') setTimeout(() => { try { fetchKycLocation(false); } catch (e) {} }, 0);
+            if (tab === 'kyc-status') { startKycRealtime(); renderKycStatus(); }
 
             // Camera must remain OFF unless the user explicitly starts selfie capture.
             if (tab !== 'form') stopCamera();
@@ -3636,6 +3639,111 @@ async function downloadAfternoonReport(){
 }
 document.addEventListener('click',function(e){const panel=document.getElementById('reports-menu-panel');const parent=e.target.closest&&e.target.closest('#nav-reports');if(panel&&!parent&&!e.target.closest('#reports-menu-panel'))panel.classList.remove('open');});
 document.addEventListener('DOMContentLoaded',setMorningDefaultDates,{once:true});
+
+/* ---- New Uddokta KYC Tracker ---- */
+let kycPictureData='';
+let kycRecords=[];
+let kycRealtimeRef=null;
+
+function toggleKycMenu(event){
+    if(event){event.preventDefault();event.stopPropagation();}
+    const panel=document.getElementById('kyc-menu-panel');if(!panel)return;
+    const open=!panel.classList.contains('open');
+    if(typeof closeVisitMenu==='function')closeVisitMenu();
+    if(typeof closeReportsMenu==='function')closeReportsMenu();
+    panel.classList.toggle('open',open);
+}
+function closeKycMenu(){document.getElementById('kyc-menu-panel')?.classList.remove('open');}
+function kycMenuAction(tab){closeKycMenu();switchTab(tab);}
+function kycAlert(message,type='success'){
+    const el=document.getElementById('kyc-alert');if(!el)return;
+    el.className='alert alert-'+type;el.textContent=message;el.style.display='block';
+    setTimeout(()=>{el.style.display='none';},3000);
+}
+function fileToCompressedKycImage(file){
+    return new Promise((resolve,reject)=>{
+        const reader=new FileReader();
+        reader.onerror=()=>reject(new Error('Picture could not be read.'));
+        reader.onload=()=>{const img=new Image();img.onerror=()=>reject(new Error('Invalid picture.'));img.onload=()=>{try{const scale=Math.min(1,900/img.width,900/img.height);const c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.width*scale));c.height=Math.max(1,Math.round(img.height*scale));const x=c.getContext('2d',{alpha:false});x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.drawImage(img,0,0,c.width,c.height);let q=.72,out=c.toDataURL('image/jpeg',q);while(out.length>280000&&q>.38){q-=.07;out=c.toDataURL('image/jpeg',q);}resolve(out);}catch(e){reject(e);}};img.src=reader.result;};reader.readAsDataURL(file);
+    });
+}
+async function previewKycPicture(input){
+    const file=input&&input.files&&input.files[0],preview=document.getElementById('kyc-picture-preview');kycPictureData='';
+    if(!file){if(preview){preview.src='';preview.style.display='none';}return;}
+    try{kycPictureData=await fileToCompressedKycImage(file);if(preview){preview.src=kycPictureData;preview.style.display='block';}}catch(e){if(input)input.value='';kycAlert(e.message,'error');}
+}
+async function fetchKycLocation(showError=true){
+    const btn=document.getElementById('btn-kyc-location'),name=document.getElementById('kyc-location-name'),value=document.getElementById('kyc-location');
+    if(!name||!value)return;
+    if(!navigator.geolocation){if(showError)kycAlert('Geolocation is not supported.','error');return;}
+    if(btn){btn.disabled=true;btn.textContent='Getting location...';}name.placeholder='Getting location...';
+    try{
+        const pos=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:18000,maximumAge:30000}));
+        const lat=pos.coords.latitude,lng=pos.coords.longitude;value.value=lat.toFixed(6)+','+lng.toFixed(6);
+        let label='Current location';
+        try{const res=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}`,{headers:{'Accept':'application/json'}});if(res.ok){const data=await res.json();label=data.display_name||label;}}catch(e){}
+        name.value=label;name.placeholder='Location name will appear here';
+    }catch(e){name.value='';value.value='';name.placeholder='Location not found — try again';if(showError)kycAlert('Location permission দিন এবং আবার চেষ্টা করুন।','error');}
+    finally{if(btn){btn.disabled=false;btn.textContent='📍 Get Location';}}
+}
+function getDssNameForWallet(wallet){
+    const w=normalizeScopeWallet(wallet);for(const [dss,set] of dssDsoAssignmentIndex.entries()){if(set&&set.has(w))return dss;}return '';
+}
+function clearKycForm(){
+    document.getElementById('kyc-form')?.reset();kycPictureData='';
+    const p=document.getElementById('kyc-picture-preview');if(p){p.src='';p.style.display='none';}
+    const n=document.getElementById('kyc-location-name'),v=document.getElementById('kyc-location');if(n)n.value='';if(v)v.value='';
+}
+async function submitKyc(event){
+    event.preventDefault();const form=document.getElementById('kyc-form');if(!form||!form.reportValidity())return;
+    if(!db){kycAlert('Database is not connected.','error');return;}
+    const contact=String(document.getElementById('kyc-owner-contact').value||'').replace(/\D/g,'');
+    if(!/^01\d{9}$/.test(contact)){kycAlert('সঠিক ১১ সংখ্যার Owner Contact Number দিন।','error');return;}
+    if(!kycPictureData){kycAlert('Picture upload করুন।','error');return;}
+    const gps=document.getElementById('kyc-location').value.trim(),locationName=document.getElementById('kyc-location-name').value.trim();
+    if(!gps||!locationName){kycAlert('Location নিতে হবে।','error');return;}
+    const btn=document.getElementById('btn-kyc-submit');if(btn){btn.disabled=true;btn.textContent='Submitting...';}
+    try{
+        const role=getRoleInfo(),ref=db.ref('new_uddokta_kyc').push(),id=ref.key,dsoWallet=role.role==='DSO'?normalizeScopeWallet(role.dsoWallet):'',dssName=role.role==='DSS'?String(role.dssName||'').trim().toUpperCase():getDssNameForWallet(dsoWallet);
+        const record={id,collectionDate:getDhakaToday(),shopName:document.getElementById('kyc-shop-name').value.trim(),ownerName:document.getElementById('kyc-owner-name').value.trim(),ownerContact:contact,thana:document.getElementById('kyc-thana').value.trim(),bazarName:document.getElementById('kyc-bazar-name').value.trim(),locationName,gps,submittedBy:String(currentUser||''),submitterRole:role.role,dsoWallet,dssName,status:'Admin Receive',rejectionReason:'',hasPhoto:true,createdAt:firebase.database.ServerValue.TIMESTAMP,updatedAt:firebase.database.ServerValue.TIMESTAMP};
+        const updates={};updates['new_uddokta_kyc/'+id]=record;updates['new_uddokta_kyc_photos/'+id]=kycPictureData;await db.ref().update(updates);
+        clearKycForm();kycAlert('KYC successfully submitted.','success');setTimeout(()=>switchTab('kyc-status'),350);
+    }catch(e){kycAlert('KYC submit failed: '+e.message,'error');}
+    finally{if(btn){btn.disabled=false;btn.textContent='Submit KYC';}}
+}
+function canSeeKycRecord(r){
+    const role=getRoleInfo(),me=String(currentUser||'').trim().toLowerCase(),submitter=String(r.submittedBy||'').trim().toLowerCase(),wallet=normalizeScopeWallet(r.dsoWallet||r.submittedBy||'');
+    if(role.role==='Admin'||role.role==='DM')return true;
+    if(role.role==='DSS')return String(r.dssName||'').trim().toUpperCase()===String(role.dssName||'').trim().toUpperCase()||getAssignedDsoWalletsForDss(role.dssName).has(wallet)||submitter===me;
+    if(role.role==='DSO')return wallet===normalizeScopeWallet(role.dsoWallet)||submitter===me;
+    return submitter===me;
+}
+function startKycRealtime(){
+    if(!db||kycRealtimeRef)return;
+    kycRealtimeRef=db.ref('new_uddokta_kyc');
+    kycRealtimeRef.on('value',snap=>{const rows=[];snap.forEach(child=>rows.push(Object.assign({id:child.key},child.val()||{})));kycRecords=rows.sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));renderKycStatus();},e=>console.warn('KYC realtime sync failed:',e));
+}
+function kycStatusControl(r){
+    const role=getRoleInfo();if(role.role!=='Admin')return '<span class="status-badge">'+escapeMorningHtml(r.status||'Admin Receive')+'</span>';
+    const states=['Admin Receive','Mail Send','Active','Rejection'];return '<select class="kyc-status-select" onchange="updateKycStatus(\''+escapeMorningHtml(r.id)+'\',this.value)">'+states.map(s=>'<option value="'+s+'"'+(s===(r.status||'Admin Receive')?' selected':'')+'>'+s+'</option>').join('')+'</select>';
+}
+function renderKycStatus(){
+    const body=document.getElementById('kyc-status-body');if(!body)return;
+    const status=String((document.getElementById('kyc-filter-status')||{}).value||''),q=String((document.getElementById('kyc-filter-search')||{}).value||'').trim().toLowerCase();
+    let rows=kycRecords.filter(canSeeKycRecord);if(status)rows=rows.filter(r=>(r.status||'Admin Receive')===status);if(q)rows=rows.filter(r=>[r.shopName,r.ownerName,r.ownerContact,r.thana,r.bazarName,r.submittedBy].some(v=>String(v||'').toLowerCase().includes(q)));
+    body.innerHTML=rows.length?rows.map(r=>'<tr><td data-label="Collection Date">'+escapeMorningHtml(r.collectionDate||'')+'</td><td data-label="Shop Name">'+escapeMorningHtml(r.shopName||'')+'</td><td data-label="Owner Name">'+escapeMorningHtml(r.ownerName||'')+'</td><td data-label="Contact Number">'+escapeMorningHtml(r.ownerContact||'')+'</td><td data-label="Thana">'+escapeMorningHtml(r.thana||'')+'</td><td data-label="Bazar Name">'+escapeMorningHtml(r.bazarName||'')+'</td><td data-label="Picture">'+(r.hasPhoto?'<button type="button" class="btn btn-sm btn-sec" onclick="showKycPicture(\''+escapeMorningHtml(r.id)+'\')">View</button>':'—')+'</td><td data-label="Location" class="kyc-reason">'+escapeMorningHtml(r.locationName||r.gps||'')+'</td><td data-label="Submitted By">'+escapeMorningHtml(r.submittedBy||'')+'</td><td data-label="Status">'+kycStatusControl(r)+'</td><td data-label="Rejection Reason" class="kyc-reason">'+escapeMorningHtml(r.rejectionReason||'—')+'</td></tr>').join(''):'<tr><td colspan="11" class="empty-state">No KYC record found.</td></tr>';
+}
+async function updateKycStatus(id,status){
+    if(getRoleInfo().role!=='Admin'||!db)return;const record=kycRecords.find(r=>String(r.id)===String(id));if(!record)return;
+    let reason='';if(status==='Rejection'){reason=prompt('Rejection reason লিখুন:',record.rejectionReason||'')||'';reason=reason.trim();if(!reason){renderKycStatus();kycAlert('Rejection reason বাধ্যতামূলক।','error');return;}}
+    try{await db.ref('new_uddokta_kyc/'+id).update({status,rejectionReason:status==='Rejection'?reason:'',statusUpdatedBy:String(currentUser||''),statusUpdatedAt:new Date().toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}),updatedAt:firebase.database.ServerValue.TIMESTAMP});kycAlert('KYC status updated.','success');}catch(e){renderKycStatus();kycAlert('Status update failed: '+e.message,'error');}
+}
+async function showKycPicture(id){
+    const modal=document.getElementById('visit-details-modal'),box=document.getElementById('visit-details-content');if(!modal||!box||!db)return;modal.classList.remove('hidden');box.innerHTML='<div style="padding:20px;text-align:center">Loading picture...</div>';
+    try{const snap=await db.ref('new_uddokta_kyc_photos/'+id).once('value'),photo=snap.val();box.innerHTML=photo?'<img src="'+photo+'" class="detail-photo" alt="KYC Picture">':'<div style="padding:20px;text-align:center">Picture not found.</div>';}catch(e){box.innerHTML='<div style="padding:20px;text-align:center;color:#b91c1c">Picture could not load.</div>';}
+}
+document.addEventListener('DOMContentLoaded',()=>{document.getElementById('kyc-form')?.addEventListener('submit',submitKyc);},{once:true});
+document.addEventListener('click',e=>{const panel=document.getElementById('kyc-menu-panel');const parent=e.target.closest&&e.target.closest('#nav-kyc');if(panel&&!parent&&!e.target.closest('#kyc-menu-panel'))panel.classList.remove('open');});
 
 
 /* ---- bundled inline script 4 ---- */
