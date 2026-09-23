@@ -119,7 +119,15 @@
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-24-report-restore-v35';
+        const APP_CACHE_VERSION = '2026-09-24-manual-data-refresh-v36';
+        // Remove old automatic-reload parameters without reloading the page.
+        try {
+            const cleanUrl=new URL(location.href);
+            if(cleanUrl.searchParams.has('_apprefresh')||cleanUrl.searchParams.has('_appcheck')){
+                cleanUrl.searchParams.delete('_apprefresh');cleanUrl.searchParams.delete('_appcheck');
+                history.replaceState(null,'',cleanUrl.pathname+cleanUrl.search+cleanUrl.hash);
+            }
+        } catch (_) {}
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -505,17 +513,19 @@
 
         async function refreshAppToLatest() {
             const button = document.getElementById('sidebar-app-refresh');
-            if (button) { button.disabled = true; button.innerHTML = '⏳ <span>Checking Update...</span>'; }
+            if (button) { button.disabled = true; button.innerHTML = '⏳ <span>Refreshing Data...</span>'; }
             try {
-                const updated = await checkForHostedAppUpdate(true);
-                if (!updated) {
-                    showAlert('App is already up to date.', 'success');
-                    closeMobileNav();
-                }
+                await ensureFirebaseSdk();
+                try { scopedReportLoads.clear(); } catch (_) {}
+                await refreshAllLiveData(true);
+                try { await ensureReportModeData(visitReportMode); } catch (_) {}
+                try { renderMorningReport();renderAfternoonReport();renderKycStatus();renderReports();updateDashboard(false); } catch (_) {}
+                showAlert('সব data সফলভাবে update হয়েছে।', 'success');
+                closeMobileNav();
             } catch (e) {
-                showAlert('Update check failed. Please check your internet connection.', 'error');
+                showAlert('Data update হয়নি। Internet connection check করুন।', 'error');
             } finally {
-                if (button) { button.disabled = false; button.innerHTML = '🔄 <span>Update App</span>'; }
+                if (button) { button.disabled = false; button.innerHTML = '🔄 <span>Refresh Data</span>'; }
             }
         }
 
@@ -605,9 +615,8 @@
                 setTimeout(loadPostLoginLibraries, 0);
                 try { switchTab('dashboard'); } catch (e) {}
                 setTimeout(() => { try { updateVisitSubmitState(); } catch (e) {} }, 300);
-                // Check once after login. The no-store request detects a newly deployed
-                // HTML/app version without requiring users to clear browser cache.
-                setTimeout(() => { checkForHostedAppUpdate(false).catch(()=>{}); }, 500);
+                // No automatic page reload after login. Data can be refreshed safely
+                // from the sidebar without ending the current session.
             } finally {
                 loginInProgress = false;
                 if (loginButton) loginButton.disabled = false;
