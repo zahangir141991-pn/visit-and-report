@@ -84,8 +84,12 @@
         function attachFirebaseConnectionMonitor() {
             if (!db || firebaseConnectionMonitorStarted) return;
             firebaseConnectionMonitorStarted = true;
-            db.ref('.info/connected').on('value', () => {
-                // Active Firebase listeners automatically reconcile after reconnect.
+            db.ref('.info/connected').on('value', snapshot => {
+                // Force one authoritative read after reconnect. This covers mobile
+                // browsers that resume a suspended tab without replaying every event.
+                if (snapshot.val() === true && document.body?.classList.contains('app-logged-in')) {
+                    setTimeout(() => { try { refreshAllLiveData(); } catch (_) {} }, 150);
+                }
             }, err => console.warn('Firebase connection monitor error:', err));
         }
         function initializeFirebaseServices() {
@@ -115,7 +119,7 @@
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-23-kyc-camera-only-v27';
+        const APP_CACHE_VERSION = '2026-09-23-live-sync-v28';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -589,8 +593,9 @@
                 setTimeout(loadPostLoginLibraries, 0);
                 try { switchTab('dashboard'); } catch (e) {}
                 setTimeout(() => { try { updateVisitSubmitState(); } catch (e) {} }, 300);
-                // Updates are checked only when the user presses Update App.
-                // Automatic checks/reloads could interrupt an active mobile session.
+                // Check once after login. The no-store request detects a newly deployed
+                // HTML/app version without requiring users to clear browser cache.
+                setTimeout(() => { checkForHostedAppUpdate(false).catch(()=>{}); }, 500);
             } finally {
                 loginInProgress = false;
                 if (loginButton) loginButton.disabled = false;
@@ -1048,8 +1053,12 @@
         // Reconnect and tab-focus refresh: realtime listener remains active,
         // while these events immediately reconcile any stale browser state.
         // Realtime listeners already resync after reconnect/focus. Avoid duplicate full-master downloads here.
-        window.addEventListener('online', () => { /* realtime listener reconnects automatically */ });
-        document.addEventListener('visibilitychange', () => { /* no forced full refresh */ });
+        window.addEventListener('online', () => { try { refreshAllLiveData(true); } catch (_) {} });
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && document.body?.classList.contains('app-logged-in')) {
+                try { refreshAllLiveData(); } catch (_) {}
+            }
+        });
         window.addEventListener('storage', (event) => {
             if (event.key === UDDOKTA_CACHE_KEY && event.newValue) {
                 try {
@@ -1088,7 +1097,10 @@
             }
 
             // Paint cache/index first, then reconcile the logged-in user's own report data.
-            if (isNewLoginSession) setTimeout(() => { try { ensureReportModeData(visitReportMode); } catch(e) {} }, 0);
+            if (isNewLoginSession) setTimeout(() => {
+                try { ensureReportModeData(visitReportMode); } catch(e) {}
+                try { refreshAllLiveData(true); } catch(e) {}
+            }, 0);
         }
 
         function setTodayDate() {
@@ -3781,6 +3793,62 @@ async function showKycPicture(id){
 }
 document.addEventListener('DOMContentLoaded',()=>{document.getElementById('kyc-form')?.addEventListener('submit',submitKyc);},{once:true});
 document.addEventListener('click',e=>{const panel=document.getElementById('kyc-menu-panel');const parent=e.target.closest&&e.target.closest('#nav-kyc');if(panel&&!parent&&!e.target.closest('#kyc-menu-panel'))panel.classList.remove('open');});
+
+// Central authoritative refresh. Realtime listeners remain the primary channel;
+// this one-shot reconciliation fixes suspended mobile tabs and stale browser caches.
+let liveRefreshPromise = null;
+let lastLiveRefreshAt = 0;
+async function refreshAllLiveData(force = false) {
+    if (!db || !currentUser || !document.body?.classList.contains('app-logged-in')) return false;
+    const now = Date.now();
+    if (!force && (liveRefreshPromise || now - lastLiveRefreshAt < 15000)) return liveRefreshPromise || false;
+    if (liveRefreshPromise) return liveRefreshPromise;
+    lastLiveRefreshAt = now;
+
+    // Listeners are started for every logged-in role so updates arrive even before
+    // the user opens Morning, Afternoon or KYC pages.
+    try { startMorningReportRealtime(); } catch (_) {}
+    try { startAfternoonReportRealtime(); } catch (_) {}
+    try { startKycRealtime(); } catch (_) {}
+
+    liveRefreshPromise = (async () => {
+        const jobs = [
+            db.ref('morning_report_current').once('value'),
+            db.ref('afternoon_report_current').once('value'),
+            db.ref('visit_reports_index').once('value'),
+            db.ref('uddokta_master').once('value'),
+            db.ref(UDDOKTA_MASTER_META_PATH).once('value'),
+            db.ref('dss_dso_assignments_common').once('value')
+        ];
+        const results = await Promise.allSettled(jobs);
+        const valueAt = i => results[i]?.status === 'fulfilled' ? results[i].value.val() : null;
+
+        const morning = valueAt(0);
+        if (morning && Array.isArray(morning.headers) && Array.isArray(morning.rows)) {
+            try { localStorage.setItem('morning_report_current', JSON.stringify(morning)); } catch (_) {}
+            applyMorningReportData(morning, 'latest cloud');
+        }
+        const afternoon = valueAt(1);
+        if (afternoon && Array.isArray(afternoon.headers) && Array.isArray(afternoon.rows)) {
+            try { localStorage.setItem('afternoon_report_current', JSON.stringify(afternoon)); } catch (_) {}
+            applyAfternoonReportData(afternoon, 'latest cloud');
+        }
+        const reportIndex = valueAt(2);
+        if (reportIndex && typeof reportIndex === 'object') applyLightReportSnapshot(reportIndex);
+
+        const master = valueAt(3), masterMeta = valueAt(4);
+        if (masterMeta) remoteMasterAuthorityMeta = masterMeta;
+        if (master) acceptFirebaseMasterIfAuthoritative(master);
+
+        const assignments = valueAt(5);
+        if (assignments) applyCommonDssDsoAssignments(assignments);
+        return true;
+    })().catch(err => {
+        console.warn('Live data refresh failed:', err);
+        return false;
+    }).finally(() => { liveRefreshPromise = null; });
+    return liveRefreshPromise;
+}
 
 
 /* ---- bundled inline script 4 ---- */
