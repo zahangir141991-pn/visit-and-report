@@ -119,7 +119,7 @@
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-23-real-parallel-upload-v32';
+        const APP_CACHE_VERSION = '2026-09-23-auto-cache-refresh-v34';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -148,6 +148,22 @@
         }
 
         clearStaleAppCache();
+
+        // Clear only generated data caches; keep passwords and user settings.
+        // This gives every login a fresh cloud view without asking users to delete
+        // browser cookies/site data manually.
+        function clearRuntimeDataCaches() {
+            [UDDOKTA_CACHE_KEY,UDDOKTA_CACHE_META_KEY,UDDOKTA_MASTER_META_KEY,REPORTS_CACHE_KEY,
+             'morning_report_current','afternoon_report_current','dss_dso_assignments_common'].forEach(key=>{
+                try { localStorage.removeItem(key); } catch (_) {}
+            });
+            reportsData=[];
+        }
+
+        // Remove obsolete browser-managed app caches/service workers once this
+        // version is loaded. These APIs do not touch login passwords.
+        try { if('caches' in window)caches.keys().then(keys=>Promise.all(keys.map(k=>caches.delete(k)))).catch(()=>{}); } catch (_) {}
+        try { if('serviceWorker' in navigator)navigator.serviceWorker.getRegistrations().then(list=>Promise.all(list.map(r=>r.unregister()))).catch(()=>{}); } catch (_) {}
 
         // Passwords Store
         // Login IDs: admin, zahangir, alamin, sohag, imran, rubel, shofiq, and DSO 01332517801-01332517845.
@@ -540,6 +556,7 @@
             // Login itself must never depend on Firebase/network/table loading.
             // Enter the app first, then initialize optional data services safely.
             currentUser = user;
+            clearRuntimeDataCaches();
             document.body.classList.add('app-logged-in');
             if (loginAlert) {
                 loginAlert.innerText = '';
@@ -893,6 +910,7 @@
                     const ratio=total?loaded/total:loaded/Math.max(1,masterBody.length);
                     paintUploadProgress(Math.min(98,5+Math.round(ratio*93)),'Uddokta Master Upload');
                 });
+                await firebaseRestWrite('dms_live_update_signal',JSON.stringify({type:'uddokta_master',revision:Date.now()}),'PUT');
                 paintUploadProgress(99,'Final data confirmation...');
                 const verifiedRows=replacement;
 
@@ -3193,6 +3211,7 @@ async function saveReportInParallelChunks(reportType,payload){
     const meta=Object.assign({},payload,{rows:[],chunked:true,chunkRoot,chunkCount:chunks.length,rowCount:rows.length,schemaVersion:3});
     paintUploadProgress(97,'Final data confirmation...');
     await firebaseRestWrite(reportType+'_report_current',JSON.stringify(meta),'PUT');
+    await firebaseRestWrite('dms_live_update_signal',JSON.stringify({type:reportType,revision:Date.now(),uploadId}),'PUT');
     paintUploadProgress(99,'Final data confirmation...');
     return Object.assign({},meta,{rows});
 }
@@ -3217,9 +3236,14 @@ async function resolveChunkedReport(reportType,data){
     if(!data||!data.chunked||!data.chunkRoot)return data;
     const count=Math.max(0,Number(data.chunkCount||0));
     if(!count)return Object.assign({},data,{rows:[]});
-    const snaps=await Promise.all(Array.from({length:count},(_,i)=>db.ref(data.chunkRoot+'/chunk_'+i).once('value')));
-    const rows=[];snaps.forEach(s=>{const part=s.val();if(Array.isArray(part))rows.push(...part);else if(part&&typeof part==='object')Object.keys(part).sort((a,b)=>Number(a)-Number(b)).forEach(k=>rows.push(part[k]));});
-    return Object.assign({},data,{rows});
+    const expected=Math.max(0,Number(data.rowCount||0));
+    for(let attempt=0;attempt<4;attempt++){
+        const snaps=await Promise.all(Array.from({length:count},(_,i)=>db.ref(data.chunkRoot+'/chunk_'+i).once('value')));
+        const rows=[];snaps.forEach(s=>{const part=s.val();if(Array.isArray(part))rows.push(...part);else if(part&&typeof part==='object')Object.keys(part).sort((a,b)=>Number(a)-Number(b)).forEach(k=>rows.push(part[k]));});
+        if(!expected||rows.length>=expected)return Object.assign({},data,{rows:expected?rows.slice(0,expected):rows});
+        await new Promise(resolve=>setTimeout(resolve,300*(attempt+1)));
+    }
+    throw new Error('Complete report data has not reached this device yet. Retrying shortly.');
 }
 
 let uploadProgressTimer = null;
@@ -3544,7 +3568,7 @@ async function saveAssignmentExcel(){
     if(getRoleInfo().role!=='Admin'){alert('Only Admin can upload assignments.');return;}if(!pendingAssignmentRows){alert('Select a valid assignment Excel first.');return;}if(!db){setMorningStatus('assignment-upload-status','Database is not connected.','error');return;}
     const payload={};pendingAssignmentRows.forEach((x,i)=>payload['assignment_'+i]={dss:x.dss,dso:x.dso});
     beginUploadProgress('DSS–DSO Assignment Upload');
-    try{await db.ref('dss_dso_assignments_common').set(payload);applyCommonDssDsoAssignments(pendingAssignmentRows);setMorningStatus('assignment-upload-status',`${pendingAssignmentRows.length} assignments uploaded. All reports now use this mapping.`,'ok');completeUploadProgress('DSS–DSO Assignment uploaded successfully');}catch(e){failUploadProgress('Assignment upload failed');setMorningStatus('assignment-upload-status','Upload failed: '+e.message,'error');}
+    try{await db.ref('dss_dso_assignments_common').set(payload);await db.ref('dms_live_update_signal').set({type:'assignment',revision:Date.now()});applyCommonDssDsoAssignments(pendingAssignmentRows);setMorningStatus('assignment-upload-status',`${pendingAssignmentRows.length} assignments uploaded. All reports now use this mapping.`,'ok');completeUploadProgress('DSS–DSO Assignment uploaded successfully');}catch(e){failUploadProgress('Assignment upload failed');setMorningStatus('assignment-upload-status','Upload failed: '+e.message,'error');}
 }
 let pendingAfternoonExcel=null;
 let currentAfternoonReport={headers:[],rows:[]};
@@ -3907,6 +3931,18 @@ document.addEventListener('click',e=>{const panel=document.getElementById('kyc-m
 // this one-shot reconciliation fixes suspended mobile tabs and stale browser caches.
 let liveRefreshPromise = null;
 let lastLiveRefreshAt = 0;
+let liveUpdateSignalRef = null;
+let liveUpdateSignalReady = false;
+function startLiveUpdateSignal(){
+    if(!db||liveUpdateSignalRef)return;
+    liveUpdateSignalRef=db.ref('dms_live_update_signal');
+    liveUpdateSignalRef.on('value',snap=>{
+        const signal=snap.val();
+        if(!liveUpdateSignalReady){liveUpdateSignalReady=true;return;}
+        if(!signal||!document.body?.classList.contains('app-logged-in'))return;
+        setTimeout(()=>{try{refreshAllLiveData(true);}catch(_){}},120);
+    },err=>console.warn('Live update signal error:',err));
+}
 async function refreshAllLiveData(force = false) {
     if (!db || !currentUser || !document.body?.classList.contains('app-logged-in')) return false;
     const now = Date.now();
@@ -3919,6 +3955,7 @@ async function refreshAllLiveData(force = false) {
     try { startMorningReportRealtime(); } catch (_) {}
     try { startAfternoonReportRealtime(); } catch (_) {}
     try { startKycRealtime(); } catch (_) {}
+    try { startLiveUpdateSignal(); } catch (_) {}
 
     liveRefreshPromise = (async () => {
         const jobs = [
