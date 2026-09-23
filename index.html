@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-24-login-full-sync-v43">
+    <meta name="dms-app-version" content="2026-09-24-responsive-excel-table-v44">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -576,6 +576,35 @@ img,video,canvas,svg{max-width:100%;height:auto}
   table.reports-table tbody td{grid-template-columns:minmax(92px,36%) minmax(0,1fr);font-size:.78rem}
   .morning-table th:nth-child(1),.morning-table td:nth-child(1){width:84px!important;min-width:84px!important;max-width:84px!important}
 }
+
+/* Excel-style responsive report tables. Key-based classes keep AGENTNAME frozen
+   correctly even when role permissions add/remove the DSO column. */
+.report-table-tools{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:4px 0 8px;color:#64748b;font-size:.75rem;font-weight:700;flex-wrap:wrap}
+.table-clear-filter{border:1px solid #bfdbfe;background:linear-gradient(135deg,#eff6ff,#dbeafe);color:#1d4ed8;border-radius:999px;padding:8px 13px;font-weight:800;cursor:pointer;box-shadow:0 3px 10px rgba(37,99,235,.10)}
+.table-clear-filter:hover{background:#bfdbfe;transform:translateY(-1px)}
+.morning-actions input[type=search],.filter-grid input[type=search]{border:1px solid #bfdbfe!important;border-radius:12px!important;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 12px center!important;padding-left:40px!important;box-shadow:0 4px 12px rgba(15,23,42,.05);transition:.18s ease}
+.morning-actions input[type=search]:focus,.filter-grid input[type=search]:focus{border-color:#2563eb!important;box-shadow:0 0 0 3px rgba(37,99,235,.14)!important;outline:0}
+.enhanced-report-table{--dso-width:92px;--agent-width:120px;--name-width:190px;table-layout:fixed!important}
+.enhanced-report-table th{padding:7px!important;vertical-align:top;z-index:8!important}
+.table-head-box{display:flex;flex-direction:column;gap:6px;min-width:0}
+.table-sort-btn{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;border:0;background:transparent;color:#1e3a8a;font:inherit;font-weight:900;padding:1px 2px;cursor:pointer;text-align:left;white-space:nowrap}
+.table-sort-btn:hover{color:#2563eb}
+.table-filter-input{width:100%;min-width:72px;height:29px!important;min-height:29px!important;border:1px solid #bfdbfe!important;border-radius:7px!important;background:#fff!important;padding:4px 7px!important;font-size:.69rem!important;color:#334155!important;box-shadow:none!important}
+.enhanced-report-table .dso-col{position:sticky!important;left:0!important;width:var(--dso-width)!important;min-width:var(--dso-width)!important;max-width:var(--dso-width)!important;z-index:6!important;background:#f8fafc!important}
+.enhanced-report-table th.dso-col{z-index:12!important;background:#dbeafe!important}
+.enhanced-report-table .agent-col{position:sticky!important;left:var(--agent-left,0)!important;width:var(--agent-width);min-width:var(--agent-width);max-width:var(--agent-width);z-index:6!important;background:#f8fafc!important}
+.enhanced-report-table .agent-name-col{position:sticky!important;left:var(--name-left,120px)!important;width:var(--name-width);min-width:var(--name-width);max-width:var(--name-width);z-index:6!important;background:#fff!important;box-shadow:5px 0 9px rgba(15,23,42,.10)}
+.enhanced-report-table th.agent-col,.enhanced-report-table th.agent-name-col{z-index:12!important;background:#dbeafe!important}
+.agent-name-text{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.enhanced-report-table td{height:38px;max-height:38px;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:767px){
+  .report-table-tools{font-size:.68rem}.table-clear-filter{width:100%}
+  .enhanced-report-table{min-width:980px!important;--dso-width:78px;--agent-width:98px;--name-width:150px}
+  .enhanced-report-table .agent-col{position:sticky!important;left:var(--agent-left,0)!important;width:var(--agent-width)!important;min-width:var(--agent-width)!important;max-width:var(--agent-width)!important;z-index:7!important}
+  .enhanced-report-table .agent-name-col{position:sticky!important;left:var(--name-left,98px)!important;width:var(--name-width)!important;min-width:var(--name-width)!important;max-width:var(--name-width)!important;z-index:7!important;box-shadow:4px 0 8px rgba(15,23,42,.12)!important}
+  .enhanced-report-table th.agent-col,.enhanced-report-table th.agent-name-col{position:sticky!important;top:0!important;z-index:13!important}
+  .table-filter-input{font-size:.65rem!important;padding:3px 5px!important}
+}
 </style>
 
 
@@ -948,7 +977,8 @@ img,video,canvas,svg{max-width:100%;height:auto}
                     <div class="card"><span>CASH IN %</span><b id="morning-kpi-cash-in-percent">0%</b></div>
                     <div class="card"><span>CASH OUT AGENT BALANCE</span><b id="morning-kpi-balance">0</b></div>
                 </div>
-                <div class="card morning-table-wrap"><table class="morning-table"><thead id="morning-report-head"><tr><th>No report generated</th></tr></thead><tbody id="morning-report-body"><tr><td>Select a date and generate the report.</td></tr></tbody></table></div>
+                <div class="report-table-tools"><span>↔ Scroll table • Click column name to sort • Use header boxes to filter</span><button type="button" class="table-clear-filter" onclick="clearReportTableFilters('morning')">✕ Clear Table Filters</button></div>
+                <div class="card morning-table-wrap"><table id="morning-report-table" class="morning-table enhanced-report-table"><thead id="morning-report-head"><tr><th>No report generated</th></tr></thead><tbody id="morning-report-body"><tr><td>Select a date and generate the report.</td></tr></tbody></table></div>
             </div>
 
             <!-- Afternoon / Evening Excel Upload -->
@@ -1002,7 +1032,8 @@ img,video,canvas,svg{max-width:100%;height:auto}
                     <div class="card"><span>B2BR_AMT</span><b id="afternoon-kpi-b2br">0</b></div>
                     <div class="card"><span>ZERO B2B COUNT</span><b id="afternoon-kpi-zero-b2b">0</b></div>
                 </div>
-                <div class="card morning-table-wrap"><table class="morning-table"><thead id="afternoon-report-head"><tr><th>No report generated</th></tr></thead><tbody id="afternoon-report-body"><tr><td>Open this report to load data.</td></tr></tbody></table></div>
+                <div class="report-table-tools"><span>↔ Scroll table • Click column name to sort • Use header boxes to filter</span><button type="button" class="table-clear-filter" onclick="clearReportTableFilters('afternoon')">✕ Clear Table Filters</button></div>
+                <div class="card morning-table-wrap"><table id="afternoon-report-table" class="morning-table enhanced-report-table"><thead id="afternoon-report-head"><tr><th>No report generated</th></tr></thead><tbody id="afternoon-report-body"><tr><td>Open this report to load data.</td></tr></tbody></table></div>
             </div>
 
             <!-- New Uddokta KYC Collection -->
@@ -1105,6 +1136,6 @@ img,video,canvas,svg{max-width:100%;height:auto}
 
 
 
-    <script defer src="./app.js?v=20260924-login-full-sync-v43"></script>
+    <script defer src="./app.js?v=20260924-responsive-excel-table-v44"></script>
 </body>
 </html>
