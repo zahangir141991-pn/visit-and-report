@@ -119,7 +119,7 @@
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-23-fast-chunk-upload-v31';
+        const APP_CACHE_VERSION = '2026-09-23-real-parallel-upload-v32';
         const UDDOKTA_MASTER_META_KEY = 'dms_uddokta_master_authority';
         const UDDOKTA_MASTER_META_PATH = 'uddokta_master_meta';
         const UDDOKTA_CACHE_KEY = 'dms_uddokta_master';
@@ -887,7 +887,13 @@
                 const masterUpdates={};
                 masterUpdates['uddokta_master']=masterObj;
                 masterUpdates[UDDOKTA_MASTER_META_PATH]=authorityMeta;
-                await db.ref().update(masterUpdates);
+                if(uploadProgressTimer)clearInterval(uploadProgressTimer);uploadProgressTimer=null;
+                const masterBody=JSON.stringify(masterUpdates);
+                await firebaseRestWrite('',masterBody,'PATCH',(loaded,total)=>{
+                    const ratio=total?loaded/total:loaded/Math.max(1,masterBody.length);
+                    paintUploadProgress(Math.min(98,5+Math.round(ratio*93)),'Uddokta Master Upload');
+                });
+                paintUploadProgress(99,'Final data confirmation...');
                 const verifiedRows=replacement;
 
                 authoritativeUddoktaDB = verifiedRows.slice();
@@ -3173,21 +3179,38 @@ function setMorningStatus(id, message, type){
 // every connected user one clean realtime update after all chunks are ready.
 async function saveReportInParallelChunks(reportType,payload){
     const rows=Array.isArray(payload.rows)?payload.rows:[];
-    const chunkSize=250;
+    const chunkSize=400;
     const chunks=[];
     for(let i=0;i<rows.length;i+=chunkSize)chunks.push(rows.slice(i,i+chunkSize));
     const uploadId=String(Date.now())+'_'+Math.random().toString(36).slice(2,8);
     const chunkRoot=reportType+'_report_chunks/'+uploadId;
-    const total=Math.max(1,chunks.length);
-    let completed=0;
-    await Promise.all((chunks.length?chunks:[[]]).map((chunk,index)=>db.ref(chunkRoot+'/chunk_'+index).set(chunk).then(()=>{
-        completed++;
-        const actual=Math.min(94,10+Math.round((completed/total)*84));
-        paintUploadProgress(Math.max(uploadProgressValue,actual),reportType==='morning'?'Morning Report Upload':'Afternoon/Evening Report Upload');
-    })));
+    if(uploadProgressTimer)clearInterval(uploadProgressTimer);uploadProgressTimer=null;
+    const parts=(chunks.length?chunks:[[]]).map((chunk,index)=>({path:chunkRoot+'/chunk_'+index,body:JSON.stringify(chunk),loaded:0}));
+    const totalBytes=Math.max(1,parts.reduce((n,x)=>n+x.body.length,0));
+    const label=reportType==='morning'?'Morning Report Upload':'Afternoon/Evening Report Upload';
+    const updateActual=()=>{const loaded=parts.reduce((n,x)=>n+x.loaded,0);paintUploadProgress(Math.min(95,5+Math.round((loaded/totalBytes)*90)),label);};
+    await Promise.all(parts.map(part=>firebaseRestWrite(part.path,part.body,'PUT',(loaded,total)=>{part.loaded=total?Math.min(loaded,total):loaded;updateActual();})));
     const meta=Object.assign({},payload,{rows:[],chunked:true,chunkRoot,chunkCount:chunks.length,rowCount:rows.length,schemaVersion:3});
-    await db.ref(reportType+'_report_current').set(meta);
+    paintUploadProgress(97,'Final data confirmation...');
+    await firebaseRestWrite(reportType+'_report_current',JSON.stringify(meta),'PUT');
+    paintUploadProgress(99,'Final data confirmation...');
     return Object.assign({},meta,{rows});
+}
+
+function firebaseRestWrite(path,body,method='PUT',onProgress){
+    return new Promise((resolve,reject)=>{
+        const clean=String(path||'').split('/').filter(Boolean).map(encodeURIComponent).join('/');
+        const base=String(firebaseConfig.databaseURL||'').replace(/\/$/,'');
+        const xhr=new XMLHttpRequest();
+        xhr.open(method,base+'/'+(clean?clean:'')+'.json',true);
+        xhr.setRequestHeader('Content-Type','application/json;charset=UTF-8');
+        xhr.timeout=45000;
+        if(xhr.upload&&onProgress)xhr.upload.onprogress=e=>onProgress(e.loaded,e.lengthComputable?e.total:body.length);
+        xhr.onload=()=>xhr.status>=200&&xhr.status<300?resolve(xhr.responseText):reject(new Error('Server upload failed ('+xhr.status+')'));
+        xhr.onerror=()=>reject(new Error('Network upload failed'));
+        xhr.ontimeout=()=>reject(new Error('Upload timeout. Internet connection check করুন।'));
+        xhr.send(body);
+    });
 }
 
 async function resolveChunkedReport(reportType,data){
