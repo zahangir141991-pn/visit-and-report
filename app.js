@@ -102,7 +102,12 @@
                 // If a user logged in while the deferred SDK was still loading,
                 // start realtime services as soon as Firebase becomes available.
                 if (document.body && document.body.classList.contains('app-logged-in')) {
-                    setTimeout(() => { try { initApp(); } catch (e) {} }, 0);
+                    setTimeout(() => {
+                        try { initApp(); } catch (e) { console.error('Firebase app initialization failed:', e); }
+                        // Login may finish before the deferred Firebase SDK. Reconcile
+                        // immediately instead of waiting for another login or refresh.
+                        try { refreshAllLiveData(true); } catch (e) { console.error('Initial cloud refresh failed:', e); }
+                    }, 0);
                 }
                 return db;
             } catch (firebaseInitError) {
@@ -119,7 +124,7 @@
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-24-realtime-sync-v40';
+        const APP_CACHE_VERSION = '2026-09-24-full-data-fix-v41';
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -1200,7 +1205,7 @@
             }
 
             // Paint cache/index first, then reconcile the logged-in user's own report data.
-            if (isNewLoginSession) setTimeout(() => {
+            if (isNewLoginSession || (db && !lastLiveRefreshAt)) setTimeout(() => {
                 try { ensureReportModeData(visitReportMode); } catch(e) {}
                 try { refreshAllLiveData(true); } catch(e) {}
             }, 0);
@@ -2924,9 +2929,13 @@ let firebaseListenersStarted = false;
             if (!card || !canvas || !empty) return;
 
             if (typeof window.Chart === 'undefined') {
+                card.classList.remove('hidden');
                 canvas.style.display = 'none';
                 empty.style.display = 'block';
-                empty.innerText = 'Chart loading...';
+                const fallbackRows = getDashboardChartRows();
+                empty.innerText = fallbackRows.length
+                    ? `Visit data loaded: ${fallbackRows.length}. Chart library unavailable; report data is ready.`
+                    : 'No visit data found.';
                 return;
             }
 
