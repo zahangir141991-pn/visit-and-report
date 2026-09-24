@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-24-clean-report-final-v50">
+    <meta name="dms-app-version" content="2026-09-24-live-update-notify-final-v51">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -619,6 +619,19 @@ img,video,canvas,svg{max-width:100%;height:auto}
 #submit-reason-popup .reason-title{font-size:1.12rem;color:#991b1b;margin:0 0 8px}
 #submit-reason-popup .reason-message{font-size:.9rem;color:#475569;line-height:1.5;margin:0}
 
+#app-update-popup{position:fixed;inset:0;background:rgba(15,23,42,.58);z-index:15000;display:none;align-items:center;justify-content:center;padding:18px}
+#app-update-popup.show{display:flex}
+#app-update-popup .update-card{width:min(390px,94vw);background:#fff;border-radius:20px;padding:25px 21px;text-align:center;box-shadow:0 24px 70px rgba(15,23,42,.32)}
+#app-update-popup .update-icon{width:66px;height:66px;margin:0 auto 12px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#dbeafe;color:#1d4ed8;font-size:34px;font-weight:900}
+#app-update-popup h3{margin:0 0 7px;font-size:1.18rem;color:#0f172a}
+#app-update-popup p{margin:0 0 17px;color:#475569;font-size:.88rem;line-height:1.5}
+#app-update-popup .update-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+#app-update-popup button{min-height:46px;border-radius:10px;font-weight:800;cursor:pointer}
+#app-update-now{border:0;background:#2563eb;color:#fff}
+#app-update-later{border:1px solid #cbd5e1;background:#fff;color:#475569}
+#live-update-toast{position:fixed;left:50%;bottom:calc(82px + env(safe-area-inset-bottom));transform:translate(-50%,18px);z-index:14000;max-width:min(92vw,430px);padding:11px 16px;border-radius:999px;background:#065f46;color:#fff;font-size:.82rem;font-weight:800;box-shadow:0 10px 30px rgba(15,23,42,.24);opacity:0;visibility:hidden;transition:opacity .2s ease,transform .2s ease;pointer-events:none;text-align:center}
+#live-update-toast.show{opacity:1;visibility:visible;transform:translate(-50%,0)}
+
 </style>
 
 
@@ -709,6 +722,15 @@ body.app-logged-in #view-login{display:none!important}
     <p class="reason-message" id="submit-reason-message"></p>
   </div>
 </div>
+<div id="app-update-popup" role="dialog" aria-modal="true" aria-labelledby="app-update-title">
+  <div class="update-card">
+    <div class="update-icon" aria-hidden="true">↻</div>
+    <h3 id="app-update-title">নতুন App Update পাওয়া গেছে</h3>
+    <p>Design, feature বা performance-এর নতুন version প্রস্তুত। Update করলে latest version চালু হবে।</p>
+    <div class="update-actions"><button type="button" id="app-update-later" onclick="dismissAppUpdatePrompt()">পরে করব</button><button type="button" id="app-update-now" onclick="installLatestApp()">Update Now</button></div>
+  </div>
+</div>
+<div id="live-update-toast" role="status" aria-live="polite">নতুন data update হয়েছে ✓</div>
 
 <!-- Main App Section -->
         <div id="main-app" class="hidden">
@@ -1275,7 +1297,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-24-clean-report-final-v50';
+        const APP_CACHE_VERSION = '2026-09-24-live-update-notify-final-v51';
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -1632,12 +1654,38 @@ body.app-logged-in #view-login{display:none!important}
             try { localStorage.setItem('dm_app_passwords', JSON.stringify(userPasswords)); } catch (e) {}
         }
 
-        // On every new login attempt, check the hosted HTML with cache disabled.
-        // If a newer deployed app version exists, reload that version before continuing.
-        let loginUpdateCheckDone = false;
+        // App code/design update monitor. Data continues updating live; code updates
+        // are offered to the user and never force-reload an active form/session.
+        let lastHostedAppCheckAt = 0;
+        let appUpdateMonitorTimer = null;
+        let pendingHostedVersion = '';
+        let dismissedHostedVersion = '';
+        function showAppUpdatePrompt(version) {
+            pendingHostedVersion = String(version || 'latest');
+            if (pendingHostedVersion === dismissedHostedVersion) return;
+            const popup = document.getElementById('app-update-popup');
+            if (popup) popup.classList.add('show');
+        }
+        function dismissAppUpdatePrompt() {
+            dismissedHostedVersion = pendingHostedVersion;
+            const popup = document.getElementById('app-update-popup');
+            if (popup) popup.classList.remove('show');
+        }
+        async function installLatestApp() {
+            const button = document.getElementById('app-update-now');
+            if (button) { button.disabled = true; button.textContent = 'Updating...'; }
+            try { if ('caches' in window) await caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))); } catch (_) {}
+            try { if ('serviceWorker' in navigator) await navigator.serviceWorker.getRegistrations().then(list => Promise.all(list.map(r => r.unregister()))); } catch (_) {}
+            const url = new URL(location.href);
+            url.searchParams.delete('_appcheck');
+            url.searchParams.set('_apprefresh', Date.now().toString());
+            location.replace(url.toString());
+        }
         async function checkForHostedAppUpdate(forceCheck = false) {
-            if ((!forceCheck && loginUpdateCheckDone) || location.protocol === 'file:') return false;
-            loginUpdateCheckDone = true;
+            if (location.protocol === 'file:') return false;
+            const now = Date.now();
+            if (!forceCheck && now - lastHostedAppCheckAt < 60000) return false;
+            lastHostedAppCheckAt = now;
             const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
             const timeoutId = controller ? setTimeout(() => controller.abort(), 2500) : null;
             try {
@@ -1654,9 +1702,7 @@ body.app-logged-in #view-login{display:none!important}
                 const html = await res.text();
                 const m = html.match(/<meta\s+name=["']dms-app-version["']\s+content=["']([^"']+)["']/i) || html.match(/const\s+APP_CACHE_VERSION\s*=\s*['\"]([^'\"]+)['\"]/);
                 if (m && m[1] && m[1] !== APP_CACHE_VERSION) {
-                    url.searchParams.delete('_appcheck');
-                    url.searchParams.set('_apprefresh', Date.now().toString());
-                    location.replace(url.toString());
+                    showAppUpdatePrompt(m[1]);
                     return true;
                 }
             } catch (e) {
@@ -1665,6 +1711,24 @@ body.app-logged-in #view-login{display:none!important}
                 if (timeoutId) clearTimeout(timeoutId);
             }
             return false;
+        }
+        function startAppUpdateMonitor() {
+            if (appUpdateMonitorTimer) clearInterval(appUpdateMonitorTimer);
+            setTimeout(() => checkForHostedAppUpdate(true), 1500);
+            appUpdateMonitorTimer = setInterval(() => checkForHostedAppUpdate(false), 60000);
+        }
+        function stopAppUpdateMonitor() {
+            if (appUpdateMonitorTimer) clearInterval(appUpdateMonitorTimer);
+            appUpdateMonitorTimer = null;
+        }
+        let liveUpdateToastTimer = null;
+        function showLiveUpdateToast(message) {
+            const toast = document.getElementById('live-update-toast');
+            if (!toast) return;
+            toast.textContent = String(message || 'নতুন data update হয়েছে ✓');
+            toast.classList.add('show');
+            if (liveUpdateToastTimer) clearTimeout(liveUpdateToastTimer);
+            liveUpdateToastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
         }
 
         async function firebaseRestReadFresh(path, queryString = '') {
@@ -1792,6 +1856,7 @@ body.app-logged-in #view-login{display:none!important}
                 if (signature && lastServerUpdateSignature && signature !== lastServerUpdateSignature) {
                     try { scopedReportLoads.clear(); } catch (_) {}
                     await refreshVisiblePageDataFast();
+                    showLiveUpdateToast('নতুন data স্বয়ংক্রিয়ভাবে update হয়েছে ✓');
                 }
                 if (signature) lastServerUpdateSignature = signature;
             } catch (e) { console.warn('Background update check skipped:', e); }
@@ -1901,6 +1966,7 @@ body.app-logged-in #view-login{display:none!important}
             currentUser = user;
             clearRuntimeDataCaches();
             document.body.classList.add('app-logged-in');
+            startAppUpdateMonitor();
             if (loginAlert) {
                 loginAlert.innerText = '';
                 loginAlert.style.display = 'none';
@@ -2018,6 +2084,7 @@ body.app-logged-in #view-login{display:none!important}
         function logout() {
             closeMobileNav();
             stopServerUpdatePolling();
+            stopAppUpdateMonitor();
             lastServerUpdateSignature = '';
             currentUser = null;
             initializedLoginUser = '';
@@ -2434,6 +2501,7 @@ body.app-logged-in #view-login{display:none!important}
             if (!document.hidden && document.body?.classList.contains('app-logged-in')) {
                 try { refreshAllLiveData(); } catch (_) {}
                 try { pollServerUpdateSignal(); } catch (_) {}
+                try { checkForHostedAppUpdate(true); } catch (_) {}
             }
         });
         window.addEventListener('storage', (event) => {
@@ -5360,7 +5428,7 @@ function startLiveUpdateSignal(){
         if(!signal||!document.body?.classList.contains('app-logged-in'))return;
         try { scopedReportLoads.clear(); } catch (_) {}
         setTimeout(()=>{
-            refreshVisiblePageDataFast().catch(err=>console.warn('Visible realtime refresh failed:',err));
+            refreshVisiblePageDataFast().then(()=>showLiveUpdateToast('নতুন data স্বয়ংক্রিয়ভাবে update হয়েছে ✓')).catch(err=>console.warn('Visible realtime refresh failed:',err));
             try{refreshAllLiveData(true);}catch(_){}
         },50);
     },err=>console.warn('Live update signal error:',err));
