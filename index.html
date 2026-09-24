@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="dms-app-version" content="2026-09-24-mobile-login-final-v48">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://visit-report-ea224-default-rtdb.firebaseio.com https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://nominatim.openstreetmap.org; img-src 'self' data: blob: https://*.tile.openstreetmap.org; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DMS</title>
+    
+    <!-- Heavy app libraries are loaded only after a successful login. -->
+
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        html, body { overscroll-behavior-y: none; }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            padding-bottom: 70px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #1e3a8a, #2563eb);
+            color: white;
+            padding: 18px 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        header h1 {
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+
+        .user-bar {
+            background: #1e293b;
+            color: #f8fafc;
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        /* Logged-in user information */
+        #user-info-bar.user-visible{
+             position:sticky;
+             top:69px;
+             z-index:90;
+             min-height:38px;
+             background:#0f172a;
+             color:#f8fafc;
+             border-bottom:1px solid rgba(255,255,255,.12);
+             box-shadow:0 2px 8px rgba(15,23,42,.10);
+        }
+        #user-info-bar.user-visible span{
+             display:block;
+             width:100%;
+             text-align:center;
+             font-size:.84rem;
+             line-height:1.35;
+             font-weight:600;
+        }
+        #current-user-name,#current-user-role,#current-user-id{color:#fff;}
+        @media(max-width:767px){
+             #user-info-bar.user-visible{top:59px;padding:7px 10px;}
+             #user-info-bar.user-visible span{font-size:.74rem;}
+        }
+
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .card-val {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-top: 4px;
+        }
+
+        .card-lbl {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text);
+        }
+
+        input[type="text"],
+        input[type="date"],
+        input[type="month"],
+        input[type="password"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            background-color: var(--card-bg);
+            color: var(--text);
+            outline: none;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            max-height: 220px;
+            overflow-y: auto;
+            z-index: 50;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+
+        .search-item {
+            padding: 10px 14px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .search-item:hover {
+            background-color: #eff6ff;
+        }
+
+        .camera-box {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            background: #fafafa;
+        }
+
+        .camera-switch-btn{
+            width:42px;height:42px;border:0;border-radius:50%;
+            background:#f1f5f9;color:#0f172a;font-size:20px;
+            cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
+            box-shadow:0 2px 8px rgba(15,23,42,.12);vertical-align:middle;
+        }
+        .camera-switch-btn:hover{transform:scale(1.04);}
+        .camera-switch-btn:active{transform:scale(.96);}
+        #nav-settings{display:flex;align-items:center;justify-content:center;}
+        #camera-video {
+            width: 100%;
+            max-height: 250px;
+            border-radius: 8px;
+            background: #000;
+            object-fit: cover;
+        }
+
+        #photo-preview {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 6px;
+            display: none;
+            margin: 10px auto 0 auto;
+        }
+
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            background: white;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        table.reports-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        table.reports-table th, table.reports-table td {
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+
+        .table-img {
+            width: 45px;
+            height: 45px;
+            object-fit: cover;
+            border-radius: 6px;
+        }
+
+        .btn {
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-sec { background: #64748b; margin-top: 8px; }
+        .btn-danger { background: var(--danger); }
+        .btn-sm { padding: 6px 12px; font-size: 0.8rem; width: auto; }
+
+        .nav-bar {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: 60px;
+            background: var(--card-bg);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .nav-item {
+            flex: 1; text-align: center;
+            padding: 8px 0;
+            color: var(--text-light);
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .nav-item.active { color: var(--primary); }
+/* Left sidebar navigation - deterministic order and fixed logout */
+.nav-sidebar{position:fixed;top:0;left:0;bottom:0;width:230px;height:100vh;background:var(--card-bg);border-right:1px solid var(--border);box-shadow:4px 0 18px rgba(15,23,42,.07);display:flex;flex-direction:column;align-items:stretch;padding:14px 10px;z-index:5000;overflow-y:auto;overflow-x:visible;}
+.nav-sidebar .sidebar-brand{order:0;flex:none;font-weight:800;font-size:.92rem;padding:12px 12px 18px;color:var(--primary);border-bottom:1px solid var(--border);margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.nav-sidebar #sidebar-user-name{display:inline-block;max-width:165px;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+@media(max-width:767px){.nav-sidebar #sidebar-user-name{max-width:145px;}}
+.nav-sidebar .nav-item{flex:none;display:flex;align-items:center;gap:11px;text-align:left;padding:12px 13px;margin:3px 0;border-radius:10px;color:var(--text-light);font-size:.86rem;font-weight:700;cursor:pointer;touch-action:manipulation;width:100%;box-sizing:border-box;}
+.nav-sidebar .nav-item span:first-child{width:22px;min-width:22px;text-align:center;font-size:1rem;}
+.nav-sidebar .nav-item.active,.nav-sidebar .nav-item:hover{background:#eff6ff;color:var(--primary);}
+.nav-sidebar #nav-dashboard{order:1;}
+.nav-sidebar #nav-visit{order:2;}
+.nav-sidebar #nav-reports{order:3;}
+.nav-sidebar #nav-kyc{order:4;}
+.nav-sidebar .kyc-menu-panel{order:4;position:static;width:100%;box-sizing:border-box;background:transparent;padding:0 0 6px 33px;display:none;}
+.nav-sidebar .kyc-menu-panel.open{display:block;}
+.nav-sidebar .reports-menu-panel{order:3;position:static;width:100%;box-sizing:border-box;background:transparent;padding:0 0 6px 33px;display:none;}
+.nav-sidebar .reports-menu-panel.open{display:block;}
+.nav-sidebar .visit-parent{justify-content:flex-start;}
+.nav-sidebar .menu-arrow{margin-left:auto;}
+.nav-sidebar .visit-menu-panel{order:2;position:static;transform:none;width:100%;box-sizing:border-box;background:transparent;border:0;border-radius:0;padding:0 0 6px 33px;box-shadow:none;display:none;z-index:auto;}
+.nav-sidebar .visit-menu-panel.open{display:block;}
+.nav-sidebar .visit-menu-title{font-size:.7rem;color:#64748b;font-weight:800;padding:5px 8px;}
+.nav-sidebar .visit-menu-btn{display:block;width:100%;border:0;background:transparent;color:#475569;text-align:left;padding:9px 9px;border-radius:8px;margin:2px 0;font-size:.78rem;font-weight:700;cursor:pointer;}
+.nav-sidebar .visit-menu-btn:hover{background:#f1f5f9;color:var(--primary);}
+.nav-sidebar #nav-settings{order:5!important;display:flex!important;justify-content:flex-start!important;align-items:center!important;text-align:left!important;margin-top:5px;}
+.nav-sidebar #nav-notices{order:6!important;}
+.nav-sidebar #nav-admin{order:7!important;}
+.nav-sidebar .sidebar-spacer{order:7;flex:1 1 auto;min-height:12px;}
+.nav-sidebar #sidebar-app-refresh{order:8;width:100%;flex:none;border:0;background:#eff6ff;color:#1d4ed8;border-radius:10px;padding:12px 13px;margin:4px 0;display:flex;align-items:center;gap:11px;font-size:.86rem;font-weight:800;cursor:pointer;text-align:left;box-sizing:border-box;}
+.nav-sidebar #sidebar-app-refresh:hover{background:#dbeafe;}
+.nav-sidebar #sidebar-logout{order:9;width:100%;flex:none;border:0;background:#fef2f2;color:#b91c1c;border-radius:10px;padding:12px 13px;margin:4px 0;display:flex;align-items:center;gap:11px;font-size:.86rem;font-weight:800;cursor:pointer;text-align:left;box-sizing:border-box;touch-action:pan-y;}
+.nav-sidebar #sidebar-logout:hover{background:#fee2e2;}
+.nav-sidebar .sidebar-hint{order:10;flex:none;font-size:.68rem;color:#94a3b8;text-align:center;padding:10px 4px;}
+#main-app{margin-left:230px;padding-bottom:20px;min-width:0;}
+@media(max-width:767px){.nav-sidebar{width:205px;transform:translateX(-100%);transition:transform .2s ease;}.nav-sidebar.mobile-open{transform:translateX(0);}#main-app{margin-left:0;padding-bottom:20px;}.nav-sidebar .sidebar-brand{font-size:.9rem;}}
+
+        .hidden { display: none !important; }
+
+        .alert {
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 14px;
+            display: none;
+        }
+        .alert-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; }
+        .alert-success { background: #ecfdf5; color: #047857; border: 1px solid #6ee7b7; }
+
+        .page{display:none !important}.page.active{display:block !important}
+.visit-summary-grid,.report-summary-grid{grid-template-columns:minmax(180px,260px);margin-bottom:14px}
+.visit-count-card{text-align:center;padding:16px}
+.visit-count-card .card-lbl{font-size:.82rem}
+.visit-count-card .card-val{font-size:1.65rem}
+@media(max-width:600px){.visit-summary-grid,.report-summary-grid{grid-template-columns:1fr}}
+
+        .section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+        .section-head h2{font-size:1.15rem}
+        .quick-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
+        .dashboard-summary-grid{grid-template-columns:repeat(5,minmax(0,1fr));}
+        .filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+        .filter-grid .btn{height:44px}
+        .table-wrap{overflow:visible;border:1px solid var(--border);border-radius:12px;background:#fff}
+        .table-responsive{max-height:68vh;overflow:auto;position:relative}
+        table.reports-table thead th{position:sticky;top:0;z-index:20;background:#1e3a8a;color:#fff;white-space:nowrap;box-shadow:0 2px 4px rgba(15,23,42,.12)}
+        .empty-state{text-align:center;padding:35px;color:var(--text-light)}
+        .nav-scroll{overflow-x:auto;justify-content:flex-start!important}
+        .nav-scroll .nav-item{min-width:92px;flex:0 0 auto}
+
+        /* Navigation must remain clickable above the New Visit sticky submit bar. */
+#app-nav{z-index:5000!important;pointer-events:auto!important;}
+#app-nav .nav-item{position:relative;z-index:5001!important;pointer-events:auto!important;touch-action:manipulation;}
+#main-app{padding-bottom:78px;}
+@media(max-width:767px){#main-app{padding-bottom:86px;}}
+/* Logged-in User ID shown at the top-right only */
+#app-header{position:sticky;}
+#header-user-name{position:absolute;right:18px;top:50%;transform:translateY(-50%);font-size:.78rem;font-weight:800;letter-spacing:.02em;color:#fff;white-space:nowrap;max-width:34vw;overflow:hidden;text-overflow:ellipsis;text-align:right;}
+@media(max-width:767px){#header-user-name{right:10px;font-size:.68rem;max-width:36vw;}#app-header h1{max-width:52vw;margin:0 auto;}}
+.app-author-footer{margin-left:0;padding:14px 16px 92px;text-align:center;color:#64748b;font-size:.76rem;font-weight:700;}
+@media(max-width:767px){.app-author-footer{margin-left:0;padding:12px 12px 92px;}}
+
+/* Polished single-page navigation + report details */
+        .nav-bar{gap:6px;padding:7px 10px;box-shadow:0 -4px 18px rgba(15,23,42,.08)}
+        .nav-item{border-radius:12px;padding:8px 10px;transition:.2s;line-height:1.15}
+        .nav-item:hover{background:#f1f5f9}
+        .nav-item.active{background:#e8f0ff;font-weight:800}
+        .visit-menu-wrap{position:relative;flex:1;display:flex;justify-content:center;}
+        .visit-menu-panel{position:absolute;bottom:58px;left:50%;transform:translateX(-50%);width:min(300px,92vw);background:#fff;border:1px solid var(--border);border-radius:14px;padding:8px;box-shadow:0 16px 40px rgba(15,23,42,.18);display:none;z-index:6000;}
+        .visit-menu-panel.open{display:block;}
+        .visit-menu-title{font-size:.75rem;color:#64748b;font-weight:800;padding:7px 9px 5px;}
+        .visit-menu-btn{display:block;width:100%;border:0;background:#f8fafc;color:#0f172a;text-align:left;padding:10px 12px;border-radius:10px;margin:3px 0;font-size:.82rem;font-weight:700;cursor:pointer;}
+        .visit-menu-btn:hover{background:#e8f0ff;color:#1d4ed8;}
+        .report-summary-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px;}
+        .report-kpi{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;box-shadow:0 2px 8px rgba(15,23,42,.05);}
+        .report-kpi span{display:block;color:#64748b;font-size:.72rem;font-weight:700;}
+        .report-kpi b{display:block;color:#2563eb;font-size:1.45rem;margin-top:3px;}
+        @media(max-width:700px){.report-summary-cards{grid-template-columns:1fr 1fr}.visit-menu-panel{bottom:57px;}}
+        .details-modal{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:300;display:flex;align-items:center;justify-content:center;padding:16px}
+        .details-card{width:min(720px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:18px;padding:18px;box-shadow:0 20px 60px rgba(15,23,42,.25)}
+        .details-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;position:sticky;top:0;background:#fff;padding-bottom:8px;border-bottom:1px solid var(--border)}
+        .details-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+        .detail-box{padding:11px;border:1px solid var(--border);border-radius:10px;background:#f8fafc}
+        .detail-box b{display:block;font-size:.72rem;color:#64748b;margin-bottom:4px}
+        .detail-box span{font-size:.9rem;word-break:break-word}
+        .detail-photo{width:100%;max-height:320px;object-fit:contain;border-radius:12px;border:1px solid var(--border);background:#f8fafc;margin-top:12px}
+        .detail-btn{padding:6px 10px;border:0;border-radius:8px;background:#e8f0ff;color:#1d4ed8;font-weight:700;cursor:pointer}
+        @media(max-width:600px){.details-grid{grid-template-columns:1fr}.details-card{padding:14px}.nav-item{min-width:0!important}}
+        @media(max-width:900px){.quick-grid{grid-template-columns:repeat(2,1fr)}.dashboard-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.filter-grid{grid-template-columns:repeat(2,1fr)}}
+        @media(max-width:600px){body{padding-bottom:72px}.container{padding:12px}.cards-grid{grid-template-columns:1fr 1fr}.quick-grid{grid-template-columns:1fr 1fr}.filter-grid{grid-template-columns:1fr}.section-head{align-items:flex-start}.table-responsive{border-radius:8px}table.reports-table{min-width:850px}.nav-item{font-size:.68rem}.nav-scroll .nav-item{min-width:78px}header{padding:14px 12px}header h1{font-size:1.08rem}.user-bar{font-size:.76rem;padding:7px 10px}.user-bar .btn{padding:5px 8px}}
+
+        .dashboard-chart-card{margin-top:14px;text-align:left;}
+        .dashboard-chart-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
+        .dashboard-chart-title{font-size:1rem;font-weight:700;}
+        .dashboard-chart-sub{font-size:.78rem;color:var(--text-light);margin-top:3px;}
+        .chart-filter-grid{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;margin-bottom:14px;}
+        .chart-filter-grid label{display:block;font-size:.78rem;font-weight:600;margin-bottom:5px;color:var(--text-light);}
+        .chart-wrap{position:relative;width:100%;height:300px;}
+        .chart-empty{text-align:center;padding:70px 10px;color:var(--text-light);display:none;font-size:.9rem;}
+.chart-kpi-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin:0 0 10px;}
+.chart-kpi{border:1px solid #e2e8f0;border-radius:12px;padding:10px 11px;background:#fff;box-shadow:0 3px 10px rgba(15,23,42,.05);position:relative;overflow:hidden;}
+.chart-kpi:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:#2563eb;}
+.chart-kpi span{display:block;font-size:.68rem;color:#64748b;font-weight:700;white-space:nowrap;}
+.chart-kpi b{display:block;font-size:1.25rem;margin-top:4px;color:#0f172a;}
+.chart-kpi.kpi-green:before{background:#10b981}.chart-kpi.kpi-orange:before{background:#f59e0b}.chart-kpi.kpi-purple:before{background:#8b5cf6}.chart-kpi.kpi-red:before{background:#ef4444}
+.chart-info-strip{font-size:.73rem;color:#475569;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:9px;padding:8px 10px;margin-bottom:10px;}
+@media(max-width:900px){.chart-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:600px){.chart-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.chart-kpi:last-child{grid-column:1/-1}.chart-info-strip{font-size:.68rem}.chart-kpi b{font-size:1.1rem}}
+        @media(max-width:600px){.chart-filter-grid{grid-template-columns:1fr 1fr}.chart-filter-grid .chart-reset{grid-column:1/-1}.chart-wrap{height:240px;}}
+        .visit-check-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:16px}
+        .visit-check{border:1px solid var(--border);border-radius:12px;padding:12px;background:#fff}
+        .visit-check label{margin:0 0 7px;font-size:.82rem}
+        .visit-check select{padding:9px;font-weight:700}
+        .status-ok{color:#047857}.status-not-ok{color:#b91c1c}.status-pending{color:#92400e}
+        .notice-badge{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:22px;padding:0 7px;border-radius:999px;background:#fee2e2;color:#b91c1c;font-size:.72rem;font-weight:800}
+        .notice-nav-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#ef4444;color:#fff;font-size:.62rem;font-weight:900;vertical-align:middle;margin-left:3px}.notice-nav-badge.hidden{display:none}
+        .notice-card{border-left:4px solid #ef4444}
+        .notice-item{padding:12px;border:1px solid var(--border);border-radius:12px;background:#fff;margin-bottom:10px}
+        .notice-item.unread{background:#fff7ed;border-color:#fdba74}
+        .review-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}
+        .review-grid select{font-size:.78rem;padding:7px}
+        .review-update{font-size:.72rem;color:#64748b;margin-top:6px}
+        @media(max-width:700px){.visit-check-grid{grid-template-columns:1fr}.review-grid{grid-template-columns:1fr}}
+    
+        /* Submit validation: show ONLY incomplete fields in red */
+        .submit-invalid{
+            border-color:#dc2626!important;
+            box-shadow:0 0 0 2px rgba(220,38,38,.10)!important;
+            background:#fffafa!important;
+        }
+        select.submit-invalid,
+        input.submit-invalid,
+        textarea.submit-invalid{color:#991b1b!important;}
+        .camera-box.submit-invalid{
+            border:2px solid #dc2626!important;
+            box-shadow:0 0 0 2px rgba(220,38,38,.10)!important;
+            border-radius:12px;
+        }
+        #btn-submit:disabled{opacity:.55!important;cursor:not-allowed!important;display:block!important;visibility:visible!important;}
+        #btn-submit{display:block!important;visibility:visible!important;position:sticky!important;bottom:10px!important;z-index:1000!important;min-height:52px!important;margin:14px 0 4px!important;width:100%!important;border:2px solid rgba(255,255,255,.65)!important;box-shadow:0 6px 20px rgba(15,23,42,.18)!important;}
+        #btn-submit:disabled{filter:none!important;}
+        .submit-invalid:focus{outline:2px solid rgba(220,38,38,.25)!important;outline-offset:1px!important;}
+        .camera-box.submit-invalid{scroll-margin-top:100px;}
+
+        @media(max-width:600px){}
+/* Logged-in user information - hidden; username is shown in sidebar */
+#user-info-bar, #user-info-bar.user-visible {
+    display: none !important;
+}
+        .table-img{content-visibility:auto;}
+        .reports-table tbody tr{contain:layout paint;}
+</style>
+
+<style id="mobile-navigation-and-assignment-ui">
+/* Mobile-first navigation */
+#mobile-menu-btn{display:none;position:fixed;top:10px;left:10px;width:44px;height:44px;border:0;border-radius:12px;background:#fff;color:#1d4ed8;box-shadow:0 6px 20px rgba(15,23,42,.16);z-index:7000;font-size:1.25rem;cursor:pointer;align-items:center;justify-content:center;touch-action:manipulation}
+#mobile-nav-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.42);z-index:4900}
+#mobile-nav-overlay.open{display:block}
+@media(max-width:767px){
+  #mobile-menu-btn{display:none!important}
+  body.app-logged-in #mobile-menu-btn{display:flex!important}
+  #app-header{padding-left:64px!important;padding-right:12px!important;min-height:58px;display:flex;align-items:center}
+  #app-header h1{font-size:1rem!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .nav-sidebar{width:min(286px,86vw)!important;transform:translateX(-105%)!important;box-shadow:12px 0 35px rgba(15,23,42,.2)!important;padding:12px 10px!important}
+  .nav-sidebar.mobile-open{transform:translateX(0)!important}
+  .nav-sidebar .nav-item{font-size:.9rem!important;padding:13px 14px!important;min-height:46px}
+  .nav-sidebar .visit-menu-panel{padding-left:30px!important}
+  #main-app{padding-top:4px!important}
+  #user-info-bar{display:none!important}
+}
+@media(min-width:768px){#app-header{padding-left:230px!important}}
+/* Prevent hidden/unauthorized Uddokta from appearing through stale UI */
+#search-results{max-height:42vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.assigned-only-note{font-size:.72rem;color:#64748b;margin-top:5px}
+</style>
+<style id="responsive-fullscreen-ui">
+html,body{width:100%;min-height:100%;margin:0;padding:0}
+body{overflow-x:hidden}
+*,*::before,*::after{box-sizing:border-box}
+.container,.main-container,.page-container,.content-container{width:100%;max-width:100%;margin-left:auto;margin-right:auto}
+main{width:100%}
+img,video,canvas{max-width:100%;height:auto}
+input,select,textarea,button{max-width:100%}
+.table-responsive{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;max-width:100%}
+@media (min-width:1920px){
+  .container,.main-container,.page-container,.content-container{padding-left:32px;padding-right:32px}
+  body{font-size:16px}
+}
+@media (min-width:2560px){
+  .container,.main-container,.page-container,.content-container{padding-left:48px;padding-right:48px}
+  body{font-size:17px}
+}
+@media (max-width:1199px){
+  .container,.main-container,.page-container,.content-container{padding-left:20px;padding-right:20px}
+}
+@media (max-width:767px){
+  .container,.main-container,.page-container,.content-container{padding-left:12px;padding-right:12px}
+  .grid,.form-grid,.row{grid-template-columns:1fr!important}
+  .card{width:100%!important}
+  table{min-width:720px}
+}
+@media (min-width:768px) and (max-width:1399px){
+  .grid,.form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (min-width:1400px){
+  .grid,.form-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+</style>
+
+
+<style id="hide-osm-map">
+/* OSM map is intentionally hidden; only reverse-geocoded location name is shown. */
+#osm-map,.osm-map-note{display:none!important}
+</style>
+
+
+<style id="cross-browser-responsive-patch">
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;width:100%;min-width:320px}
+body{width:100%;min-width:320px;min-height:100vh;min-height:100dvh;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+button,input,select,textarea{font:inherit;-webkit-border-radius:8px;border-radius:8px}
+button,.nav-item,.visit-menu-btn{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.kyc-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.kyc-form-grid .form-group{margin:0}.kyc-wide{grid-column:1/-1}.kyc-photo-preview{display:none;width:100%;max-width:420px;max-height:320px;margin-top:10px;border-radius:12px;border:1px solid var(--border);object-fit:cover}.kyc-camera-video{display:none;width:100%;max-width:420px;max-height:320px;margin-top:10px;border-radius:12px;background:#0f172a;object-fit:cover}.kyc-camera-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}.kyc-table{min-width:1250px}.kyc-status-select{min-width:135px}.kyc-reason{max-width:220px;white-space:normal}.kyc-location-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:7px}@media(max-width:700px){.kyc-form-grid{grid-template-columns:1fr}.kyc-wide{grid-column:auto}}
+img,video,canvas,svg{max-width:100%;height:auto}
+.container{width:100%;max-width:100%}
+.section-head>*{min-width:0}
+.quick-grid,.cards-grid,.filter-grid,.visit-check-grid,.chart-kpi-grid{min-width:0}
+.quick-grid>*,.cards-grid>*,.filter-grid>*,.visit-check-grid>*,.chart-kpi-grid>*{min-width:0}
+.table-responsive{width:100%;max-width:100%;overflow-x:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.reports-table{width:100%}
+.details-card{max-width:calc(100vw - 24px)}
+.visit-menu-title{display:none!important}
+#app-nav{padding-bottom:8px;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+#main-app{padding-bottom:88px;padding-bottom:calc(88px + env(safe-area-inset-bottom))}
+@media(max-width:1024px){.container{padding-left:14px!important;padding-right:14px!important}.dashboard-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:767px){body{font-size:15px}#app-header{width:100%;min-width:0}#app-header h1,#header-user-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#main-app{width:100%!important;margin-left:0!important}.container{padding:10px!important}.section-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.section-head h2{font-size:1.05rem}.dashboard-summary-grid,.quick-grid,.cards-grid,.report-summary-cards,.chart-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}.filter-grid,.visit-check-grid,.chart-filter-grid,.details-grid{grid-template-columns:1fr!important}input[type=text],input[type=date],input[type=month],input[type=password],select,textarea{width:100%;min-height:44px;font-size:16px}.btn{min-height:44px}.card{padding:12px}.card-val{font-size:1.35rem}.table-responsive{max-height:none;overflow:auto}table.reports-table{min-width:760px!important;font-size:.8rem}table.reports-table th,table.reports-table td{padding:8px}.details-modal{padding:8px;align-items:flex-start;padding-top:max(8px,env(safe-area-inset-top))}.details-card{width:100%;max-width:100%;max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px);border-radius:14px}.camera-box{padding:12px}#camera-video{max-height:42vh}#submit-action-bar{bottom:calc(8px + env(safe-area-inset-bottom))!important}.nav-sidebar{height:100vh;height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch}}
+@media(max-width:430px){.dashboard-summary-grid,.quick-grid,.cards-grid,.report-summary-cards,.chart-kpi-grid{grid-template-columns:1fr 1fr!important}.card-lbl{font-size:.68rem}.card-val{font-size:1.2rem}.report-kpi{padding:9px}.report-kpi b{font-size:1.15rem}#mobile-menu-btn{width:40px;height:40px;top:9px;left:9px}}
+@media(max-width:360px){.dashboard-summary-grid,.quick-grid,.cards-grid,.report-summary-cards,.chart-kpi-grid{grid-template-columns:1fr!important}.container{padding-left:8px!important;padding-right:8px!important}}
+@supports not (padding:env(safe-area-inset-bottom)){#app-nav{padding-bottom:8px}#main-app{padding-bottom:88px}#submit-action-bar{bottom:8px!important}}
+
+/* Morning report */
+.morning-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}.morning-actions>div{flex:1 1 190px}.morning-status{margin-top:10px;padding:10px 12px;border-radius:9px;background:#f8fafc;color:#475569;font-size:.82rem;line-height:1.5}.morning-status.ok{background:#ecfdf5;color:#047857}.morning-status.error{background:#fef2f2;color:#b91c1c}.morning-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin:14px 0}.morning-summary .card{text-align:left;min-width:0}.morning-summary b{display:block;font-size:clamp(1.05rem,2.2vw,1.35rem);color:#1d4ed8;margin-top:5px;overflow-wrap:anywhere}.morning-table-wrap{max-width:100%;max-height:62vh;overflow:auto;-webkit-overflow-scrolling:touch;padding:0!important}.morning-table{width:max-content;min-width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}.morning-table th{position:sticky;top:0;background:#eff6ff;color:#1e3a8a;z-index:4}.morning-table th,.morning-table td{padding:9px 10px;border-right:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;font-size:.78rem;text-align:left;white-space:nowrap;background:#fff}.morning-table tbody tr:nth-child(even) td{background:#f8fafc}
+.morning-table tbody tr.zero-b2b-row td{background:#fef3c7!important;color:#78350f;font-weight:700}
+/* Freeze AGENT, AGENTNAME and AGENT TYPE on horizontal scroll. */
+.morning-table th:nth-child(1),.morning-table td:nth-child(1){position:sticky;left:0;width:120px;min-width:120px;max-width:120px;z-index:3}
+.morning-table th:nth-child(2),.morning-table td:nth-child(2){position:sticky;left:120px;width:220px;min-width:220px;max-width:220px;z-index:3;overflow:hidden;text-overflow:ellipsis}
+.morning-table th:nth-child(3),.morning-table td:nth-child(3){position:sticky;left:340px;width:145px;min-width:145px;max-width:145px;z-index:3;box-shadow:4px 0 8px rgba(15,23,42,.08)}
+.morning-table th:nth-child(-n+3){z-index:6;background:#dbeafe}.morning-table tbody tr:nth-child(even) td:nth-child(-n+3){background:#f1f5f9}
+@media(max-width:767px){.morning-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.morning-actions>div{flex-basis:100%}.morning-actions .btn{width:100%}.morning-table th,.morning-table td{padding:8px 7px;font-size:.72rem}.morning-table th:nth-child(1),.morning-table td:nth-child(1){width:100px;min-width:100px;max-width:100px}.morning-table th:nth-child(2),.morning-table td:nth-child(2){left:100px;width:155px;min-width:155px;max-width:155px}.morning-table th:nth-child(3),.morning-table td:nth-child(3){left:255px;width:120px;min-width:120px;max-width:120px}}
+@media(max-width:380px){.morning-summary{grid-template-columns:1fr}.morning-table th:nth-child(1),.morning-table td:nth-child(1){width:88px;min-width:88px;max-width:88px}.morning-table th:nth-child(2),.morning-table td:nth-child(2){left:88px;width:130px;min-width:130px;max-width:130px}.morning-table th:nth-child(3),.morning-table td:nth-child(3){left:218px;width:108px;min-width:108px;max-width:108px}}
+
+/* Small-device report tables: Visit Report becomes readable cards. */
+@media(max-width:767px){
+  .table-wrap,.table-responsive{width:100%;max-width:100%;overflow:visible!important;border:0!important;background:transparent!important;box-shadow:none!important}
+  table.reports-table{display:block;width:100%!important;min-width:0!important;font-size:.82rem!important;background:transparent}
+  table.reports-table thead{display:none}
+  table.reports-table tbody{display:grid;grid-template-columns:1fr;gap:12px;width:100%}
+  table.reports-table tbody tr{display:grid;width:100%;min-width:0;padding:6px 12px;background:#fff;border:1px solid #dbe3ef;border-radius:12px;box-shadow:0 3px 12px rgba(15,23,42,.07);contain:none!important;overflow:hidden}
+  table.reports-table tbody td{display:grid;grid-template-columns:minmax(105px,38%) minmax(0,1fr);align-items:start;gap:9px;width:100%;min-width:0;padding:8px 0!important;border:0!important;border-bottom:1px dashed #e2e8f0!important;white-space:normal!important;overflow-wrap:anywhere;text-align:right!important}
+  table.reports-table tbody td:last-child{border-bottom:0!important}
+  table.reports-table tbody td::before{content:attr(data-label);font-weight:800;color:#475569;text-align:left;white-space:normal}
+  table.reports-table tbody td[data-wide="1"]{grid-template-columns:1fr;text-align:left!important}
+  table.reports-table tbody td[data-wide="1"]::before{padding-bottom:2px}
+  table.reports-table .empty-state{display:block!important;text-align:center!important;padding:22px 10px!important;border:0!important}
+  table.reports-table .empty-state::before{display:none}
+  table.reports-table .detail-btn,table.reports-table .mobile-photo-btn{justify-self:end;min-height:38px;min-width:74px;touch-action:manipulation}
+
+  /* Three frozen columns covered almost the entire phone viewport. Keep only
+     AGENT frozen, and let every remaining Morning Report column scroll. */
+  .morning-table-wrap{width:100%;max-width:100%;overflow:auto!important;overscroll-behavior-x:contain}
+  .morning-table{min-width:820px!important;width:max-content!important}
+  .morning-table th:nth-child(1),.morning-table td:nth-child(1){left:0!important;width:96px!important;min-width:96px!important;max-width:96px!important;position:sticky!important;z-index:5;box-shadow:3px 0 7px rgba(15,23,42,.10)}
+  .morning-table th:nth-child(2),.morning-table td:nth-child(2),
+  .morning-table th:nth-child(3),.morning-table td:nth-child(3){position:static!important;left:auto!important;width:auto!important;min-width:145px!important;max-width:none!important;box-shadow:none!important}
+  .morning-table th:nth-child(2),.morning-table th:nth-child(3){position:sticky!important;top:0!important;z-index:4!important;background:#eff6ff!important}
+}
+@media(max-width:380px){
+  table.reports-table tbody td{grid-template-columns:minmax(92px,36%) minmax(0,1fr);font-size:.78rem}
+  .morning-table th:nth-child(1),.morning-table td:nth-child(1){width:84px!important;min-width:84px!important;max-width:84px!important}
+}
+
+/* Excel-style responsive report tables. Key-based classes keep AGENTNAME frozen
+   correctly even when role permissions add/remove the DSO column. */
+.report-table-tools{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:4px 0 8px;color:#64748b;font-size:.75rem;font-weight:700;flex-wrap:wrap}
+.table-clear-filter{border:1px solid #bfdbfe;background:linear-gradient(135deg,#eff6ff,#dbeafe);color:#1d4ed8;border-radius:999px;padding:8px 13px;font-weight:800;cursor:pointer;box-shadow:0 3px 10px rgba(37,99,235,.10)}
+.table-clear-filter:hover{background:#bfdbfe;transform:translateY(-1px)}
+.morning-actions input[type=search],.filter-grid input[type=search]{border:1px solid #bfdbfe!important;border-radius:12px!important;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 12px center!important;padding-left:40px!important;box-shadow:0 4px 12px rgba(15,23,42,.05);transition:.18s ease}
+.morning-actions input[type=search]:focus,.filter-grid input[type=search]:focus{border-color:#2563eb!important;box-shadow:0 0 0 3px rgba(37,99,235,.14)!important;outline:0}
+.enhanced-report-table{--dso-width:92px;--agent-width:120px;--name-width:190px;table-layout:fixed!important}
+.enhanced-report-table th{padding:7px!important;vertical-align:top;z-index:8!important}
+.table-head-box{display:flex;flex-direction:column;gap:6px;min-width:0}
+.table-sort-btn{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;border:0;background:transparent;color:#1e3a8a;font:inherit;font-weight:900;padding:1px 2px;cursor:pointer;text-align:left;white-space:nowrap}
+.table-sort-btn:hover{color:#2563eb}
+.table-filter-input{width:100%;min-width:72px;height:29px!important;min-height:29px!important;border:1px solid #bfdbfe!important;border-radius:7px!important;background:#fff!important;padding:4px 7px!important;font-size:.69rem!important;color:#334155!important;box-shadow:none!important}
+.enhanced-report-table .dso-col{position:sticky!important;left:0!important;width:var(--dso-width)!important;min-width:var(--dso-width)!important;max-width:var(--dso-width)!important;z-index:6!important;background:#f8fafc!important}
+.enhanced-report-table th.dso-col{z-index:12!important;background:#dbeafe!important}
+.enhanced-report-table .agent-col{position:sticky!important;left:var(--agent-left,0)!important;width:var(--agent-width);min-width:var(--agent-width);max-width:var(--agent-width);z-index:6!important;background:#f8fafc!important}
+.enhanced-report-table .agent-name-col{position:sticky!important;left:var(--name-left,120px)!important;width:var(--name-width);min-width:var(--name-width);max-width:var(--name-width);z-index:6!important;background:#fff!important;box-shadow:5px 0 9px rgba(15,23,42,.10)}
+.enhanced-report-table th.agent-col,.enhanced-report-table th.agent-name-col{z-index:12!important;background:#dbeafe!important}
+.agent-name-text{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.enhanced-report-table td{height:38px;max-height:38px;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:767px){
+  .report-table-tools{font-size:.68rem}.table-clear-filter{width:100%}
+  .enhanced-report-table{min-width:980px!important;--dso-width:78px;--agent-width:98px;--name-width:150px}
+  .enhanced-report-table .agent-col{position:sticky!important;left:var(--agent-left,0)!important;width:var(--agent-width)!important;min-width:var(--agent-width)!important;max-width:var(--agent-width)!important;z-index:7!important}
+  .enhanced-report-table .agent-name-col{position:sticky!important;left:var(--name-left,98px)!important;width:var(--name-width)!important;min-width:var(--name-width)!important;max-width:var(--name-width)!important;z-index:7!important;box-shadow:4px 0 8px rgba(15,23,42,.12)!important}
+  .enhanced-report-table th.agent-col,.enhanced-report-table th.agent-name-col{position:sticky!important;top:0!important;z-index:13!important}
+  .table-filter-input{font-size:.65rem!important;padding:3px 5px!important}
+}
+</style>
+
+
+<style id="submit-success-popup-style">
+#submit-success-popup{position:fixed;inset:0;background:rgba(15,23,42,.48);z-index:12000;display:none;align-items:center;justify-content:center;padding:18px}
+#submit-success-popup.show{display:flex}
+#submit-success-popup .success-popup-card{width:min(360px,92vw);background:#fff;border-radius:20px;padding:28px 22px 22px;text-align:center;box-shadow:0 24px 70px rgba(15,23,42,.28);animation:successPop .2s ease-out}
+#submit-success-popup .success-check{width:76px;height:76px;border-radius:50%;margin:0 auto 14px;background:#10b981;color:#fff;display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:900;line-height:1}
+#submit-success-popup h3{font-size:1.25rem;color:#0f172a;margin:0 0 7px}
+#submit-success-popup p{font-size:.9rem;color:#64748b;margin:0 0 18px}
+#submit-success-popup .success-ok-btn{width:100%;min-height:46px;border:0;border-radius:10px;background:#2563eb;color:#fff;font-size:.95rem;font-weight:800;cursor:pointer}
+@keyframes successPop{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+
+#submit-reason-popup{position:fixed;inset:0;background:rgba(15,23,42,.42);z-index:13000;display:none;align-items:center;justify-content:center;padding:18px}
+#submit-reason-popup.show{display:flex}
+#submit-reason-popup .reason-card{width:min(380px,92vw);background:#fff;border-radius:18px;padding:24px 20px;text-align:center;box-shadow:0 24px 70px rgba(15,23,42,.28)}
+#submit-reason-popup .reason-icon{width:58px;height:58px;border-radius:50%;margin:0 auto 12px;background:#fee2e2;color:#b91c1c;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:900}
+#submit-reason-popup .reason-title{font-size:1.12rem;color:#991b1b;margin:0 0 8px}
+#submit-reason-popup .reason-message{font-size:.9rem;color:#475569;line-height:1.5;margin:0}
+
+</style>
+
+
+<style id="camera-native-orientation-fix">
+/* Use the browser/device camera native orientation. Do NOT rotate the live video with CSS. */
+#camera-video,#photo-preview{transform:none!important;rotate:none!important;transform-origin:center center!important;}
+#camera-video{object-fit:cover;}
+.camera-box{overflow:hidden;}
+</style>
+
+
+<body style="margin:0;background:#f8fafc;color:#0f172a;min-height:100vh;">
+<header id="app-header" style="display:block;background:#2563eb;color:#fff;padding:18px 20px;text-align:center;">
+  <button type="button" id="mobile-menu-btn" aria-label="Open navigation" aria-expanded="false" onclick="toggleMobileNav()">☰</button>
+  <h1>DMS</h1>
+  <div id="header-user-name" aria-live="polite"></div>
+</header>
+<div id="mobile-nav-overlay" onclick="closeMobileNav()" aria-hidden="true"></div>
+
+<div id="view-login" class="page login-visible active" style="display:block!important;visibility:visible!important;opacity:1!important;">
+  <div class="container" style="display:block!important;max-width:800px;margin:0 auto;padding:16px;">
+    <div class="card" style="display:block!important;visibility:visible!important;opacity:1!important;max-width:420px;margin:60px auto 20px;text-align:left;padding:24px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;">
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-size:2.5rem;">🔐</div>
+        <h2 style="font-size:1.3rem;margin-top:8px;">Login</h2>
+        <p style="color:#64748b;font-size:.85rem;margin-top:5px;">DMS</p>
+      </div>
+      <div id="login-alert" class="alert"></div>
+      <div class="form-group">
+        <label for="login-user">User ID</label>
+        <input type="text" id="login-user" autocomplete="username" placeholder="Enter User ID">
+      </div>
+      <div class="form-group">
+        <label for="login-pass">Password</label>
+        <input type="password" id="login-pass" autocomplete="current-password" placeholder="Enter Password">
+      </div>
+      <button type="button" class="btn" onclick="login()">Login</button>
+    </div>
+  </div>
+</div>
+
+
+
+<style id="login-panel-fix">
+/* AUTH UI STATE
+   - Before login: login panel ONLY.
+   - After login: app pages/nav/user bar ONLY.
+   - Login panel can never remain visible over app pages.
+*/
+#view-login{display:none!important}
+#view-login.login-visible{display:block!important}
+#view-login.login-visible.hidden{display:block!important}
+#view-login:not(.login-visible){display:none!important}
+/* Fail-safe: before a successful login the login card must remain visible even
+   if the external JavaScript is delayed, blocked, or an older class is cached. */
+body:not(.app-logged-in) #view-login{display:block!important;visibility:visible!important;opacity:1!important;position:relative!important;z-index:20!important;min-height:calc(100vh - 58px);min-height:calc(100dvh - 58px)}
+body:not(.app-logged-in) #view-login .container{display:block!important;visibility:visible!important;opacity:1!important}
+body:not(.app-logged-in) #view-login .card{display:block!important;visibility:visible!important;opacity:1!important;background:#fff!important}
+body.app-logged-in #view-login{display:none!important}
+
+#main-app{display:none!important}
+#main-app.app-visible{display:block!important}
+#main-app.hidden{display:none!important}
+#main-app.app-visible.hidden{display:block!important}
+
+#user-info-bar{display:none!important}
+#user-info-bar.user-visible{display:none!important}
+#user-info-bar.hidden{display:none!important}
+
+#app-nav{display:none!important}
+#app-nav.nav-visible{display:flex!important}
+#app-nav.hidden{display:none!important}
+</style>
+
+
+<div id="submit-success-popup" role="dialog" aria-modal="true" aria-labelledby="submit-success-title">
+  <div class="success-popup-card">
+    <div class="success-check" aria-hidden="true">✓</div>
+    <h3 id="submit-success-title">Successfully Submitted</h3>
+    <p>Visit Report successfully saved.</p>
+    <button type="button" class="success-ok-btn" onclick="closeSubmitSuccessPopup()">OK</button>
+  </div>
+</div>
+<div id="submit-reason-popup" role="status" aria-live="assertive">
+  <div class="reason-card">
+    <div class="reason-icon">!</div>
+    <h3 class="reason-title">Submit হয়নি</h3>
+    <p class="reason-message" id="submit-reason-message"></p>
+  </div>
+</div>
+
+<!-- Main App Section -->
+        <div id="main-app" class="hidden">
+
+            <!-- Dashboard Page -->
+            <div id="view-dashboard" class="page active">
+                <div class="section-head">
+                    <div><h2>Dashboard</h2><small style="color:#64748b">DMS</small></div>
+                </div>
+                <div class="quick-grid dashboard-summary-grid">
+                    <div class="card"><div class="card-lbl">Total Uddokta</div><div class="card-val" id="dashboard-total-uddokta-count">0</div></div>
+                    <div class="card"><div class="card-lbl">Total Visit</div><div class="card-val" id="total-visit-count">0</div></div>
+                    <div class="card"><div class="card-lbl">Today Visit</div><div class="card-val" id="unique-visit-count">0</div></div>
+                    <div class="card"><div class="card-lbl">Today</div><div class="card-val" id="today-date-card" style="font-size:1rem"></div></div>
+                    <div class="card hidden" aria-hidden="true"><div class="card-lbl">Access</div><div class="card-val" id="access-card" style="font-size:1rem"></div></div>
+                </div>
+                <div id="dashboard-visit-chart-card" class="card dashboard-chart-card hidden">
+                    <div class="dashboard-chart-head">
+                        <div>
+                            <div class="dashboard-chart-title">Date-wise Visit Analytics</div>
+                            <div class="dashboard-chart-sub" id="dashboard-chart-subtitle">Visit count, unique Uddokta count and visit rate by date</div>
+                        </div>
+                    </div>
+                    <div class="chart-filter-grid">
+                        <div><label for="dashboard-chart-from">From Date</label><input type="date" id="dashboard-chart-from" onchange="renderDashboardVisitChart()"></div>
+                        <div><label for="dashboard-chart-to">To Date</label><input type="date" id="dashboard-chart-to" onchange="renderDashboardVisitChart()"></div>
+                        <button type="button" class="btn btn-sm btn-sec chart-reset" onclick="resetDashboardChartFilter()">↺ Reset</button>
+                    </div>
+                    <div class="chart-kpi-grid">
+                        <div class="chart-kpi kpi-blue"><span>Selected Visits</span><b id="chart-kpi-visits">0</b></div>
+                        <div class="chart-kpi kpi-green"><span>Unique Uddokta</span><b id="chart-kpi-uddokta">0</b></div>
+                        <div class="chart-kpi kpi-orange"><span>Repeat Visits</span><b id="chart-kpi-repeat">0</b></div>
+                        <div class="chart-kpi kpi-purple"><span>Active Days</span><b id="chart-kpi-days">0</b></div>
+                        <div class="chart-kpi kpi-red"><span>Avg Visit / Day</span><b id="chart-kpi-avg">0</b></div>
+                    </div>
+                    <div class="chart-info-strip" id="dashboard-chart-info">Hover on a date to see Visit Count, Unique Uddokta, Repeat Visit and Visit Rate.</div>
+                    <div class="chart-wrap"><canvas id="dashboard-visit-chart"></canvas></div>
+                    <div id="dashboard-chart-empty" class="chart-empty">No visit data found for the selected dates.</div>
+                </div>
+            </div>
+
+            <!-- New Visit Entry Form -->
+            <div id="view-form" class="page">
+                <div class="section-head">
+                    <div><h2>New Visit</h2><small style="color:#64748b">Create a new Uddokta visit report</small></div>
+                    <button type="button" id="btn-new-visit-refresh" onclick="refreshNewVisitForm()" title="Clear New Visit fields" aria-label="Clear New Visit fields" style="width:44px;height:44px;border:1px solid var(--border);border-radius:50%;background:#fff;color:var(--primary);font-size:1.25rem;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(15,23,42,.10);touch-action:manipulation;">↻</button>
+                </div>
+                <div class="quick-grid visit-summary-grid">
+                    <div class="card visit-count-card">
+                        <div class="card-lbl">Today Visit Count</div>
+                        <div class="card-val" id="new-visit-today-count">0</div>
+                    </div>
+                    <div class="card visit-count-card">
+                        <div class="card-lbl">Total Uddokta</div>
+                        <div class="card-val" id="new-visit-total-uddokta-count">0</div>
+                    </div>
+                </div>
+                <div id="alert-box" class="alert"></div>
+
+                <form id="visit-form">
+                    <div class="form-group">
+                        <label>Visit Date</label>
+                        <input type="date" id="visit-date" required readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Search Uddokta Number</label>
+                        
+                        <input type="text" id="search-input" placeholder="Type last 4 / last 6 / full Uddokta Number..." autocomplete="off" required>
+                        <div id="search-results" class="search-results"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>DSO Number</label>
+                        <input type="text" id="dso-number" readonly required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Uddokta Number</label>
+                        <input type="text" id="uddokta-number" readonly required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Uddokta Name</label>
+                        <input type="text" id="uddokta-name" readonly required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>DSS Name</label>
+                        <input type="text" id="dss-name" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Visit Materials Check</label>
+                        <div class="visit-check-grid">
+                            <div class="visit-check"><label>Festoon</label><select id="festoon-status" required><option value="">Select</option><option value="OK">OK</option><option value="Not OK">Not OK</option></select></div>
+                            <div class="visit-check"><label>Banner</label><select id="banner-status" required><option value="">Select</option><option value="OK">OK</option><option value="Not OK">Not OK</option></select></div>
+                            <div class="visit-check"><label>File</label><select id="file-status" required><option value="">Select</option><option value="OK">OK</option><option value="Not OK">Not OK</option></select></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Visit Feedback</label>
+                        <textarea id="feedback" rows="3" placeholder="Enter feedback..." required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Visit Uddokta Selfie</label>
+                        <div class="camera-box">
+                            <video id="camera-video" autoplay playsinline></video>
+                            <canvas id="camera-canvas" class="hidden"></canvas>
+                            <img id="photo-preview" alt="Preview">
+                            <div style="margin-top: 10px;">
+                                <button type="button" class="btn btn-sm" id="btn-capture" onclick="captureLivePhoto()">📷 Start Camera</button>
+                                <button type="button" class="camera-switch-btn" id="btn-switch-camera" onclick="switchCamera()" title="Switch Front / Back Camera" aria-label="Switch Front / Back Camera">🔄</button>
+                                <button type="button" class="btn btn-sm btn-sec hidden" id="btn-recapture" onclick="resetLivePhoto()">🔄 Retake Selfie</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>GPS Location Name</label>
+                        <input type="text" id="gps-location-name" readonly required placeholder="Location name will appear here">
+                        <input type="hidden" id="gps-location">
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+                            <button type="button" class="btn btn-primary" id="btn-location-permission" style="padding:9px 12px;font-size:0.82rem;" onclick="requestLocationPermission()">📍 Allow Location Permission</button>
+                            <button type="button" class="btn btn-sec" id="btn-device-location" style="display:none;padding:9px 12px;font-size:0.82rem;" onclick="openDeviceLocationSettings()">⚙️ Turn On Location</button>
+                            <button type="button" class="btn btn-sec" style="display:none!important;padding:9px 12px;font-size:0.82rem;" onclick="fetchGPS()" aria-hidden="true" tabindex="-1">🔄 Refresh Location</button>
+                        </div>
+</div>
+
+                    <div id="submit-action-bar" style="position:sticky;bottom:8px;z-index:1000;background:rgba(255,255,255,.96);padding:8px;border-radius:12px;box-shadow:0 -4px 18px rgba(15,23,42,.08);display:block!important;visibility:visible!important;">
+                        <button type="submit" class="btn" id="btn-submit" style="display:block!important;visibility:visible!important;width:100%!important;min-height:52px!important;">Submit</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Visit Report Page -->
+            <div id="view-daily" class="page">
+                <div class="section-head">
+                    <div><h2 id="visit-report-title">Visit Report</h2><small id="visit-report-subtitle" style="color:#64748b">Date-wise visit report & details</small></div>
+                    <button class="btn btn-sm btn-sec" onclick="resetDailyFilters()">↺ Reset Filter</button>
+                </div>
+                <div class="report-summary-cards" id="dm-admin-report-cards">
+                    <div class="report-kpi"><span id="report-card-0-label">Total Uddokta</span><b id="report-total-uddokta">0</b></div>
+                    <div class="report-kpi"><span id="report-card-1-label">DSS Total Visit</span><b id="report-total-visit-count">0</b></div>
+                    <div class="report-kpi"><span id="report-card-2-label">DSS Today Visit</span><b id="report-unique-visit">0</b></div>
+                </div>
+                <div class="card" style="text-align:left;margin-bottom:14px">
+                    <div class="filter-grid">
+                        <div id="filter-date-wrap"><label>Date</label><input type="date" id="filter-date" onchange="renderReports()"></div>
+                        <div id="filter-month-wrap" class="hidden"><label>Month</label><input type="month" id="filter-month" onchange="renderReports()"></div>
+                        <div id="report-type-wrap" class="hidden"><label>Report Type</label><select id="filter-report-type" onchange="renderReports()"><option value="all">All Visit Reports</option><option value="dm">DM Visit Report</option><option value="dss">DSS Visit Report</option></select></div>
+                        <div id="filter-dss-wrap"><label>DSS</label><select id="filter-dss" onchange="populateDsoFilter();renderReports()"><option value="">All DSS</option><option value="MOHOSIN HOSSAIN SOHAG">Sohag</option><option value="MD. ALAMIN">Alamin</option><option value="MD. IMRAN HOSSAIN">Imran</option><option value="RUBEL">Rubel</option><option value="MD. SHOFIQ">Shofiq</option></select></div>
+                        <div id="filter-dso-wrap"><label>DSO</label><select id="filter-dso" onchange="renderReports()"><option value="">All DSO</option></select></div>
+                        <div id="filter-search-wrap"><label>Search Uddokta</label><input type="text" id="filter-search" placeholder="Name / number" oninput="scheduleRenderReports()"></div>
+                    </div>
+                </div>
+                <div class="table-wrap"><div class="table-responsive"><table class="reports-table"><thead><tr><th>Visit Time</th><th>DSO</th><th>Uddokta Name</th><th>Uddokta Number</th><th>Festoon</th><th>Banner</th><th>File</th><th>Review</th><th>Location</th><th>Photo</th><th>Details</th></tr></thead><tbody id="reports-table-body"></tbody></table></div></div>
+            </div>
+
+            <!-- Admin Panel -->
+            <div id="view-admin" class="page">
+                <h2 style="font-size:1.1rem; margin-bottom:12px;">Admin Management Panel</h2>
+                <div class="card" style="text-align:left; margin-bottom:16px;">
+                    <h3 style="font-size:1rem; margin-bottom:6px;">Admin Password Management</h3>
+                    <p style="color:#64748b;font-size:.86rem;line-height:1.5;margin-bottom:12px;">Admin যেকোনো user-এর password সরাসরি পরিবর্তন করতে পারবেন। নতুন password সেট করলে সেটিই পরবর্তী login-এর জন্য কার্যকর হবে।</p>
+                    <div class="form-group">
+                        <label>Select User</label>
+                        <select id="admin-password-user">
+                            <option value="admin">Admin</option>
+                            <option value="zahangir">DM - Zahangir</option>
+                            <option value="sohag">DSS - Sohag</option>
+                            <option value="alamin">DSS - Alamin</option>
+                            <option value="imran">DSS - Imran</option>
+                            <option value="rubel">DSS - Rubel</option>
+                            <option value="shofiq">DSS - Shofiq</option>
+                            <optgroup label="DSO"><option value="01332517801">DSO - 801</option><option value="01332517802">DSO - 802</option><option value="01332517803">DSO - 803</option><option value="01332517804">DSO - 804</option><option value="01332517805">DSO - 805</option><option value="01332517806">DSO - 806</option><option value="01332517807">DSO - 807</option><option value="01332517808">DSO - 808</option><option value="01332517809">DSO - 809</option><option value="01332517810">DSO - 810</option><option value="01332517811">DSO - 811</option><option value="01332517812">DSO - 812</option><option value="01332517813">DSO - 813</option><option value="01332517814">DSO - 814</option><option value="01332517815">DSO - 815</option><option value="01332517816">DSO - 816</option><option value="01332517817">DSO - 817</option><option value="01332517818">DSO - 818</option><option value="01332517819">DSO - 819</option><option value="01332517820">DSO - 820</option><option value="01332517821">DSO - 821</option><option value="01332517822">DSO - 822</option><option value="01332517823">DSO - 823</option><option value="01332517824">DSO - 824</option><option value="01332517825">DSO - 825</option><option value="01332517826">DSO - 826</option><option value="01332517827">DSO - 827</option><option value="01332517828">DSO - 828</option><option value="01332517829">DSO - 829</option><option value="01332517830">DSO - 830</option><option value="01332517831">DSO - 831</option><option value="01332517832">DSO - 832</option><option value="01332517833">DSO - 833</option><option value="01332517834">DSO - 834</option><option value="01332517835">DSO - 835</option><option value="01332517836">DSO - 836</option><option value="01332517837">DSO - 837</option><option value="01332517838">DSO - 838</option><option value="01332517839">DSO - 839</option><option value="01332517840">DSO - 840</option><option value="01332517841">DSO - 841</option><option value="01332517842">DSO - 842</option><option value="01332517843">DSO - 843</option><option value="01332517844">DSO - 844</option><option value="01332517845">DSO - 845</option></optgroup>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>New Password</label>
+                        <input type="password" id="admin-new-password" minlength="3" placeholder="Enter new password">
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button type="button" class="btn" onclick="adminChangePassword()">🔐 Change Password</button>
+                        <button type="button" class="btn btn-danger" onclick="adminResetPassword()">Reset Selected to '1234'</button>
+                    </div>
+                    <div id="admin-password-status" style="margin-top:10px;font-size:.85rem;color:#64748b;"></div>
+                </div>
+
+                <div class="card" style="text-align:left; margin-bottom:16px;">
+                    <h3 style="font-size:1rem; margin-bottom:10px;">Reset User Password</h3>
+                    <div class="form-group hidden">
+                        <label>Select User to Reset Password</label>
+                        <select id="reset-user-select">
+                            <option value="zahangir">DM - Zahangir</option>
+                            <option value="sohag">DSS - Sohag</option>
+                            <option value="alamin">DSS - Alamin</option>
+                            <option value="imran">DSS - Imran</option>
+                            <option value="rubel">DSS - Rubel</option>
+                            <option value="shofiq">DSS - Shofiq</option>
+                            <optgroup label="DSO"><option value="01332517801">DSO - 801</option><option value="01332517802">DSO - 802</option><option value="01332517803">DSO - 803</option><option value="01332517804">DSO - 804</option><option value="01332517805">DSO - 805</option><option value="01332517806">DSO - 806</option><option value="01332517807">DSO - 807</option><option value="01332517808">DSO - 808</option><option value="01332517809">DSO - 809</option><option value="01332517810">DSO - 810</option><option value="01332517811">DSO - 811</option><option value="01332517812">DSO - 812</option><option value="01332517813">DSO - 813</option><option value="01332517814">DSO - 814</option><option value="01332517815">DSO - 815</option><option value="01332517816">DSO - 816</option><option value="01332517817">DSO - 817</option><option value="01332517818">DSO - 818</option><option value="01332517819">DSO - 819</option><option value="01332517820">DSO - 820</option><option value="01332517821">DSO - 821</option><option value="01332517822">DSO - 822</option><option value="01332517823">DSO - 823</option><option value="01332517824">DSO - 824</option><option value="01332517825">DSO - 825</option><option value="01332517826">DSO - 826</option><option value="01332517827">DSO - 827</option><option value="01332517828">DSO - 828</option><option value="01332517829">DSO - 829</option><option value="01332517830">DSO - 830</option><option value="01332517831">DSO - 831</option><option value="01332517832">DSO - 832</option><option value="01332517833">DSO - 833</option><option value="01332517834">DSO - 834</option><option value="01332517835">DSO - 835</option><option value="01332517836">DSO - 836</option><option value="01332517837">DSO - 837</option><option value="01332517838">DSO - 838</option><option value="01332517839">DSO - 839</option><option value="01332517840">DSO - 840</option><option value="01332517841">DSO - 841</option><option value="01332517842">DSO - 842</option><option value="01332517843">DSO - 843</option><option value="01332517844">DSO - 844</option><option value="01332517845">DSO - 845</option></optgroup>
+                        </select>
+                    </div>
+                    <button type="button" class="btn btn-danger" onclick="adminResetPassword()">Reset Password to '1234'</button>
+                </div>
+
+                <div class="card" style="text-align:left; margin-bottom:16px;">
+                    <h3 style="font-size:1rem; margin-bottom:6px;">Update Uddokta Information</h3>
+                    <p style="color:#64748b;font-size:.86rem;line-height:1.5;margin-bottom:12px;">Admin Excel upload করে Uddokta Number, Uddokta Name, DSO এবং DSS information update/add করতে পারবেন।</p>
+                    <div class="form-group">
+                        <label>Excel File (.xlsx / .xls / .csv)</label>
+                        <input type="file" id="uddokta-excel-file" accept=".xlsx,.xls,.csv" onchange="previewUddoktaExcel(this)">
+                    </div>
+                    <div id="excel-upload-preview" class="hidden" style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:12px;font-size:.86rem;"></div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button type="button" class="btn" id="btn-upload-uddokta-excel" onclick="uploadUddoktaExcel()" disabled>📤 Upload & Update</button>
+                        <button type="button" class="btn btn-sec" onclick="downloadUddoktaExcel()">📥 Download Current Excel</button>
+                    </div>
+                    <div id="uddokta-excel-status" style="margin-top:10px;font-size:.85rem;color:#64748b;"></div>
+                    <div style="margin-top:10px;padding:10px 12px;background:#f8fafc;border-radius:10px;color:#475569;font-size:.8rem;line-height:1.55;">
+                        <b>Excel columns:</b> DSO Number/DSO Wallet, Uddokta Number, Uddokta Name, DSS Name. Header names can be English or Bangla. Uddokta Number is used as the unique key.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notices Page -->
+            <div id="view-notices" class="page">
+                <div class="section-head"><div><h2>Notice</h2><small style="color:#64748b">DSS review notices and your report update notifications appear here in realtime</small></div><button class="btn btn-sm btn-sec" onclick="renderNotices()">↻ Refresh</button></div>
+                <div id="notice-list"></div>
+            </div>
+
+            <!-- Morning Excel Upload -->
+            <div id="view-morning-upload" class="page">
+                <div class="section-head"><div><h2>Morning Excel File Upload</h2><small style="color:#64748b">Admin uploads the latest Morning Report data</small></div></div>
+                <div class="card" style="text-align:left;max-width:760px;margin:0 auto 16px">
+                    <div class="morning-actions">
+                        <div><label>Excel File (.xlsx / .xls / .csv)</label><input type="file" id="morning-excel-file" accept=".xlsx,.xls,.csv" onchange="previewMorningExcel(this)"></div>
+                    </div>
+                    <div id="morning-upload-preview" class="morning-status">Select an Excel file to preview.</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+                        <button type="button" class="btn" id="btn-save-morning-excel" onclick="saveMorningExcel()" disabled>📤 Upload Morning File</button>
+                        <button type="button" class="btn btn-sec" onclick="clearMorningUpload()">↺ Clear</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Morning Report -->
+            <div id="view-morning-report" class="page">
+                <div class="section-head"><div><h2>Morning Report</h2><small style="color:#64748b">DSO-wise Morning Report</small></div></div>
+                <div id="morning-filter-card" class="card" style="text-align:left;margin-bottom:14px">
+                    <div class="morning-actions">
+                        <div><label>DSS</label><select id="morning-report-dss" onchange="populateMorningDsoFilter();renderMorningReport()"><option value="">All DSS</option></select></div>
+                        <div><label>DSO</label><select id="morning-report-dso" onchange="renderMorningReport()"><option value="">All DSO</option></select></div>
+                        <div><label>Uddokta Type</label><select id="morning-report-agent-type" onchange="renderMorningReport()"><option value="all">All Uddokta</option><option value="zero-b2b">ZERO B2B</option><option value="cash-in">Cash In Uddokta</option><option value="cash-out">Cash Out Uddokta</option></select></div>
+                        <div><label>Uddokta Search</label><input type="search" id="morning-report-search" placeholder="Name / number search" oninput="renderMorningReport()"></div>
+                        <button type="button" class="btn btn-sec hidden" id="btn-download-morning" onclick="downloadMorningReport()" disabled>📥 Download Excel</button>
+                    </div>
+                    <div id="morning-report-status" class="morning-status hidden" aria-hidden="true">Morning Report is loading...</div>
+                </div>
+                <div class="morning-summary">
+                    <div class="card"><span>AGENT COUNT</span><b id="morning-kpi-agent-count">0</b></div>
+                    <div class="card"><span>TOTAL MTD_TXN</span><b id="morning-kpi-mtd">0</b></div>
+                    <div class="card"><span>LAST_DAY_TXN</span><b id="morning-kpi-last-day-card">0</b></div>
+                    <div class="card"><span>CASH OUT %</span><b id="morning-kpi-cash-out-percent">0%</b></div>
+                    <div class="card"><span>CASH IN %</span><b id="morning-kpi-cash-in-percent">0%</b></div>
+                    <div class="card"><span>CASH OUT AGENT BALANCE</span><b id="morning-kpi-balance">0</b></div>
+                </div>
+                <div class="report-table-tools"><span>↔ Scroll table • Click column name to sort • Use header boxes to filter</span><button type="button" class="table-clear-filter" onclick="clearReportTableFilters('morning')">✕ Clear Table Filters</button></div>
+                <div class="card morning-table-wrap"><table id="morning-report-table" class="morning-table enhanced-report-table"><thead id="morning-report-head"><tr><th>No report generated</th></tr></thead><tbody id="morning-report-body"><tr><td>Select a date and generate the report.</td></tr></tbody></table></div>
+            </div>
+
+            <!-- Afternoon / Evening Excel Upload -->
+            <div id="view-afternoon-upload" class="page">
+                <div class="section-head"><div><h2>Afternoon/Evening Excel Upload</h2><small style="color:#64748b">Admin uploads the latest Afternoon/Evening Report data</small></div></div>
+                <div class="card" style="text-align:left;max-width:760px;margin:0 auto 16px">
+                    <div class="morning-actions">
+                        <div><label>Excel File (.xlsx / .xls / .csv)</label><input type="file" id="afternoon-excel-file" accept=".xlsx,.xls,.csv" onchange="previewAfternoonExcel(this)"></div>
+                    </div>
+                    <div id="afternoon-upload-preview" class="morning-status">Select an Excel file to preview.</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+                        <button type="button" class="btn" id="btn-save-afternoon-excel" onclick="saveAfternoonExcel()" disabled>📤 Upload Afternoon/Evening File</button>
+                        <button type="button" class="btn btn-sec" onclick="clearAfternoonUpload()">↺ Clear</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Common DSS / DSO Assignment Upload -->
+            <div id="view-assignment-upload" class="page">
+                <div class="section-head"><div><h2>DSS–DSO Assignment Upload</h2><small style="color:#64748b">এই common assignment সব report-এ ব্যবহার হবে</small></div></div>
+                <div class="card" style="text-align:left;max-width:760px;margin:0 auto 16px">
+                    <div class="morning-actions"><div><label>Excel File (.xlsx / .xls / .csv)</label><input type="file" id="assignment-excel-file" accept=".xlsx,.xls,.csv" onchange="previewAssignmentExcel(this)"></div></div>
+                    <div id="assignment-upload-status" class="morning-status">Select an Excel file. Required headers: DSS, DSO.</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+                        <button type="button" class="btn" id="btn-save-assignment" onclick="saveAssignmentExcel()" disabled>📤 Upload Common Assignment</button>
+                        <button type="button" class="btn btn-sec" onclick="clearAssignmentUpload()">↺ Clear</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Afternoon / Evening Report -->
+            <div id="view-afternoon-report" class="page">
+                <div class="section-head"><div><h2>Afternoon/Evening Report</h2><small style="color:#64748b">DSO-wise Afternoon/Evening Report</small></div></div>
+                <div id="afternoon-filter-card" class="card" style="text-align:left;margin-bottom:14px">
+                    <div class="morning-actions">
+                        <div><label>DSS</label><select id="afternoon-report-dss" onchange="populateAfternoonDsoFilter();renderAfternoonReport()"><option value="">All DSS</option></select></div>
+                        <div><label>DSO</label><select id="afternoon-report-dso" onchange="renderAfternoonReport()"><option value="">All DSO</option></select></div>
+                        <div><label>Uddokta Type</label><select id="afternoon-report-agent-type" onchange="renderAfternoonReport()"><option value="all">All Uddokta</option><option value="zero-b2b">ZERO B2B</option><option value="cash-in">Cash In Uddokta</option><option value="cash-out">Cash Out Uddokta</option></select></div>
+                        <div><label>Uddokta Search</label><input type="search" id="afternoon-report-search" placeholder="Name / number search" oninput="renderAfternoonReport()"></div>
+                        <button type="button" class="btn btn-sec hidden" id="btn-download-afternoon" onclick="downloadAfternoonReport()" disabled>📥 Download Excel</button>
+                    </div>
+                    <div id="afternoon-report-status" class="morning-status hidden" aria-hidden="true">Afternoon/Evening Report is loading...</div>
+                </div>
+                <div class="morning-summary">
+                    <div class="card"><span>AGENT COUNT</span><b id="afternoon-kpi-agent-count">0</b></div>
+                    <div class="card"><span>TOTAL BALANCE</span><b id="afternoon-kpi-balance">0</b></div>
+                    <div class="card"><span>TOTAL CASH_IN</span><b id="afternoon-kpi-cash-in">0</b></div>
+                    <div class="card"><span>TOTAL CASH_OUT</span><b id="afternoon-kpi-cash-out">0</b></div>
+                    <div class="card"><span>TOTAL_TXN</span><b id="afternoon-kpi-total-txn">0</b></div>
+                    <div class="card"><span>B2BS_AMT</span><b id="afternoon-kpi-b2bs">0</b></div>
+                    <div class="card"><span>B2BR_AMT</span><b id="afternoon-kpi-b2br">0</b></div>
+                    <div class="card"><span>ZERO B2B COUNT</span><b id="afternoon-kpi-zero-b2b">0</b></div>
+                </div>
+                <div class="report-table-tools"><span>↔ Scroll table • Click column name to sort • Use header boxes to filter</span><button type="button" class="table-clear-filter" onclick="clearReportTableFilters('afternoon')">✕ Clear Table Filters</button></div>
+                <div class="card morning-table-wrap"><table id="afternoon-report-table" class="morning-table enhanced-report-table"><thead id="afternoon-report-head"><tr><th>No report generated</th></tr></thead><tbody id="afternoon-report-body"><tr><td>Open this report to load data.</td></tr></tbody></table></div>
+            </div>
+
+            <!-- New Uddokta KYC Collection -->
+            <div id="view-kyc-collection" class="page">
+                <div class="section-head"><div><h2>New Uddokta KYC Collection</h2><small style="color:#64748b">Collect and submit new Uddokta KYC information</small></div></div>
+                <div id="kyc-alert" class="alert"></div>
+                <form id="kyc-form" class="card" style="text-align:left">
+                    <div class="kyc-form-grid">
+                        <div class="form-group"><label>DSO Wallet</label><select id="kyc-dso-wallet" required><option value="">Select DSO Wallet</option></select></div>
+                        <div class="form-group"><label>Uddokta Number</label><input type="text" id="kyc-uddokta-number" required inputmode="numeric" maxlength="11" placeholder="01XXXXXXXXX"></div>
+                        <div class="form-group"><label>Shop Name</label><input type="text" id="kyc-shop-name" required placeholder="Enter shop name"></div>
+                        <div class="form-group"><label>Owner Name</label><input type="text" id="kyc-owner-name" required placeholder="Enter owner name"></div>
+                        <div class="form-group"><label>Owner Contact Number</label><input type="text" id="kyc-owner-contact" required inputmode="numeric" maxlength="11" placeholder="01XXXXXXXXX"></div>
+                        <div class="form-group"><label>Thana</label><input type="text" id="kyc-thana" required placeholder="Enter thana"></div>
+                        <div class="form-group"><label>Bazar Name</label><input type="text" id="kyc-bazar-name" required placeholder="Enter bazar name"></div>
+                        <div class="form-group"><label>Shop Photo (Camera Only)</label><video id="kyc-camera-video" class="kyc-camera-video" autoplay playsinline muted></video><canvas id="kyc-camera-canvas" class="hidden"></canvas><img id="kyc-picture-preview" class="kyc-photo-preview" alt="Shop photo preview"><div class="kyc-camera-actions"><button type="button" class="btn btn-sec" id="btn-kyc-camera-start" onclick="startKycShopCamera()">📷 Start Camera</button><button type="button" class="btn hidden" id="btn-kyc-camera-capture" onclick="captureKycShopPhoto()">📸 Capture Shop Photo</button><button type="button" class="btn btn-sec hidden" id="btn-kyc-camera-retake" onclick="resetKycShopPhoto()">🔄 Retake</button></div></div>
+                        <div class="form-group kyc-wide"><label>Location</label><input type="text" id="kyc-location-name" readonly required placeholder="Location name will appear here"><input type="hidden" id="kyc-location"><div class="kyc-location-actions"><button type="button" class="btn btn-sec" id="btn-kyc-location" onclick="fetchKycLocation()">📍 Get Location</button></div></div>
+                    </div>
+                    <button type="submit" class="btn" id="btn-kyc-submit" style="width:100%;margin-top:14px;min-height:50px">Submit KYC</button>
+                </form>
+            </div>
+
+            <!-- New Uddokta KYC Status -->
+            <div id="view-kyc-status" class="page">
+                <div class="section-head"><div><h2>KYC Status</h2><small style="color:#64748b">Track submitted KYC applications in real time</small></div><button type="button" class="btn btn-sm btn-sec" onclick="renderKycStatus()">↻ Refresh</button></div>
+                <div class="card" style="text-align:left;margin-bottom:14px"><div class="filter-grid"><div><label>Status</label><select id="kyc-filter-status" onchange="renderKycStatus()"><option value="">All Status</option><option value="Admin Receive">Admin Receive</option><option value="Mail Send">Mail Send</option><option value="Active">Active</option><option value="Rejection">Rejection</option></select></div><div><label>Search</label><input type="search" id="kyc-filter-search" placeholder="Shop / owner / mobile / thana / bazar" oninput="renderKycStatus()"></div></div></div>
+                <div class="table-responsive"><table class="reports-table kyc-table"><thead><tr><th>Collection Date</th><th>DSO Wallet</th><th>Uddokta Number</th><th>Shop Name</th><th>Owner Name</th><th>Contact Number</th><th>Thana</th><th>Bazar Name</th><th>Picture</th><th>Location</th><th>Submitted By</th><th>Status</th><th>Rejection Reason</th></tr></thead><tbody id="kyc-status-body"><tr><td colspan="13">Loading KYC data...</td></tr></tbody></table></div>
+            </div>
+
+            <!-- Visit Details Modal -->
+            <div id="visit-details-modal" class="details-modal hidden" onclick="if(event.target===this) closeVisitDetails()">
+                <div class="details-card">
+                    <div class="details-head"><h3>Visit Details</h3><button type="button" class="btn btn-sm btn-sec" onclick="closeVisitDetails()">✕</button></div>
+                    <div id="visit-details-content"></div>
+                </div>
+            </div>
+
+            <!-- Change Password -->
+            <div id="view-change-pass" class="page">
+                <div class="card" style="max-width: 400px; margin: 20px auto; text-align: left;">
+                    <h3 style="font-size:1rem; margin-bottom:12px;">Change Password</h3>
+                    <div class="form-group">
+                        <label>New Password</label>
+                        <input type="password" id="new-password" placeholder="Enter new password">
+                    </div>
+                    <button type="button" class="btn" onclick="changePassword()">Save New Password</button>
+                    <button type="button" class="btn btn-sec" onclick="switchTab('form')">Cancel</button>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Left Navigation Sidebar -->
+    <aside id="app-nav" class="nav-bar nav-sidebar hidden">
+        <div class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')"><span>🏠</span><span>Dashboard</span></div>
+        <div class="nav-item visit-parent" id="nav-visit" onclick="toggleVisitMenu(event)"><span>📋</span><span>Visit <b class="menu-arrow">▾</b></span></div>
+        <div id="visit-menu-panel" class="visit-menu-panel">
+            
+            <button type="button" class="visit-menu-btn" onclick="visitMenuAction('new')">➕ New Visit</button>
+            <button type="button" id="visit-menu-my" class="visit-menu-btn" onclick="visitMenuAction('my')">👤 Amar Visit Report</button>
+            <button type="button" class="visit-menu-btn role-dss-option hidden" onclick="visitMenuAction('dso')">👥 DSO Visit Report</button>
+            <button type="button" class="visit-menu-btn role-dm-option hidden" onclick="visitMenuAction('dss')">📊 DSS Visit Report</button>
+            <button type="button" class="visit-menu-btn role-dm-option hidden" onclick="visitMenuAction('dso')">👥 DSO Visit Report</button>
+            <button type="button" class="visit-menu-btn role-dm-option hidden" onclick="visitMenuAction('dso-wise')">🗂️ DSO Visit Report — DSS Wise</button>
+            <button type="button" class="visit-menu-btn role-admin-option hidden" onclick="visitMenuAction('dss')">📊 DSS Visit Report</button>
+            <button type="button" class="visit-menu-btn role-admin-option hidden" onclick="visitMenuAction('dso')">👥 DSO Visit Report</button>
+        </div>
+        <div class="nav-item visit-parent" id="nav-reports" onclick="toggleReportsMenu(event)"><span>📈</span><span>Reports <b class="menu-arrow">▾</b></span></div>
+        <div id="reports-menu-panel" class="reports-menu-panel">
+            <button type="button" id="morning-upload-menu-btn" class="visit-menu-btn" onclick="reportsMenuAction('morning-upload')">📤 Morning Excel File Upload</button>
+            <button type="button" class="visit-menu-btn" onclick="reportsMenuAction('morning-report')">📊 Morning Report</button>
+            <button type="button" id="afternoon-upload-menu-btn" class="visit-menu-btn" onclick="reportsMenuAction('afternoon-upload')">📤 Afternoon/Evening Excel Upload</button>
+            <button type="button" class="visit-menu-btn" onclick="reportsMenuAction('afternoon-report')">📊 Afternoon/Evening Report</button>
+            <button type="button" id="assignment-upload-menu-btn" class="visit-menu-btn" onclick="reportsMenuAction('assignment-upload')">🔗 DSS–DSO Assignment Upload</button>
+        </div>
+        <div class="nav-item visit-parent" id="nav-kyc" onclick="toggleKycMenu(event)"><span>🪪</span><span>New Uddokta KYC Tracker <b class="menu-arrow">▾</b></span></div>
+        <div id="kyc-menu-panel" class="kyc-menu-panel">
+            <button type="button" class="visit-menu-btn" onclick="kycMenuAction('kyc-collection')">➕ KYC Collection</button>
+            <button type="button" class="visit-menu-btn" onclick="kycMenuAction('kyc-status')">📋 KYC Status</button>
+        </div>
+        <div class="nav-item" id="nav-settings" onclick="switchTab('change-pass')"><span>⚙️</span><span>Settings</span></div>
+        <div class="nav-item hidden" id="nav-notices" onclick="switchTab('notices')"><span>🔔</span><span>Notice <b id="notice-badge" class="notice-nav-badge hidden">0</b></span></div>
+        <div class="nav-item hidden" id="nav-admin" onclick="switchTab('admin')"><span>🛠️</span><span>Admin</span></div>
+        <div class="sidebar-spacer"></div>
+        <button type="button" id="sidebar-app-refresh" onclick="refreshAppToLatest()">🔄 <span>Refresh Data</span></button>
+        <button type="button" id="sidebar-logout" class="sidebar-logout">🚪 <span>Logout</span></button>
+        <div class="sidebar-hint">DMS</div>
+    </aside>
+
+    
+
+
+
+
+
+
+<footer id="app-copyright" style="text-align:center;padding:18px 12px 90px;color:#64748b;font-size:.78rem;">Copyright © 2026 <strong>Zahangir Kabir</strong>. All rights reserved</footer>
+
+
+
+    <script>
+    (function(){
+      function guaranteeLoginScreen(){
+        if(document.body.classList.contains('app-logged-in'))return;
+        var login=document.getElementById('view-login'),main=document.getElementById('main-app'),nav=document.getElementById('app-nav');
+        if(login){login.classList.add('login-visible','active');login.classList.remove('hidden');}
+        if(main){main.classList.remove('app-visible');main.classList.add('hidden');}
+        if(nav){nav.classList.remove('nav-visible');nav.classList.add('hidden');}
+      }
+      if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',guaranteeLoginScreen,{once:true});else guaranteeLoginScreen();
+      window.addEventListener('error',guaranteeLoginScreen);
+    })();
+    </script>
+    <script defer src="./app.js?v=20260924-mobile-login-final-v48"></script>
+</body>
+</html>
