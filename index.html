@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-24-live-update-notify-final-v51">
+    <meta name="dms-app-version" content="2026-09-24-sort-icon-final-v52">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -585,7 +585,9 @@ img,video,canvas,svg{max-width:100%;height:auto}
 .table-head-box{display:flex;flex-direction:column;gap:6px;min-width:0}
 .table-sort-btn{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;min-height:36px;border:0;background:transparent;color:#1e3a8a;font:inherit;font-weight:900;padding:3px 2px;cursor:pointer;text-align:left;white-space:nowrap;touch-action:manipulation}
 .table-sort-btn:hover{color:#2563eb}
-.table-sort-state{display:inline-flex;align-items:center;justify-content:center;min-width:38px;padding:3px 5px;border-radius:999px;background:#fff;color:#2563eb;border:1px solid #bfdbfe;font-size:.61rem;line-height:1;font-weight:900}
+.table-sort-state{display:inline-flex;align-items:center;justify-content:center;width:27px;height:27px;flex:0 0 27px;border-radius:50%;background:linear-gradient(145deg,#fff,#eaf2ff);color:#2563eb;border:1px solid #bfdbfe;font-size:.92rem;line-height:1;font-weight:900;box-shadow:0 2px 5px rgba(37,99,235,.12);transition:.16s ease}
+.table-sort-btn:hover .table-sort-state,.table-sort-btn:focus-visible .table-sort-state{background:#2563eb;color:#fff;border-color:#2563eb;transform:translateY(-1px)}
+.table-sort-state.active{background:#2563eb;color:#fff;border-color:#1d4ed8}
 .enhanced-report-table .dso-col{position:sticky!important;left:0!important;width:var(--dso-width)!important;min-width:var(--dso-width)!important;max-width:var(--dso-width)!important;z-index:6!important;background:#f8fafc!important}
 .enhanced-report-table th.dso-col{z-index:12!important;background:#dbeafe!important}
 .enhanced-report-table .agent-col{position:sticky!important;left:var(--agent-left,0)!important;width:var(--agent-width);min-width:var(--agent-width);max-width:var(--agent-width);z-index:6!important;background:#f8fafc!important}
@@ -1297,7 +1299,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-24-live-update-notify-final-v51';
+        const APP_CACHE_VERSION = '2026-09-24-sort-icon-final-v52';
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -4928,7 +4930,7 @@ function applyReportTableUi(report,rows,cols){
 }
 function reportHeaderHtml(report,cols){
     const state=reportTableUi[report]||{sortKey:'',sortDir:1};
-    return '<tr>'+cols.map(c=>{const cls=c.key==='agent'?'agent-col':(c.key==='agentName'?'agent-name-col':(c.key==='dso'?'dso-col':''));const label=state.sortKey===c.key?(state.sortDir===1?'A–Z':'Z–A'):'A–Z';return '<th class="'+cls+'"><div class="table-head-box"><button type="button" class="table-sort-btn" aria-label="Sort '+escapeMorningHtml(c.title)+' '+label+'" onclick="setReportTableSort(\''+report+'\',\''+c.key+'\')"><span>'+escapeMorningHtml(c.title)+'</span><span class="table-sort-state">'+label+'</span></button></div></th>';}).join('')+'</tr>';
+    return '<tr>'+cols.map(c=>{const cls=c.key==='agent'?'agent-col':(c.key==='agentName'?'agent-name-col':(c.key==='dso'?'dso-col':''));const active=state.sortKey===c.key;const icon=active?(state.sortDir===1?'↑':'↓'):'⇅';const direction=active?(state.sortDir===1?'ascending':'descending'):'sortable';return '<th class="'+cls+'"><div class="table-head-box"><button type="button" class="table-sort-btn" aria-label="Sort '+escapeMorningHtml(c.title)+' '+direction+'" title="Sort '+direction+'" onclick="setReportTableSort(\''+report+'\',\''+c.key+'\')"><span>'+escapeMorningHtml(c.title)+'</span><span class="table-sort-state'+(active?' active':'')+'" aria-hidden="true">'+icon+'</span></button></div></th>';}).join('')+'</tr>';
 }
 function reportCellHtml(col,row){
     const value=String(col.value(row)??''),cls=col.key==='agent'?'agent-col':(col.key==='agentName'?'agent-name-col':(col.key==='dso'?'dso-col':''));
