@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-24-navigation-order-final-v59">
+    <meta name="dms-app-version" content="2026-09-24-force-update-final-v60">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -627,10 +627,9 @@ img,video,canvas,svg{max-width:100%;height:auto}
 #app-update-popup .update-icon{width:66px;height:66px;margin:0 auto 12px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#dbeafe;color:#1d4ed8;font-size:34px;font-weight:900}
 #app-update-popup h3{margin:0 0 7px;font-size:1.18rem;color:#0f172a}
 #app-update-popup p{margin:0 0 17px;color:#475569;font-size:.88rem;line-height:1.5}
-#app-update-popup .update-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+#app-update-popup .update-actions{display:grid;grid-template-columns:1fr;gap:9px}
 #app-update-popup button{min-height:46px;border-radius:10px;font-weight:800;cursor:pointer}
 #app-update-now{border:0;background:#2563eb;color:#fff}
-#app-update-later{border:1px solid #cbd5e1;background:#fff;color:#475569}
 #live-update-toast{position:fixed;left:50%;bottom:calc(82px + env(safe-area-inset-bottom));transform:translate(-50%,18px);z-index:14000;max-width:min(92vw,430px);padding:11px 16px;border-radius:999px;background:#065f46;color:#fff;font-size:.82rem;font-weight:800;box-shadow:0 10px 30px rgba(15,23,42,.24);opacity:0;visibility:hidden;transition:opacity .2s ease,transform .2s ease;pointer-events:none;text-align:center}
 #live-update-toast.show{opacity:1;visibility:visible;transform:translate(-50%,0)}
 
@@ -728,8 +727,8 @@ body.app-logged-in #view-login{display:none!important}
   <div class="update-card">
     <div class="update-icon" aria-hidden="true">↻</div>
     <h3 id="app-update-title">নতুন App Update পাওয়া গেছে</h3>
-    <p>Design, feature বা performance-এর নতুন version প্রস্তুত। Update করলে latest version চালু হবে।</p>
-    <div class="update-actions"><button type="button" id="app-update-later" onclick="dismissAppUpdatePrompt()">পরে করব</button><button type="button" id="app-update-now" onclick="installLatestApp()">Update Now</button></div>
+    <p>নতুন version ব্যবহার করা বাধ্যতামূলক। App চালু রাখতে এখনই Update করুন।</p>
+    <div class="update-actions"><button type="button" id="app-update-now" onclick="installLatestApp()">Update App</button></div>
   </div>
 </div>
 <div id="live-update-toast" role="status" aria-live="polite">নতুন data update হয়েছে ✓</div>
@@ -1164,6 +1163,7 @@ body.app-logged-in #view-login{display:none!important}
         <button type="button" id="sidebar-app-refresh" onclick="refreshAppToLatest()">🔄 <span>Refresh Data</span></button>
         <div class="nav-item hidden" id="nav-login-info" onclick="openLoginInformation()"><span>📱</span><span>Login Information</span></div>
         <button type="button" id="sidebar-logout" class="sidebar-logout">🚪 <span>Logout</span></button>
+        <div class="sidebar-hint">DMS</div>
     </aside>
 
     
@@ -1318,7 +1318,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-24-navigation-order-final-v59';
+        const APP_CACHE_VERSION = '2026-09-24-force-update-final-v60';
+        const APP_RELEASED_AT = 1790236800000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -1712,24 +1713,16 @@ body.app-logged-in #view-login{display:none!important}
         async function loadAdminLatestLoginAlert(){if(!db||String(currentUser)!=='admin')return;try{const snap=await db.ref('admin_login_alerts').limitToLast(1).once('value');let latest=null;snap.forEach(c=>{latest=c.val()||{};});if(latest&&String(latest.userId||'')!=='admin'){const box=document.getElementById('admin-multi-device-alert');if(box){box.textContent='⚠️ '+String(latest.userId||'User')+' একাধিক active device থেকে login করেছে। সর্বশেষ: '+String(latest.deviceLabel||latest.deviceId||'Unknown')+' · '+String(latest.loginTime||'');box.style.display='block';}}}catch(e){}}
         function startAdminLoginMonitoring(){if(!db||String(currentUser)!=='admin')return;if(!adminLoginSessionsRef){adminLoginSessionsRef=db.ref('user_login_sessions');adminLoginSessionsRef.on('value',s=>renderAdminLoginInfo(s.val()||{}));}if(!adminLoginAlertRef){adminLoginAlertRef=db.ref('admin_login_alerts');adminLoginAlertRef.limitToLast(1).once('value').then(initial=>{let latest=0;initial.forEach(c=>{latest=Math.max(latest,Number((c.val()||{}).createdAt||0));});adminLoginAlertRef.on('child_added',snap=>{const a=snap.val()||{};if(Number(a.createdAt||0)<=latest||String(a.userId||'')==='admin')return;const box=document.getElementById('admin-multi-device-alert'),msg='⚠️ '+String(a.userId||'User')+' অন্য device থেকে login করেছে। Device: '+String(a.deviceLabel||a.deviceId||'Unknown')+' · '+String(a.loginTime||'');if(box){box.textContent=msg;box.style.display='block';}alert(msg);});}).catch(()=>{});}}
 
-        // App code/design update monitor. Data continues updating live; code updates
-        // are offered to the user and never force-reload an active form/session.
+        // App code/design updates are mandatory. Live data continues updating
+        // without a reload, while a newer deployed app locks the UI until updated.
         let lastHostedAppCheckAt = 0;
         let appUpdateMonitorTimer = null;
         let pendingHostedVersion = '';
-        let dismissedHostedVersion = '';
-        let dismissedHostedUntil = 0;
         function showAppUpdatePrompt(version) {
             pendingHostedVersion = String(version || 'latest');
-            if (pendingHostedVersion === dismissedHostedVersion && Date.now() < dismissedHostedUntil) return;
             const popup = document.getElementById('app-update-popup');
             if (popup) popup.classList.add('show');
-        }
-        function dismissAppUpdatePrompt() {
-            dismissedHostedVersion = pendingHostedVersion;
-            dismissedHostedUntil = Date.now() + 5 * 60 * 1000;
-            const popup = document.getElementById('app-update-popup');
-            if (popup) popup.classList.remove('show');
+            document.documentElement.style.overflow = 'hidden';
         }
         async function installLatestApp() {
             const button = document.getElementById('app-update-now');
@@ -1772,15 +1765,47 @@ body.app-logged-in #view-login{display:none!important}
             }
             return false;
         }
+        async function checkCloudAppRelease() {
+            try {
+                const release = await firebaseRestReadFresh('dms_app_release');
+                if (release && release.version && String(release.version) !== APP_CACHE_VERSION && Number(release.releasedAt || 0) > APP_RELEASED_AT) {
+                    showAppUpdatePrompt(release.version);
+                    return true;
+                }
+            } catch (_) {}
+            return false;
+        }
+        function announceCurrentAppRelease() {
+            if (!db) return;
+            try {
+                db.ref('dms_app_release').transaction(current => {
+                    if (!current || Number(current.releasedAt || 0) < APP_RELEASED_AT) {
+                        return {version: APP_CACHE_VERSION, releasedAt: APP_RELEASED_AT};
+                    }
+                    return;
+                }).catch(()=>{});
+            } catch (_) {}
+        }
+        function handleMandatoryUpdateCheck() {
+            checkForHostedAppUpdate(true);
+            checkCloudAppRelease();
+        }
         function startAppUpdateMonitor() {
             if (appUpdateMonitorTimer) clearInterval(appUpdateMonitorTimer);
-            setTimeout(() => checkForHostedAppUpdate(true), 800);
-            appUpdateMonitorTimer = setInterval(() => checkForHostedAppUpdate(false), 30000);
+            setTimeout(handleMandatoryUpdateCheck, 500);
+            setTimeout(announceCurrentAppRelease, 2500);
+            appUpdateMonitorTimer = setInterval(() => {
+                checkForHostedAppUpdate(false);
+                checkCloudAppRelease();
+            }, 30000);
         }
         function stopAppUpdateMonitor() {
             if (appUpdateMonitorTimer) clearInterval(appUpdateMonitorTimer);
             appUpdateMonitorTimer = null;
         }
+        window.addEventListener('online', handleMandatoryUpdateCheck);
+        window.addEventListener('focus', handleMandatoryUpdateCheck);
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) handleMandatoryUpdateCheck(); });
         let liveUpdateToastTimer = null;
         function showLiveUpdateToast(message) {
             const toast = document.getElementById('live-update-toast');
