@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-24-kyc-history-delete-v64">
+    <meta name="dms-app-version" content="2026-09-24-kyc-cloud-persist-v65">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1319,8 +1319,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-24-kyc-history-delete-v64';
-        const APP_RELEASED_AT = 1790244000000;
+        const APP_CACHE_VERSION = '2026-09-24-kyc-cloud-persist-v65';
+        const APP_RELEASED_AT = 1790245800000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -5554,13 +5554,19 @@ function renderKycStatus(){
 }
 async function deleteKycStatusHistory(id,historyKey){
     if(getRoleInfo().role!=='Admin'){kycAlert('শুধু Admin Status History delete করতে পারবেন।','error');return;}
-    if(!db){kycAlert('Server connected নয়। Refresh Data করে আবার চেষ্টা করুন।','error');return;}
     const record=kycRecords.find(r=>String(r.id)===String(id)),entry=getKycStatusHistoryEntries(record||{}).find(x=>kycHistoryKey(x[0])===historyKey);if(!record||!entry){kycAlert('History পাওয়া যায়নি। Refresh করে আবার চেষ্টা করুন।','error');return;}
     if(getKycStatusHistoryEntries(record).length<=1){kycAlert('কমপক্ষে ১টি Status History অবশ্যই রাখতে হবে।','error');return;}
     if(!confirm(entry[0]+' history delete করবেন?'))return;
     try{
-        const ref=db.ref('new_uddokta_kyc/'+id),result=await ref.transaction(data=>{if(!data||getKycStatusHistoryEntries(data).length<=1)return;data.historyDeleted=data.historyDeleted||{};data.historyDeleted[historyKey]=true;data.historyDeletedAt=Date.now();data.historyDeletedBy=String(currentUser||'admin');return data;});
-        if(!result.committed)throw new Error('কমপক্ষে ১টি history রাখতে হবে');
+        const path='new_uddokta_kyc/'+id,fresh=await firebaseRestReadFresh(path,'?_='+Date.now());
+        if(!fresh||getKycStatusHistoryEntries(fresh).length<=1)throw new Error('কমপক্ষে ১টি history রাখতে হবে');
+        const hidden=Object.assign({},fresh.historyDeleted||{});hidden[historyKey]=true;
+        const payload={historyDeleted:hidden,historyDeletedAt:Date.now(),historyDeletedBy:String(currentUser||'admin'),updatedAt:Date.now()};
+        await firebaseRestWrite(path,JSON.stringify(payload),'PATCH');
+        const verified=await firebaseRestReadFresh(path,'?_='+Date.now());
+        if(!verified||!verified.historyDeleted||verified.historyDeleted[historyKey]!==true)throw new Error('Server verification failed');
+        Object.assign(record,verified);renderKycStatus();
+        firebaseRestWrite('dms_live_update_signal',JSON.stringify({type:'kyc-history-delete',revision:Date.now(),recordId:id}),'PUT').catch(()=>{});
         kycAlert(entry[0]+' history delete হয়েছে।','success');
     }catch(e){kycAlert('History delete হয়নি: '+String(e&&e.message||'Server error'),'error');}
 }
@@ -5568,22 +5574,22 @@ function submitKycStatusUpdate(id,selectId,button){const select=document.getElem
 async function updateKycStatus(id,status,button,select){
     const allowed=['Collected','Admin Receive','Mail Send','In Portal','Active','Rejection'];
     if(getRoleInfo().role!=='Admin'){kycAlert('শুধু Admin KYC Status update করতে পারবেন।','error');return;}
-    if(!db){kycAlert('Server connected নয়। Refresh Data করে আবার চেষ্টা করুন।','error');return;}
     status=normalizeKycStatus(status);if(!allowed.includes(status)){kycAlert('সঠিক Status নির্বাচন করুন।','error');return;}
     const record=kycRecords.find(r=>String(r.id)===String(id));if(!record){kycAlert('KYC record পাওয়া যায়নি। Refresh করে আবার চেষ্টা করুন।','error');return;}
     if(normalizeKycStatus(record.status)===status){kycAlert('এই Status ইতোমধ্যে selected আছে।','error');return;}
     let reason='';if(status==='Rejection'){reason=prompt('Rejection reason লিখুন:',record.rejectionReason||'')||'';reason=reason.trim();if(!reason){renderKycStatus();kycAlert('Rejection reason বাধ্যতামূলক।','error');return;}}
-    const oldStatus=normalizeKycStatus(record.status),oldText=button?button.textContent:'';if(button){button.disabled=true;button.textContent='Updating...';}if(select)select.disabled=true;
+    const oldRecord=JSON.parse(JSON.stringify(record)),oldText=button?button.textContent:'';if(button){button.disabled=true;button.textContent='Updating...';}if(select)select.disabled=true;
     try{
-        const now=new Date().toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}),nowMs=Date.now(),payload={status,rejectionReason:status==='Rejection'?reason:'',statusUpdatedBy:String(currentUser||'admin'),statusUpdatedAt:now,updatedAt:nowMs};payload[kycStatusDateField(status)]=now;payload['historyDeleted/'+kycHistoryKey(status)]=null;
-        Object.assign(record,payload);if(record.historyDeleted)delete record.historyDeleted[kycHistoryKey(status)];renderKycStatus();
-        const recordRef=db.ref('new_uddokta_kyc/'+id);await recordRef.update(payload);
-        let saved=(await recordRef.child('status').once('value')).val();
-        if(normalizeKycStatus(saved)!==status){await firebaseRestWrite('new_uddokta_kyc/'+id,JSON.stringify(payload),'PATCH');saved=await firebaseRestReadFresh('new_uddokta_kyc/'+id+'/status');}
-        if(normalizeKycStatus(saved)!==status)throw new Error('Server verification failed');
-        db.ref('dms_live_update_signal').set({type:'kyc-status',revision:Date.now(),recordId:id,status}).catch(()=>{});
+        const now=new Date().toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}),nowMs=Date.now(),hidden=Object.assign({},record.historyDeleted||{});delete hidden[kycHistoryKey(status)];
+        const payload={status,rejectionReason:status==='Rejection'?reason:'',statusUpdatedBy:String(currentUser||'admin'),statusUpdatedAt:now,updatedAt:nowMs,historyDeleted:Object.keys(hidden).length?hidden:null};payload[kycStatusDateField(status)]=now;
+        Object.assign(record,payload);renderKycStatus();
+        const path='new_uddokta_kyc/'+id;await firebaseRestWrite(path,JSON.stringify(payload),'PATCH');
+        const verified=await firebaseRestReadFresh(path,'?_='+Date.now());
+        if(!verified||normalizeKycStatus(verified.status)!==status)throw new Error('Server verification failed');
+        Object.assign(record,verified);renderKycStatus();
+        firebaseRestWrite('dms_live_update_signal',JSON.stringify({type:'kyc-status',revision:Date.now(),recordId:id,status}),'PUT').catch(()=>{});
         kycAlert('Current Status সফলভাবে '+status+' হয়েছে।','success');
-    }catch(e){record.status=oldStatus;renderKycStatus();kycAlert('Status update হয়নি: '+String(e&&e.message||'Server error')+'। আবার চেষ্টা করুন।','error');}
+    }catch(e){Object.keys(record).forEach(k=>delete record[k]);Object.assign(record,oldRecord);renderKycStatus();kycAlert('Status update হয়নি: '+String(e&&e.message||'Server error')+'। আবার চেষ্টা করুন।','error');}
     finally{if(button&&document.body.contains(button)){button.disabled=false;button.textContent=oldText||'Update Status';}if(select&&document.body.contains(select))select.disabled=false;}
 }
 async function showKycPicture(id){
