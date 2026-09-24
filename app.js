@@ -124,7 +124,7 @@
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-24-active-page-live-v45';
+        const APP_CACHE_VERSION = '2026-09-24-login-white-screen-final-v47';
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
