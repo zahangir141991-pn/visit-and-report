@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-24-login-device-info-final-v56">
+    <meta name="dms-app-version" content="2026-09-24-cloud-password-login-info-final-v57">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1157,6 +1157,7 @@ body.app-logged-in #view-login{display:none!important}
         <div class="nav-item" id="nav-settings" onclick="switchTab('change-pass')"><span>⚙️</span><span>Settings</span></div>
         <div class="nav-item hidden" id="nav-notices" onclick="switchTab('notices')"><span>🔔</span><span>Notice <b id="notice-badge" class="notice-nav-badge hidden">0</b></span></div>
         <div class="nav-item hidden" id="nav-admin" onclick="switchTab('admin')"><span>🛠️</span><span>Admin</span></div>
+        <div class="nav-item hidden" id="nav-login-info" onclick="openLoginInformation()"><span>📱</span><span>Login Information</span></div>
         <div class="sidebar-spacer"></div>
         <button type="button" id="sidebar-app-refresh" onclick="refreshAppToLatest()">🔄 <span>Refresh Data</span></button>
         <button type="button" id="sidebar-logout" class="sidebar-logout">🚪 <span>Logout</span></button>
@@ -1315,7 +1316,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-24-login-device-info-final-v56';
+        const APP_CACHE_VERSION = '2026-09-24-cloud-password-login-info-final-v57';
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -1672,6 +1673,23 @@ body.app-logged-in #view-login{display:none!important}
             try { localStorage.setItem('dm_app_passwords', JSON.stringify(userPasswords)); } catch (e) {}
         }
 
+        // Shared password authority. Only a one-way SHA-256 hash is stored in Firebase,
+        // so a password changed on one device works immediately on every device.
+        async function hashPassword(value,userId=''){
+            const text='dms-v1|'+String(userId||'').toLowerCase()+'|'+String(value||'');
+            if(self.crypto&&crypto.subtle){const bytes=new TextEncoder().encode(text),hash=await crypto.subtle.digest('SHA-256',bytes);return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');}
+            let h=2166136261;for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,16777619);}return 'legacy-'+(h>>>0).toString(16);
+        }
+        async function readCloudAuth(userId){
+            const base=String(firebaseConfig.databaseURL||'').replace(/\/$/,''),url=base+'/user_auth/'+encodeURIComponent(String(userId))+'.json?_='+Date.now();
+            const controller=typeof AbortController!=='undefined'?new AbortController():null,timer=controller?setTimeout(()=>controller.abort(),6000):null;
+            try{const res=await fetch(url,{cache:'no-store',credentials:'omit',headers:{'Cache-Control':'no-cache'},signal:controller?controller.signal:undefined});if(!res.ok)throw new Error('Password server unavailable');return await res.json();}finally{if(timer)clearTimeout(timer);}
+        }
+        async function saveCloudAuth(userId,password,forceChange){
+            const record={passwordHash:await hashPassword(password,userId),forceChange:!!forceChange,updatedAt:Date.now(),updatedBy:String(currentUser||userId||'system')},base=String(firebaseConfig.databaseURL||'').replace(/\/$/,''),url=base+'/user_auth/'+encodeURIComponent(String(userId))+'.json';
+            const res=await fetch(url,{method:'PUT',cache:'no-store',credentials:'omit',headers:{'Content-Type':'application/json','Cache-Control':'no-cache'},body:JSON.stringify(record)});if(!res.ok)throw new Error('Password server save failed');return record;
+        }
+
         // Browsers do not expose phone IMEI. A persistent random Device ID provides
         // privacy-safe multi-device login detection.
         const DEVICE_ID_KEY = 'dms_private_device_id_v1';
@@ -1687,7 +1705,8 @@ body.app-logged-in #view-login{display:none!important}
         }
         function markCurrentLoginOffline(){stopLoginHeartbeat();if(db&&currentUser&&registeredLoginUser===String(currentUser))db.ref('user_login_sessions/'+String(currentUser)+'/'+getDeviceId()).update({active:false,lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText()}).catch(()=>{});registeredLoginUser='';}
         function renderAdminLoginInfo(data){const body=document.getElementById('admin-login-info-body');if(!body)return;const rows=[];Object.keys(data||{}).forEach(userId=>Object.keys(data[userId]||{}).forEach(deviceId=>rows.push(Object.assign({userId,deviceId},data[userId][deviceId]||{}))));rows.sort((a,b)=>Number(b.lastSeen||b.loginAt||0)-Number(a.lastSeen||a.loginAt||0));body.innerHTML=rows.length?rows.map(r=>{const active=!!r.active&&Date.now()-Number(r.lastSeen||0)<150000;return '<tr><td data-label="User ID">'+escapeMorningHtml(r.userId||'')+'</td><td data-label="Login Time">'+escapeMorningHtml(r.loginTime||loginTimeText(r.loginAt))+'</td><td data-label="Last Active">'+escapeMorningHtml(r.lastActiveTime||loginTimeText(r.lastSeen))+'</td><td data-label="Device ID"><span title="'+escapeMorningHtml(r.deviceId||'')+'">'+escapeMorningHtml(String(r.deviceId||'').slice(0,16))+'...</span></td><td data-label="Device / Browser">'+escapeMorningHtml(r.deviceLabel||'Unknown')+'</td><td data-label="Status"><span class="status-badge">'+(active?'Online':'Offline')+'</span></td></tr>';}).join(''):'<tr><td colspan="6" class="empty-state">No login information found.</td></tr>';}
-        async function loadAdminLoginInfo(){if(!db||String(currentUser)!=='admin')return;try{const snap=await db.ref('user_login_sessions').once('value');renderAdminLoginInfo(snap.val()||{});}catch(e){console.warn('Login information load failed:',e);}}
+        async function loadAdminLoginInfo(){const body=document.getElementById('admin-login-info-body');if(String(currentUser)!=='admin')return;if(!db){if(body)body.innerHTML='<tr><td colspan="6">Server connecting... আবার Refresh করুন।</td></tr>';ensureFirebaseSdk().then(()=>{recordLoginSession();loadAdminLoginInfo();}).catch(()=>{});return;}try{const snap=await db.ref('user_login_sessions').once('value');renderAdminLoginInfo(snap.val()||{});}catch(e){if(body)body.innerHTML='<tr><td colspan="6" style="color:#b91c1c">Login information load হয়নি। Database permission/internet check করুন।</td></tr>';console.warn('Login information load failed:',e);}}
+        function openLoginInformation(){if(String(currentUser)!=='admin')return;switchTab('admin');setTimeout(()=>{loadAdminLoginInfo();loadAdminLatestLoginAlert();document.getElementById('admin-login-info-body')?.closest('.card')?.scrollIntoView({behavior:'smooth',block:'start'});},80);}
         async function loadAdminLatestLoginAlert(){if(!db||String(currentUser)!=='admin')return;try{const snap=await db.ref('admin_login_alerts').limitToLast(1).once('value');let latest=null;snap.forEach(c=>{latest=c.val()||{};});if(latest&&String(latest.userId||'')!=='admin'){const box=document.getElementById('admin-multi-device-alert');if(box){box.textContent='⚠️ '+String(latest.userId||'User')+' একাধিক active device থেকে login করেছে। সর্বশেষ: '+String(latest.deviceLabel||latest.deviceId||'Unknown')+' · '+String(latest.loginTime||'');box.style.display='block';}}}catch(e){}}
         function startAdminLoginMonitoring(){if(!db||String(currentUser)!=='admin')return;if(!adminLoginSessionsRef){adminLoginSessionsRef=db.ref('user_login_sessions');adminLoginSessionsRef.on('value',s=>renderAdminLoginInfo(s.val()||{}));}if(!adminLoginAlertRef){adminLoginAlertRef=db.ref('admin_login_alerts');adminLoginAlertRef.limitToLast(1).once('value').then(initial=>{let latest=0;initial.forEach(c=>{latest=Math.max(latest,Number((c.val()||{}).createdAt||0));});adminLoginAlertRef.on('child_added',snap=>{const a=snap.val()||{};if(Number(a.createdAt||0)<=latest||String(a.userId||'')==='admin')return;const box=document.getElementById('admin-multi-device-alert'),msg='⚠️ '+String(a.userId||'User')+' অন্য device থেকে login করেছে। Device: '+String(a.deviceLabel||a.deviceId||'Unknown')+' · '+String(a.loginTime||'');if(box){box.textContent=msg;box.style.display='block';}alert(msg);});}).catch(()=>{});}}
 
@@ -1979,7 +1998,7 @@ body.app-logged-in #view-login{display:none!important}
             if (notice) notice.style.display = mustChangeDefaultPassword ? 'block' : 'none';
             if (cancel) cancel.style.display = mustChangeDefaultPassword ? 'none' : '';
         }
-        function login() {
+        async function login() {
             if (loginInProgress) return false;
             const userEl = document.getElementById('login-user');
             const passEl = document.getElementById('login-pass');
@@ -1989,28 +2008,32 @@ body.app-logged-in #view-login{display:none!important}
             const rawUser = userEl ? userEl.value : '';
             const user = normalizeLoginUserId(rawUser);
             const pass = passEl ? String(passEl.value || '') : '';
+            if(!user||!pass){showLoginAlert('User ID এবং Password দিন।','error');return false;}
+            loginInProgress = true;
+            if(loginButton){loginButton.disabled=true;loginButton.textContent='Checking...';}
 
             // Support both the current wallet-based DSO IDs and the old numeric 801-845 keys.
             const legacyUser = String(rawUser || '').trim().toLowerCase();
             let passwordOk = false;
-            if (Object.prototype.hasOwnProperty.call(userPasswords, user) && String(userPasswords[user]) === pass) {
-                passwordOk = true;
-            } else if (legacyUser && Object.prototype.hasOwnProperty.call(userPasswords, legacyUser) && String(userPasswords[legacyUser]) === pass) {
-                passwordOk = true;
-            }
+            let cloudAuth=null;
+            try{cloudAuth=await readCloudAuth(user);}catch(e){console.warn('Cloud password check unavailable; using local fallback.',e);}
+            if(cloudAuth&&cloudAuth.passwordHash)passwordOk=(await hashPassword(pass,user))===String(cloudAuth.passwordHash);
+            else if(Object.prototype.hasOwnProperty.call(userPasswords,user)&&String(userPasswords[user])===pass)passwordOk=true;
+            else if(legacyUser&&Object.prototype.hasOwnProperty.call(userPasswords,legacyUser)&&String(userPasswords[legacyUser])===pass)passwordOk=true;
 
             if (!passwordOk) {
                 showLoginAlert('Invalid User ID or Password. Please check your User ID and password.', 'error');
                 if (passEl) { passEl.focus(); passEl.select(); }
+                loginInProgress=false;if(loginButton){loginButton.disabled=false;loginButton.textContent='Login';}
                 return false;
             }
-
-            loginInProgress = true;
+            userPasswords[user]=pass;savePasswords();
+            if(!cloudAuth||!cloudAuth.passwordHash){try{cloudAuth=await saveCloudAuth(user,pass,pass==='1234');}catch(e){console.warn('Cloud password bootstrap failed:',e);}}
 
             // Login itself must never depend on Firebase/network/table loading.
             // Enter the app first, then initialize optional data services safely.
             currentUser = user;
-            mustChangeDefaultPassword = String(userPasswords[user] || '') === '1234';
+            mustChangeDefaultPassword = cloudAuth&&typeof cloudAuth.forceChange==='boolean'?cloudAuth.forceChange:(pass==='1234');
             clearRuntimeDataCaches();
             document.body.classList.add('app-logged-in');
             startAppUpdateMonitor();
@@ -2020,7 +2043,7 @@ body.app-logged-in #view-login{display:none!important}
                 loginAlert.style.display = 'none';
                 loginAlert.className = 'alert';
             }
-            if (loginButton) loginButton.disabled = true;
+            if (loginButton) loginButton.textContent = 'Login';
 
             const loginView = document.getElementById('view-login');
             const mainApp = document.getElementById('main-app');
@@ -2059,6 +2082,8 @@ body.app-logged-in #view-login{display:none!important}
 
                 const adminNav = document.getElementById('nav-admin');
                 if (adminNav) adminNav.classList.toggle('hidden', user !== 'admin');
+                const loginInfoNav = document.getElementById('nav-login-info');
+                if (loginInfoNav) loginInfoNav.classList.toggle('hidden', user !== 'admin');
                 const noticeNav = document.getElementById('nav-notices');
                 if (noticeNav) noticeNav.classList.toggle('hidden', !(roleInfo.role === 'DSS' || roleInfo.role === 'DSO'));
                 updateVisitMenuForRole();
@@ -2090,7 +2115,7 @@ body.app-logged-in #view-login{display:none!important}
                 // from the sidebar without ending the current session.
             } finally {
                 loginInProgress = false;
-                if (loginButton) loginButton.disabled = false;
+                if (loginButton) { loginButton.disabled = false; loginButton.textContent='Login'; }
             }
             return false;
         }
@@ -2174,14 +2199,16 @@ body.app-logged-in #view-login{display:none!important}
             else setTimeout(cleanup, 0);
         }
 
-        function changePassword() {
+        async function changePassword() {
             const oldInput = document.getElementById('old-password');
             const newInput = document.getElementById('new-password');
             const confirmInput = document.getElementById('confirm-new-password');
             const oldPass = oldInput ? oldInput.value : '';
             const newPass = newInput ? newInput.value.trim() : '';
             const confirmPass = confirmInput ? confirmInput.value.trim() : '';
-            if (!currentUser || String(userPasswords[currentUser] || '') !== String(oldPass)) {
+            let oldPasswordOk=false;
+            try{const auth=await readCloudAuth(currentUser);oldPasswordOk=auth&&auth.passwordHash?(await hashPassword(oldPass,currentUser))===String(auth.passwordHash):String(userPasswords[currentUser]||'')===String(oldPass);}catch(_){oldPasswordOk=String(userPasswords[currentUser]||'')===String(oldPass);}
+            if (!currentUser || !oldPasswordOk) {
                 alert('Old Password সঠিক নয়।');
                 if (oldInput) { oldInput.focus(); oldInput.select(); }
                 return;
@@ -2189,8 +2216,8 @@ body.app-logged-in #view-login{display:none!important}
             if (newPass.length < 4) { alert('New Password কমপক্ষে ৪ অক্ষরের হতে হবে।'); return; }
             if (newPass === String(oldPass)) { alert('New Password পুরোনো Password-এর মতো হতে পারবে না।'); return; }
             if (newPass !== confirmPass) { alert('New Password এবং Confirm Password মিলছে না।'); return; }
-            userPasswords[currentUser] = newPass;
-            savePasswords();
+            try{await saveCloudAuth(currentUser,newPass,false);}catch(e){alert('Server-এ Password save হয়নি। Internet check করে আবার চেষ্টা করুন।');return;}
+            userPasswords[currentUser] = newPass;savePasswords();
             mustChangeDefaultPassword = false;
             applyPasswordChangeRequirement();
             if (oldInput) oldInput.value = '';
@@ -2200,7 +2227,7 @@ body.app-logged-in #view-login{display:none!important}
             switchTab('dashboard');
         }
 
-        function adminChangePassword() {
+        async function adminChangePassword() {
             if (String(currentUser || '').toLowerCase() !== 'admin') {
                 alert('Only Admin can change another user password.');
                 return;
@@ -2221,8 +2248,8 @@ body.app-logged-in #view-login{display:none!important}
                 return;
             }
 
-            userPasswords[targetUser] = newPass;
-            savePasswords();
+            try{await saveCloudAuth(targetUser,newPass,false);}catch(e){alert('Server-এ Password save হয়নি। Internet check করে আবার চেষ্টা করুন।');return;}
+            userPasswords[targetUser] = newPass;savePasswords();
 
             const label = select.options[select.selectedIndex]?.text || targetUser.toUpperCase();
             if (status) {
@@ -2233,7 +2260,7 @@ body.app-logged-in #view-login{display:none!important}
             alert(`Password for ${label} has been changed successfully.`);
         }
 
-        function adminResetPassword() {
+        async function adminResetPassword() {
             if (String(currentUser || '').toLowerCase() !== 'admin') {
                 alert('Only Admin can reset another user password.');
                 return;
@@ -2242,8 +2269,8 @@ body.app-logged-in #view-login{display:none!important}
             const oldSelect = document.getElementById('reset-user-select');
             const targetUser = modernSelect?.value || oldSelect?.value;
             if (!targetUser) return;
-            userPasswords[targetUser] = '1234';
-            savePasswords();
+            try{await saveCloudAuth(targetUser,'1234',true);}catch(e){alert('Server-এ Password reset হয়নি। Internet check করে আবার চেষ্টা করুন।');return;}
+            userPasswords[targetUser] = '1234';savePasswords();
             const label = modernSelect?.options[modernSelect.selectedIndex]?.text || targetUser.toUpperCase();
             const status = document.getElementById('admin-password-status');
             if (status) {
