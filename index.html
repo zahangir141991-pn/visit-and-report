@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-24-active-page-live-v45">
+    <meta name="dms-app-version" content="2026-09-24-login-white-screen-final-v47">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -677,6 +677,12 @@ img,video,canvas,svg{max-width:100%;height:auto}
 #view-login.login-visible{display:block!important}
 #view-login.login-visible.hidden{display:block!important}
 #view-login:not(.login-visible){display:none!important}
+/* Fail-safe: before a successful login the login card must remain visible even
+   if the external JavaScript is delayed, blocked, or an older class is cached. */
+body:not(.app-logged-in) #view-login{display:block!important;visibility:visible!important;opacity:1!important;position:relative!important;z-index:20!important;min-height:calc(100vh - 58px);min-height:calc(100dvh - 58px)}
+body:not(.app-logged-in) #view-login .container{display:block!important;visibility:visible!important;opacity:1!important}
+body:not(.app-logged-in) #view-login .card{display:block!important;visibility:visible!important;opacity:1!important;background:#fff!important}
+body.app-logged-in #view-login{display:none!important}
 
 #main-app{display:none!important}
 #main-app.app-visible{display:block!important}
@@ -1136,6 +1142,19 @@ img,video,canvas,svg{max-width:100%;height:auto}
 
 
 
-    <script defer src="./app.js?v=20260924-active-page-live-v45"></script>
+    <script>
+    (function(){
+      function guaranteeLoginScreen(){
+        if(document.body.classList.contains('app-logged-in'))return;
+        var login=document.getElementById('view-login'),main=document.getElementById('main-app'),nav=document.getElementById('app-nav');
+        if(login){login.classList.add('login-visible','active');login.classList.remove('hidden');}
+        if(main){main.classList.remove('app-visible');main.classList.add('hidden');}
+        if(nav){nav.classList.remove('nav-visible');nav.classList.add('hidden');}
+      }
+      if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',guaranteeLoginScreen,{once:true});else guaranteeLoginScreen();
+      window.addEventListener('error',guaranteeLoginScreen);
+    })();
+    </script>
+    <script defer src="./app.js?v=20260924-login-white-screen-final-v47"></script>
 </body>
 </html>
