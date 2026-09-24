@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-24-kyc-status-workflow-final-v54">
+    <meta name="dms-app-version" content="2026-09-24-mandatory-password-final-v55">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1098,12 +1098,21 @@ body.app-logged-in #view-login{display:none!important}
             <div id="view-change-pass" class="page">
                 <div class="card" style="max-width: 400px; margin: 20px auto; text-align: left;">
                     <h3 style="font-size:1rem; margin-bottom:12px;">Change Password</h3>
+                    <div id="default-password-notice" class="alert alert-error" style="display:none;margin-bottom:14px;line-height:1.5;">⚠️ আপনি Default Password ব্যবহার করছেন। App ব্যবহার করতে এখনই password পরিবর্তন করা বাধ্যতামূলক।</div>
+                    <div class="form-group">
+                        <label>Old Password</label>
+                        <input type="password" id="old-password" autocomplete="current-password" placeholder="Enter old password">
+                    </div>
                     <div class="form-group">
                         <label>New Password</label>
-                        <input type="password" id="new-password" placeholder="Enter new password">
+                        <input type="password" id="new-password" autocomplete="new-password" placeholder="Enter new password">
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm New Password</label>
+                        <input type="password" id="confirm-new-password" autocomplete="new-password" placeholder="Re-enter new password">
                     </div>
                     <button type="button" class="btn" onclick="changePassword()">Save New Password</button>
-                    <button type="button" class="btn btn-sec" onclick="switchTab('form')">Cancel</button>
+                    <button type="button" class="btn btn-sec" id="change-password-cancel" onclick="switchTab('form')">Cancel</button>
                 </div>
             </div>
 
@@ -1299,7 +1308,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-24-kyc-status-workflow-final-v54';
+        const APP_CACHE_VERSION = '2026-09-24-mandatory-password-final-v55';
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -1937,6 +1946,13 @@ body.app-logged-in #view-login{display:none!important}
         }
 
         let loginInProgress = false;
+        let mustChangeDefaultPassword = false;
+        function applyPasswordChangeRequirement() {
+            const notice = document.getElementById('default-password-notice');
+            const cancel = document.getElementById('change-password-cancel');
+            if (notice) notice.style.display = mustChangeDefaultPassword ? 'block' : 'none';
+            if (cancel) cancel.style.display = mustChangeDefaultPassword ? 'none' : '';
+        }
         function login() {
             if (loginInProgress) return false;
             const userEl = document.getElementById('login-user');
@@ -1968,6 +1984,7 @@ body.app-logged-in #view-login{display:none!important}
             // Login itself must never depend on Firebase/network/table loading.
             // Enter the app first, then initialize optional data services safely.
             currentUser = user;
+            mustChangeDefaultPassword = String(userPasswords[user] || '') === '1234';
             clearRuntimeDataCaches();
             document.body.classList.add('app-logged-in');
             startAppUpdateMonitor();
@@ -2034,7 +2051,13 @@ body.app-logged-in #view-login{display:none!important}
                     console.warn('Login server sync failed; realtime fallback remains active:', err);
                 }), 0);
                 startServerUpdatePolling();
-                try { switchTab('dashboard'); } catch (e) {}
+                try {
+                    applyPasswordChangeRequirement();
+                    if (mustChangeDefaultPassword) {
+                        switchTab('change-pass');
+                        setTimeout(() => { alert('Default Password পরিবর্তন করা বাধ্যতামূলক।'); document.getElementById('old-password')?.focus(); }, 100);
+                    } else switchTab('dashboard');
+                } catch (e) {}
                 setTimeout(() => { try { updateVisitSubmitState(); } catch (e) {} }, 300);
                 // No automatic page reload after login. Data can be refreshed safely
                 // from the sidebar without ending the current session.
@@ -2090,6 +2113,7 @@ body.app-logged-in #view-login{display:none!important}
             stopServerUpdatePolling();
             lastServerUpdateSignature = '';
             currentUser = null;
+            mustChangeDefaultPassword = false;
             initializedLoginUser = '';
             document.body.classList.remove('app-logged-in');
 
@@ -2123,16 +2147,29 @@ body.app-logged-in #view-login{display:none!important}
         }
 
         function changePassword() {
-            const newPass = document.getElementById('new-password').value.trim();
-            if (newPass.length < 3) {
-                alert('Password must be at least 3 characters.');
+            const oldInput = document.getElementById('old-password');
+            const newInput = document.getElementById('new-password');
+            const confirmInput = document.getElementById('confirm-new-password');
+            const oldPass = oldInput ? oldInput.value : '';
+            const newPass = newInput ? newInput.value.trim() : '';
+            const confirmPass = confirmInput ? confirmInput.value.trim() : '';
+            if (!currentUser || String(userPasswords[currentUser] || '') !== String(oldPass)) {
+                alert('Old Password সঠিক নয়।');
+                if (oldInput) { oldInput.focus(); oldInput.select(); }
                 return;
             }
+            if (newPass.length < 4) { alert('New Password কমপক্ষে ৪ অক্ষরের হতে হবে।'); return; }
+            if (newPass === String(oldPass)) { alert('New Password পুরোনো Password-এর মতো হতে পারবে না।'); return; }
+            if (newPass !== confirmPass) { alert('New Password এবং Confirm Password মিলছে না।'); return; }
             userPasswords[currentUser] = newPass;
             savePasswords();
-            alert('Password changed successfully!');
-            document.getElementById('new-password').value = '';
-            switchTab('form');
+            mustChangeDefaultPassword = false;
+            applyPasswordChangeRequirement();
+            if (oldInput) oldInput.value = '';
+            if (newInput) newInput.value = '';
+            if (confirmInput) confirmInput.value = '';
+            alert('Password সফলভাবে পরিবর্তন হয়েছে।');
+            switchTab('dashboard');
         }
 
         function adminChangePassword() {
@@ -3687,6 +3724,11 @@ body.app-logged-in #view-login{display:none!important}
                 if (ub) { ub.classList.add('hidden'); ub.classList.remove('user-visible'); }
                 if (an) { an.classList.add('hidden'); an.classList.remove('nav-visible'); }
                 return;
+            }
+            if (mustChangeDefaultPassword && tab !== 'change-pass') {
+                applyPasswordChangeRequirement();
+                tab = 'change-pass';
+                setTimeout(() => document.getElementById('old-password')?.focus(), 0);
             }
             if (tab === 'admin' && currentUser !== 'admin') return;
             if (tab === 'morning-upload' && getRoleInfo().role !== 'Admin') return;
