@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-24-login-before-refresh-v61">
+    <meta name="dms-app-version" content="2026-09-24-kyc-collected-status-v62">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1091,7 +1091,7 @@ body.app-logged-in #view-login{display:none!important}
             <!-- New Uddokta KYC Status -->
             <div id="view-kyc-status" class="page">
                 <div class="section-head"><div><h2>KYC Status</h2><small style="color:#64748b">Track submitted KYC applications in real time</small></div><button type="button" class="btn btn-sm btn-sec" onclick="renderKycStatus()">↻ Refresh</button></div>
-                <div class="card" style="text-align:left;margin-bottom:14px"><div class="filter-grid"><div><label>Date</label><input type="date" id="kyc-filter-date" onchange="renderKycStatus()"></div><div><label>Month</label><input type="month" id="kyc-filter-month" onchange="renderKycStatus()"></div><div><label>Status</label><select id="kyc-filter-status" onchange="renderKycStatus()"><option value="">All Status</option><option value="Submitted">Submitted</option><option value="Admin Receive">Admin Receive</option><option value="Mail Send">Mail Send</option><option value="In Portal">In Portal</option><option value="Active">Active</option><option value="Rejection">Rejection</option></select></div><div><label>Search</label><input type="search" id="kyc-filter-search" placeholder="Shop / owner / mobile / thana / bazar" oninput="renderKycStatus()"></div></div></div>
+                <div class="card" style="text-align:left;margin-bottom:14px"><div class="filter-grid"><div><label>Date</label><input type="date" id="kyc-filter-date" onchange="renderKycStatus()"></div><div><label>Month</label><input type="month" id="kyc-filter-month" onchange="renderKycStatus()"></div><div><label>Status</label><select id="kyc-filter-status" onchange="renderKycStatus()"><option value="">All Status</option><option value="Collected">Collected</option><option value="Admin Receive">Admin Receive</option><option value="Mail Send">Mail Send</option><option value="In Portal">In Portal</option><option value="Active">Active</option><option value="Rejection">Rejection</option></select></div><div><label>Search</label><input type="search" id="kyc-filter-search" placeholder="Shop / owner / mobile / thana / bazar" oninput="renderKycStatus()"></div></div></div>
                 <div class="table-responsive"><table class="reports-table kyc-table"><thead><tr><th>Collection Date</th><th>DSO Wallet</th><th>Uddokta Number</th><th>Shop Name</th><th>Owner Name</th><th>Contact Number</th><th>Thana</th><th>Bazar Name</th><th>Picture</th><th>Location</th><th>Submitted By</th><th>Current Status</th><th>Status Date</th><th>Status History</th><th>Rejection Reason</th></tr></thead><tbody id="kyc-status-body"><tr><td colspan="15">Loading KYC data...</td></tr></tbody></table></div>
             </div>
 
@@ -1319,8 +1319,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-24-login-before-refresh-v61';
-        const APP_RELEASED_AT = 1790238600000;
+        const APP_CACHE_VERSION = '2026-09-24-kyc-collected-status-v62';
+        const APP_RELEASED_AT = 1790240400000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -5412,6 +5412,7 @@ let kycPictureData='';
 let kycRecords=[];
 let kycRealtimeRef=null;
 let kycCameraStream=null;
+let kycStatusSnapshot=null;
 
 function toggleKycMenu(event){
     if(event){event.preventDefault();event.stopPropagation();}
@@ -5508,9 +5509,10 @@ async function submitKyc(event){
     const btn=document.getElementById('btn-kyc-submit');if(btn){btn.disabled=true;btn.textContent='Submitting...';}
     try{
         const role=getRoleInfo(),ref=db.ref('new_uddokta_kyc').push(),id=ref.key,dsoWallet=selectedDsoWallet,dssName=role.role==='DSS'?String(role.dssName||'').trim().toUpperCase():getDssNameForWallet(dsoWallet);
-        const record={id,collectionDate:getDhakaToday(),dsoWallet,uddoktaNumber,shopName:document.getElementById('kyc-shop-name').value.trim(),ownerName:document.getElementById('kyc-owner-name').value.trim(),ownerContact:contact,thana:document.getElementById('kyc-thana').value.trim(),bazarName:document.getElementById('kyc-bazar-name').value.trim(),locationName,gps,submittedBy:String(currentUser||''),submitterRole:role.role,dssName,status:'Submitted',submittedAt:new Date().toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}),rejectionReason:'',hasPhoto:true,createdAt:firebase.database.ServerValue.TIMESTAMP,updatedAt:firebase.database.ServerValue.TIMESTAMP};
+        const collectedAt=new Date().toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true});
+        const record={id,collectionDate:getDhakaToday(),dsoWallet,uddoktaNumber,shopName:document.getElementById('kyc-shop-name').value.trim(),ownerName:document.getElementById('kyc-owner-name').value.trim(),ownerContact:contact,thana:document.getElementById('kyc-thana').value.trim(),bazarName:document.getElementById('kyc-bazar-name').value.trim(),locationName,gps,submittedBy:String(currentUser||''),submitterRole:role.role,dssName,status:'Collected',collectedAt,submittedAt:collectedAt,rejectionReason:'',hasPhoto:true,createdAt:firebase.database.ServerValue.TIMESTAMP,updatedAt:firebase.database.ServerValue.TIMESTAMP};
         const updates={};updates['new_uddokta_kyc/'+id]=record;updates['new_uddokta_kyc_photos/'+id]=kycPictureData;updates['dms_live_update_signal']={type:'kyc',revision:Date.now(),recordId:id};await db.ref().update(updates);
-        clearKycForm();kycAlert('KYC successfully submitted.','success');setTimeout(()=>switchTab('kyc-status'),350);
+        clearKycForm();kycAlert('KYC successfully submitted. Current Status: Collected','success');setTimeout(()=>switchTab('kyc-status'),350);
     }catch(e){kycAlert('KYC submit failed: '+e.message,'error');}
     finally{if(btn){btn.disabled=false;btn.textContent='Submit KYC';}}
 }
@@ -5524,24 +5526,25 @@ function canSeeKycRecord(r){
 function startKycRealtime(){
     if(!db||kycRealtimeRef)return;
     kycRealtimeRef=db.ref('new_uddokta_kyc');
-    kycRealtimeRef.on('value',snap=>{const rows=[];snap.forEach(child=>rows.push(Object.assign({id:child.key},child.val()||{})));kycRecords=rows.sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));renderKycStatus();},e=>console.warn('KYC realtime sync failed:',e));
+    kycRealtimeRef.on('value',snap=>{const rows=[],nextSnapshot={};snap.forEach(child=>{const row=Object.assign({id:child.key},child.val()||{});rows.push(row);nextSnapshot[child.key]=normalizeKycStatus(row.status);});if(kycStatusSnapshot&&getRoleInfo().role!=='Admin'){const changed=rows.find(row=>canSeeKycRecord(row)&&kycStatusSnapshot[row.id]&&kycStatusSnapshot[row.id]!==nextSnapshot[row.id]);if(changed)showLiveUpdateToast('KYC status update হয়েছে: '+normalizeKycStatus(changed.status));}kycStatusSnapshot=nextSnapshot;kycRecords=rows.sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));renderKycStatus();},e=>console.warn('KYC realtime sync failed:',e));
 }
+function normalizeKycStatus(status){return !status||status==='Submitted'?'Collected':String(status);}
 function kycStatusControl(r){
-    const current=r.status||'Submitted',role=getRoleInfo();if(role.role!=='Admin')return '<span class="status-badge">'+escapeMorningHtml(current)+'</span>';
-    const states=['Submitted','Admin Receive','Mail Send','In Portal','Active','Rejection'],selectId='kyc-status-select-'+String(r.id).replace(/[^a-zA-Z0-9_-]/g,'');
+    const current=normalizeKycStatus(r.status),role=getRoleInfo();if(role.role!=='Admin')return '<span class="status-badge">'+escapeMorningHtml(current)+'</span>';
+    const states=['Collected','Admin Receive','Mail Send','In Portal','Active','Rejection'],selectId='kyc-status-select-'+String(r.id).replace(/[^a-zA-Z0-9_-]/g,'');
     return '<div class="kyc-status-control"><select id="'+selectId+'" class="kyc-status-select">'+states.map(s=>'<option value="'+s+'"'+(s===current?' selected':'')+'>'+s+'</option>').join('')+'</select><button type="button" class="btn btn-sm kyc-status-update-btn" onclick="submitKycStatusUpdate(\''+escapeMorningHtml(r.id)+'\',\''+selectId+'\')">Update Status</button></div>';
 }
-function kycStatusDateField(status){return {'Submitted':'submittedAt','Admin Receive':'adminReceiveAt','Mail Send':'mailSendAt','In Portal':'inPortalAt','Active':'activeAt','Rejection':'rejectionAt'}[status]||'statusUpdatedAt';}
-function kycStatusDate(r){return r[kycStatusDateField(r.status||'Submitted')]||r.statusUpdatedAt||r.submittedAt||r.collectionDate||'—';}
+function kycStatusDateField(status){return {'Collected':'collectedAt','Admin Receive':'adminReceiveAt','Mail Send':'mailSendAt','In Portal':'inPortalAt','Active':'activeAt','Rejection':'rejectionAt'}[normalizeKycStatus(status)]||'statusUpdatedAt';}
+function kycStatusDate(r){return r[kycStatusDateField(r.status)]||r.statusUpdatedAt||r.collectedAt||r.submittedAt||r.collectionDate||'—';}
 function kycStatusHistoryHtml(r){
-    const items=[['Submitted',r.submittedAt||r.collectionDate],['Admin Receive',r.adminReceiveAt],['Mail Send',r.mailSendAt],['In Portal',r.inPortalAt],['Active',r.activeAt],['Rejection',r.rejectionAt]].filter(x=>x[1]);
+    const items=[['Collected',r.collectedAt||r.submittedAt||r.collectionDate],['Admin Receive',r.adminReceiveAt],['Mail Send',r.mailSendAt],['In Portal',r.inPortalAt],['Active',r.activeAt],['Rejection',r.rejectionAt]].filter(x=>x[1]);
     return items.length?items.map(x=>'<span><b>'+escapeMorningHtml(x[0])+':</b> '+escapeMorningHtml(x[1])+'</span>').join(''):'—';
 }
 function kycTruncated(value){const text=String(value||'—');return '<span class="kyc-truncate" title="'+escapeMorningHtml(text)+'">'+escapeMorningHtml(text)+'</span>';}
 function renderKycStatus(){
     const body=document.getElementById('kyc-status-body');if(!body)return;
     const date=String((document.getElementById('kyc-filter-date')||{}).value||''),month=String((document.getElementById('kyc-filter-month')||{}).value||''),status=String((document.getElementById('kyc-filter-status')||{}).value||''),q=String((document.getElementById('kyc-filter-search')||{}).value||'').trim().toLowerCase();
-    let rows=kycRecords.filter(canSeeKycRecord);if(date)rows=rows.filter(r=>String(r.collectionDate||'')===date);if(month)rows=rows.filter(r=>String(r.collectionDate||'').slice(0,7)===month);if(status)rows=rows.filter(r=>(r.status||'Submitted')===status);if(q)rows=rows.filter(r=>[r.dsoWallet,r.uddoktaNumber,r.shopName,r.ownerName,r.ownerContact,r.thana,r.bazarName,r.locationName,r.submittedBy].some(v=>String(v||'').toLowerCase().includes(q)));
+    let rows=kycRecords.filter(canSeeKycRecord);if(date)rows=rows.filter(r=>String(r.collectionDate||'')===date);if(month)rows=rows.filter(r=>String(r.collectionDate||'').slice(0,7)===month);if(status)rows=rows.filter(r=>normalizeKycStatus(r.status)===status);if(q)rows=rows.filter(r=>[r.dsoWallet,r.uddoktaNumber,r.shopName,r.ownerName,r.ownerContact,r.thana,r.bazarName,r.locationName,r.submittedBy].some(v=>String(v||'').toLowerCase().includes(q)));
     body.innerHTML=rows.length?rows.map(r=>'<tr><td data-label="Collection Date">'+escapeMorningHtml(r.collectionDate||'')+'</td><td data-label="DSO Wallet">'+escapeMorningHtml(r.dsoWallet?String(r.dsoWallet).slice(-3):'')+'</td><td data-label="Uddokta Number">'+escapeMorningHtml(r.uddoktaNumber||'')+'</td><td data-label="Shop Name">'+kycTruncated(r.shopName)+'</td><td data-label="Owner Name">'+escapeMorningHtml(r.ownerName||'')+'</td><td data-label="Contact Number">'+escapeMorningHtml(r.ownerContact||'')+'</td><td data-label="Thana">'+kycTruncated(r.thana)+'</td><td data-label="Bazar Name">'+kycTruncated(r.bazarName)+'</td><td data-label="Picture">'+(r.hasPhoto?'<button type="button" class="btn btn-sm btn-sec" onclick="showKycPicture(\''+escapeMorningHtml(r.id)+'\')">View</button>':'—')+'</td><td data-label="Location">'+kycTruncated(r.locationName||r.gps)+'</td><td data-label="Submitted By">'+escapeMorningHtml(r.submittedBy||'')+'</td><td data-label="Current Status">'+kycStatusControl(r)+'</td><td data-label="Status Date">'+escapeMorningHtml(kycStatusDate(r))+'</td><td data-label="Status History" class="kyc-status-history">'+kycStatusHistoryHtml(r)+'</td><td data-label="Rejection Reason" class="kyc-reason">'+escapeMorningHtml(r.rejectionReason||'—')+'</td></tr>').join(''):'<tr><td colspan="15" class="empty-state">No KYC record found.</td></tr>';
 }
 function submitKycStatusUpdate(id,selectId){const select=document.getElementById(selectId);if(select)updateKycStatus(id,select.value);}
