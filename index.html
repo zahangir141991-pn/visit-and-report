@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-24-cloud-password-login-info-final-v57">
+    <meta name="dms-app-version" content="2026-09-24-login-info-menu-final-v58">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -925,12 +925,6 @@ body.app-logged-in #view-login{display:none!important}
                 </div>
 
                 <div class="card" style="text-align:left; margin-bottom:16px;">
-                    <div class="section-head" style="margin-bottom:10px"><div><h3 style="font-size:1rem">User Login Information</h3><small style="color:#64748b">IMEI browser থেকে পাওয়া যায় না—নিরাপদ Device ID দেখানো হচ্ছে</small></div><button type="button" class="btn btn-sm btn-sec" onclick="loadAdminLoginInfo()">↻ Refresh</button></div>
-                    <div id="admin-multi-device-alert" class="alert alert-error" style="display:none;margin-bottom:10px"></div>
-                    <div class="table-responsive"><table class="reports-table" style="min-width:920px"><thead><tr><th>User ID</th><th>Login Time</th><th>Last Active</th><th>Device ID</th><th>Device / Browser</th><th>Status</th></tr></thead><tbody id="admin-login-info-body"><tr><td colspan="6">Login information loading...</td></tr></tbody></table></div>
-                </div>
-
-                <div class="card" style="text-align:left; margin-bottom:16px;">
                     <h3 style="font-size:1rem; margin-bottom:10px;">Reset User Password</h3>
                     <div class="form-group hidden">
                         <label>Select User to Reset Password</label>
@@ -963,6 +957,15 @@ body.app-logged-in #view-login{display:none!important}
                     <div style="margin-top:10px;padding:10px 12px;background:#f8fafc;border-radius:10px;color:#475569;font-size:.8rem;line-height:1.55;">
                         <b>Excel columns:</b> DSO Number/DSO Wallet, Uddokta Number, Uddokta Name, DSS Name. Header names can be English or Bangla. Uddokta Number is used as the unique key.
                     </div>
+                </div>
+            </div>
+
+            <!-- Admin-only Login Information Page -->
+            <div id="view-login-info" class="page">
+                <div class="section-head"><div><h2>User Login Information</h2><small style="color:#64748b">শুধু Admin দেখতে পারবেন · IMEI-এর পরিবর্তে নিরাপদ Device ID</small></div><button type="button" class="btn btn-sm btn-sec" onclick="loadAdminLoginInfo()">↻ Refresh</button></div>
+                <div id="admin-multi-device-alert" class="alert alert-error" style="display:none;margin-bottom:12px"></div>
+                <div class="card" style="text-align:left">
+                    <div class="table-responsive"><table class="reports-table" style="min-width:920px"><thead><tr><th>User ID</th><th>Login Time</th><th>Last Active</th><th>Device ID</th><th>Device / Browser</th><th>Status</th></tr></thead><tbody id="admin-login-info-body"><tr><td colspan="6">Login information loading...</td></tr></tbody></table></div>
                 </div>
             </div>
 
@@ -1316,7 +1319,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-24-cloud-password-login-info-final-v57';
+        const APP_CACHE_VERSION = '2026-09-24-login-info-menu-final-v58';
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -1706,7 +1709,7 @@ body.app-logged-in #view-login{display:none!important}
         function markCurrentLoginOffline(){stopLoginHeartbeat();if(db&&currentUser&&registeredLoginUser===String(currentUser))db.ref('user_login_sessions/'+String(currentUser)+'/'+getDeviceId()).update({active:false,lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText()}).catch(()=>{});registeredLoginUser='';}
         function renderAdminLoginInfo(data){const body=document.getElementById('admin-login-info-body');if(!body)return;const rows=[];Object.keys(data||{}).forEach(userId=>Object.keys(data[userId]||{}).forEach(deviceId=>rows.push(Object.assign({userId,deviceId},data[userId][deviceId]||{}))));rows.sort((a,b)=>Number(b.lastSeen||b.loginAt||0)-Number(a.lastSeen||a.loginAt||0));body.innerHTML=rows.length?rows.map(r=>{const active=!!r.active&&Date.now()-Number(r.lastSeen||0)<150000;return '<tr><td data-label="User ID">'+escapeMorningHtml(r.userId||'')+'</td><td data-label="Login Time">'+escapeMorningHtml(r.loginTime||loginTimeText(r.loginAt))+'</td><td data-label="Last Active">'+escapeMorningHtml(r.lastActiveTime||loginTimeText(r.lastSeen))+'</td><td data-label="Device ID"><span title="'+escapeMorningHtml(r.deviceId||'')+'">'+escapeMorningHtml(String(r.deviceId||'').slice(0,16))+'...</span></td><td data-label="Device / Browser">'+escapeMorningHtml(r.deviceLabel||'Unknown')+'</td><td data-label="Status"><span class="status-badge">'+(active?'Online':'Offline')+'</span></td></tr>';}).join(''):'<tr><td colspan="6" class="empty-state">No login information found.</td></tr>';}
         async function loadAdminLoginInfo(){const body=document.getElementById('admin-login-info-body');if(String(currentUser)!=='admin')return;if(!db){if(body)body.innerHTML='<tr><td colspan="6">Server connecting... আবার Refresh করুন।</td></tr>';ensureFirebaseSdk().then(()=>{recordLoginSession();loadAdminLoginInfo();}).catch(()=>{});return;}try{const snap=await db.ref('user_login_sessions').once('value');renderAdminLoginInfo(snap.val()||{});}catch(e){if(body)body.innerHTML='<tr><td colspan="6" style="color:#b91c1c">Login information load হয়নি। Database permission/internet check করুন।</td></tr>';console.warn('Login information load failed:',e);}}
-        function openLoginInformation(){if(String(currentUser)!=='admin')return;switchTab('admin');setTimeout(()=>{loadAdminLoginInfo();loadAdminLatestLoginAlert();document.getElementById('admin-login-info-body')?.closest('.card')?.scrollIntoView({behavior:'smooth',block:'start'});},80);}
+        function openLoginInformation(){if(String(currentUser)!=='admin')return;switchTab('login-info');}
         async function loadAdminLatestLoginAlert(){if(!db||String(currentUser)!=='admin')return;try{const snap=await db.ref('admin_login_alerts').limitToLast(1).once('value');let latest=null;snap.forEach(c=>{latest=c.val()||{};});if(latest&&String(latest.userId||'')!=='admin'){const box=document.getElementById('admin-multi-device-alert');if(box){box.textContent='⚠️ '+String(latest.userId||'User')+' একাধিক active device থেকে login করেছে। সর্বশেষ: '+String(latest.deviceLabel||latest.deviceId||'Unknown')+' · '+String(latest.loginTime||'');box.style.display='block';}}}catch(e){}}
         function startAdminLoginMonitoring(){if(!db||String(currentUser)!=='admin')return;if(!adminLoginSessionsRef){adminLoginSessionsRef=db.ref('user_login_sessions');adminLoginSessionsRef.on('value',s=>renderAdminLoginInfo(s.val()||{}));}if(!adminLoginAlertRef){adminLoginAlertRef=db.ref('admin_login_alerts');adminLoginAlertRef.limitToLast(1).once('value').then(initial=>{let latest=0;initial.forEach(c=>{latest=Math.max(latest,Number((c.val()||{}).createdAt||0));});adminLoginAlertRef.on('child_added',snap=>{const a=snap.val()||{};if(Number(a.createdAt||0)<=latest||String(a.userId||'')==='admin')return;const box=document.getElementById('admin-multi-device-alert'),msg='⚠️ '+String(a.userId||'User')+' অন্য device থেকে login করেছে। Device: '+String(a.deviceLabel||a.deviceId||'Unknown')+' · '+String(a.loginTime||'');if(box){box.textContent=msg;box.style.display='block';}alert(msg);});}).catch(()=>{});}}
 
@@ -3786,13 +3789,13 @@ body.app-logged-in #view-login{display:none!important}
                 tab = 'change-pass';
                 setTimeout(() => document.getElementById('old-password')?.focus(), 0);
             }
-            if (tab === 'admin' && currentUser !== 'admin') return;
+            if ((tab === 'admin' || tab === 'login-info') && currentUser !== 'admin') return;
             if (tab === 'morning-upload' && getRoleInfo().role !== 'Admin') return;
             if (tab === 'afternoon-upload' && getRoleInfo().role !== 'Admin') return;
             if (tab === 'assignment-upload' && getRoleInfo().role !== 'Admin') return;
-            if (tab === 'admin') { try { startAdminLoginMonitoring(); loadAdminLoginInfo(); loadAdminLatestLoginAlert(); } catch (_) {} }
+            if (tab === 'login-info') { try { startAdminLoginMonitoring(); loadAdminLoginInfo(); loadAdminLatestLoginAlert(); } catch (_) {} }
             // Single-page navigation: ONLY the clicked page is visible.
-            const pages = ['dashboard','form','daily','notices','admin','change-pass','morning-upload','morning-report','afternoon-upload','afternoon-report','assignment-upload','kyc-collection','kyc-status'];
+            const pages = ['dashboard','form','daily','notices','admin','login-info','change-pass','morning-upload','morning-report','afternoon-upload','afternoon-report','assignment-upload','kyc-collection','kyc-status'];
             pages.forEach(name => {
                 const el = document.getElementById('view-' + name);
                 if (!el) return;
@@ -3801,7 +3804,7 @@ body.app-logged-in #view-login{display:none!important}
                 el.setAttribute('aria-hidden', 'true');
             });
 
-            ['dashboard','form','daily','notices','admin','settings','reports','kyc'].forEach(name => {
+            ['dashboard','form','daily','notices','admin','login-info','settings','reports','kyc'].forEach(name => {
                 const nav = document.getElementById('nav-' + name);
                 if (nav) nav.classList.remove('active');
             });
