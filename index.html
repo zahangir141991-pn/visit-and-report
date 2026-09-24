@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-24-sort-icon-final-v52">
+    <meta name="dms-app-version" content="2026-09-24-user-update-reliable-final-v53">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1299,7 +1299,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-24-sort-icon-final-v52';
+        const APP_CACHE_VERSION = '2026-09-24-user-update-reliable-final-v53';
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -1662,14 +1662,16 @@ body.app-logged-in #view-login{display:none!important}
         let appUpdateMonitorTimer = null;
         let pendingHostedVersion = '';
         let dismissedHostedVersion = '';
+        let dismissedHostedUntil = 0;
         function showAppUpdatePrompt(version) {
             pendingHostedVersion = String(version || 'latest');
-            if (pendingHostedVersion === dismissedHostedVersion) return;
+            if (pendingHostedVersion === dismissedHostedVersion && Date.now() < dismissedHostedUntil) return;
             const popup = document.getElementById('app-update-popup');
             if (popup) popup.classList.add('show');
         }
         function dismissAppUpdatePrompt() {
             dismissedHostedVersion = pendingHostedVersion;
+            dismissedHostedUntil = Date.now() + 5 * 60 * 1000;
             const popup = document.getElementById('app-update-popup');
             if (popup) popup.classList.remove('show');
         }
@@ -1716,8 +1718,8 @@ body.app-logged-in #view-login{display:none!important}
         }
         function startAppUpdateMonitor() {
             if (appUpdateMonitorTimer) clearInterval(appUpdateMonitorTimer);
-            setTimeout(() => checkForHostedAppUpdate(true), 1500);
-            appUpdateMonitorTimer = setInterval(() => checkForHostedAppUpdate(false), 60000);
+            setTimeout(() => checkForHostedAppUpdate(true), 800);
+            appUpdateMonitorTimer = setInterval(() => checkForHostedAppUpdate(false), 30000);
         }
         function stopAppUpdateMonitor() {
             if (appUpdateMonitorTimer) clearInterval(appUpdateMonitorTimer);
@@ -1864,7 +1866,7 @@ body.app-logged-in #view-login{display:none!important}
             } catch (e) { console.warn('Background update check skipped:', e); }
             finally {
                 serverUpdatePollBusy = false;
-                if (currentUser && document.body?.classList.contains('app-logged-in')) serverUpdatePollTimer = setTimeout(pollServerUpdateSignal, 5000);
+                if (currentUser && document.body?.classList.contains('app-logged-in')) serverUpdatePollTimer = setTimeout(pollServerUpdateSignal, 3000);
             }
         }
         function startServerUpdatePolling() {
@@ -2086,7 +2088,6 @@ body.app-logged-in #view-login{display:none!important}
         function logout() {
             closeMobileNav();
             stopServerUpdatePolling();
-            stopAppUpdateMonitor();
             lastServerUpdateSignature = '';
             currentUser = null;
             initializedLoginUser = '';
@@ -2499,11 +2500,14 @@ body.app-logged-in #view-login{display:none!important}
         // while these events immediately reconcile any stale browser state.
         // Realtime listeners already resync after reconnect/focus. Avoid duplicate full-master downloads here.
         window.addEventListener('online', () => { try { refreshAllLiveData(true); } catch (_) {} });
+        window.addEventListener('online', () => { try { checkForHostedAppUpdate(true); } catch (_) {} });
         document.addEventListener('visibilitychange', () => {
-            if (!document.hidden && document.body?.classList.contains('app-logged-in')) {
-                try { refreshAllLiveData(); } catch (_) {}
-                try { pollServerUpdateSignal(); } catch (_) {}
+            if (!document.hidden) {
                 try { checkForHostedAppUpdate(true); } catch (_) {}
+                if (document.body?.classList.contains('app-logged-in')) {
+                    try { refreshAllLiveData(); } catch (_) {}
+                    try { pollServerUpdateSignal(); } catch (_) {}
+                }
             }
         });
         window.addEventListener('storage', (event) => {
@@ -4448,6 +4452,8 @@ let firebaseListenersStarted = false;
             const mainApp = document.getElementById('main-app');
             const userBar = document.getElementById('user-info-bar');
             const appNav = document.getElementById('app-nav');
+            // Check code/design updates even while the user is still on the login page.
+            startAppUpdateMonitor();
 
             // Fresh page = login screen only.
             if (!currentUser) {
