@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-29-floating-report-header-v77">
+    <meta name="dms-app-version" content="2026-09-29-android-camera-v78">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -925,7 +925,9 @@ body.app-logged-in #view-login{display:none!important}
                             <canvas id="camera-canvas" class="hidden"></canvas>
                             <img id="photo-preview" alt="Preview">
                             <div style="margin-top: 10px;">
-                                <button type="button" class="btn btn-sm" id="btn-capture" onclick="captureLivePhoto()">📷 Start Camera</button>
+                                <input id="visit-native-photo" type="file" accept="image/*" capture="user" hidden aria-label="Take visit selfie with phone camera">
+                                <button type="button" class="btn btn-sm" id="btn-capture" onclick="captureLivePhoto()">📷 Take Selfie</button>
+                                <button type="button" class="btn btn-sm btn-sec android-camera-fallback" onclick="initCamera()">Browser Camera</button>
                                 <button type="button" class="camera-switch-btn" id="btn-switch-camera" onclick="switchCamera()" title="Switch Front / Back Camera" aria-label="Switch Front / Back Camera">🔄</button>
                                 <button type="button" class="btn btn-sm btn-sec hidden" id="btn-recapture" onclick="resetLivePhoto()">🔄 Retake Selfie</button>
                             </div>
@@ -1160,7 +1162,7 @@ body.app-logged-in #view-login{display:none!important}
                         <div class="form-group"><label>Owner Contact Number</label><input type="text" id="kyc-owner-contact" required inputmode="numeric" maxlength="11" placeholder="01XXXXXXXXX"></div>
                         <div class="form-group"><label>Thana</label><input type="text" id="kyc-thana" required placeholder="Enter thana"></div>
                         <div class="form-group"><label>Bazar Name</label><input type="text" id="kyc-bazar-name" required placeholder="Enter bazar name"></div>
-                        <div class="form-group"><label>Shop Photo (Camera Only)</label><video id="kyc-camera-video" class="kyc-camera-video" autoplay playsinline muted></video><canvas id="kyc-camera-canvas" class="hidden"></canvas><img id="kyc-picture-preview" class="kyc-photo-preview" alt="Shop photo preview"><div class="kyc-camera-actions"><button type="button" class="btn btn-sec" id="btn-kyc-camera-start" onclick="startKycShopCamera()">📷 Start Camera</button><button type="button" class="btn hidden" id="btn-kyc-camera-capture" onclick="captureKycShopPhoto()">📸 Capture Shop Photo</button><button type="button" class="btn btn-sec hidden" id="btn-kyc-camera-retake" onclick="resetKycShopPhoto()">🔄 Retake</button></div></div>
+                        <div class="form-group"><label>Shop Photo (Camera Only)</label><video id="kyc-camera-video" class="kyc-camera-video" autoplay playsinline muted></video><canvas id="kyc-camera-canvas" class="hidden"></canvas><img id="kyc-picture-preview" class="kyc-photo-preview" alt="Shop photo preview"><div class="kyc-camera-actions"><input id="kyc-native-photo" type="file" accept="image/*" capture="environment" hidden aria-label="Take shop photo with phone camera"><button type="button" class="btn btn-sec" id="btn-kyc-camera-start" onclick="startKycShopCamera()">📷 Take Shop Photo</button><button type="button" class="btn btn-sec android-camera-fallback" onclick="startKycBrowserCamera()">Browser Camera</button><button type="button" class="btn hidden" id="btn-kyc-camera-capture" onclick="captureKycShopPhoto()">📸 Capture Shop Photo</button><button type="button" class="btn btn-sec hidden" id="btn-kyc-camera-retake" onclick="resetKycShopPhoto()">🔄 Retake</button></div></div>
                         <div class="form-group kyc-wide"><label>Location</label><input type="text" id="kyc-location-name" readonly required placeholder="Location name will appear here"><input type="hidden" id="kyc-location"><div class="kyc-location-actions"><button type="button" class="btn btn-sec" id="btn-kyc-location" onclick="fetchKycLocation()">📍 Get Location</button></div></div>
                     </div>
                     <button type="submit" class="btn" id="btn-kyc-submit" style="width:100%;margin-top:14px;min-height:50px">Submit KYC</button>
@@ -1398,7 +1400,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-29-floating-report-header-v77';
+        const APP_CACHE_VERSION = '2026-09-29-android-camera-v78';
         const APP_RELEASED_AT = 1790247600000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -3022,6 +3024,10 @@ body.app-logged-in #view-login{display:none!important}
             const video = document.getElementById('camera-video');
             const canvas = document.getElementById('camera-canvas');
             const preview = document.getElementById('photo-preview');
+            if (!video.srcObject && /Android/i.test(navigator.userAgent||'')) {
+                document.getElementById('visit-native-photo')?.click();
+                return;
+            }
             if (!video.srcObject) {
                 const started = await initCamera();
                 if (started) showAlert('Camera ready. Press Capture Selfie again.', 'success');
@@ -3072,7 +3078,7 @@ body.app-logged-in #view-login{display:none!important}
             document.getElementById('photo-preview').style.display = 'none';
             document.getElementById('camera-video').style.display = 'block';
             document.getElementById('btn-capture').classList.remove('hidden');
-            document.getElementById('btn-capture').innerText = '📷 Start Camera';
+            document.getElementById('btn-capture').innerText = '📷 Take Selfie';
             document.getElementById('btn-recapture').classList.add('hidden');
 
             // Camera stays OFF after reset; user must press Take Selfie again.
@@ -5538,7 +5544,14 @@ function fileToCompressedKycImage(file){
         reader.onload=()=>{const img=new Image();img.onerror=()=>reject(new Error('Invalid picture.'));img.onload=()=>{try{const scale=Math.min(1,900/img.width,900/img.height);const c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.width*scale));c.height=Math.max(1,Math.round(img.height*scale));const x=c.getContext('2d',{alpha:false});x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.drawImage(img,0,0,c.width,c.height);let q=.72,out=c.toDataURL('image/jpeg',q);while(out.length>180000&&q>.30){q-=.07;out=c.toDataURL('image/jpeg',q);}resolve(out);}catch(e){reject(e);}};img.src=reader.result;};reader.readAsDataURL(file);
     });
 }
-async function startKycShopCamera(){
+function startKycShopCamera(){
+    if(/Android/i.test(navigator.userAgent||'')){
+        document.getElementById('kyc-native-photo')?.click();
+        return;
+    }
+    return startKycBrowserCamera();
+}
+async function startKycBrowserCamera(){
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){kycAlert('Camera is not supported in this browser.','error');return;}
     stopKycShopCamera();kycPictureData='';
     const video=document.getElementById('kyc-camera-video'),preview=document.getElementById('kyc-picture-preview'),start=document.getElementById('btn-kyc-camera-start'),capture=document.getElementById('btn-kyc-camera-capture'),retake=document.getElementById('btn-kyc-camera-retake');
@@ -5899,6 +5912,46 @@ if (document.readyState !== 'loading') {
     schedule();
   },{once:true});
 })();
+
+// Native Android camera capture; web camera remains available as a fallback.
+function compressNativeVisitPhoto(file){
+    return new Promise((resolve,reject)=>{
+        if(!file||!file.type.startsWith('image/'))return reject(new Error('Camera photo পাওয়া যায়নি।'));
+        const url=URL.createObjectURL(file),img=new Image();
+        img.onload=()=>{try{
+            const scale=Math.min(1,640/img.naturalWidth,640/img.naturalHeight);
+            const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));
+            canvas.getContext('2d',{alpha:false}).drawImage(img,0,0,canvas.width,canvas.height);
+            let quality=.55,data=canvas.toDataURL('image/jpeg',quality);
+            while(data.length>135000&&quality>.27){quality-=.06;data=canvas.toDataURL('image/jpeg',quality);}
+            URL.revokeObjectURL(url);resolve(data);
+        }catch(err){URL.revokeObjectURL(url);reject(err);}};
+        img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('Photo read করা যায়নি।'));};img.src=url;
+    });
+}
+document.addEventListener('DOMContentLoaded',()=>{
+    const visit=document.getElementById('visit-native-photo');
+    if(visit)visit.addEventListener('change',async e=>{
+        const file=e.target.files&&e.target.files[0];if(!file)return;
+        try{
+            capturedPhotoData=await compressNativeVisitPhoto(file);
+            stopCamera();const video=document.getElementById('camera-video'),preview=document.getElementById('photo-preview');
+            if(video)video.style.display='none';preview.src=capturedPhotoData;preview.style.display='block';
+            document.getElementById('btn-capture')?.classList.add('hidden');document.getElementById('btn-recapture')?.classList.remove('hidden');
+            updateVisitSubmitState();
+        }catch(error){showAlert(error.message,'error');}finally{visit.value='';}
+    });
+    const kyc=document.getElementById('kyc-native-photo');
+    if(kyc)kyc.addEventListener('change',async e=>{
+        const file=e.target.files&&e.target.files[0];if(!file)return;
+        try{
+            const data=await fileToCompressedKycImage(file);
+            stopKycShopCamera();kycPictureData=data;
+            const preview=document.getElementById('kyc-picture-preview');preview.src=data;preview.style.display='block';
+            document.getElementById('btn-kyc-camera-start')?.classList.add('hidden');document.getElementById('btn-kyc-camera-capture')?.classList.add('hidden');document.getElementById('btn-kyc-camera-retake')?.classList.remove('hidden');
+        }catch(error){kycAlert(error.message,'error');}finally{kyc.value='';}
+    });
+},{once:true});
     </script>
 </body>
 </html>
