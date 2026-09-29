@@ -3147,18 +3147,30 @@ body.app-logged-in #view-login{display:none!important}
         function getAccuratePosition(){
             return new Promise((resolve,reject)=>{
                 if(!navigator.geolocation)return reject(new Error('Geolocation is not supported'));
-                let best=null,watchId=null,done=false;
-                const finish=(error)=>{if(done)return;done=true;clearTimeout(timer);if(watchId!==null)navigator.geolocation.clearWatch(watchId);if(error)reject(error);else resolve(best);};
-                const timer=setTimeout(()=>{
-                    if(best&&Number(best.coords.accuracy)<=250)finish();
-                    else finish(Object.assign(new Error(best?`GPS accuracy ±${Math.round(best.coords.accuracy)}m; খোলা জায়গায় গিয়ে আবার চেষ্টা করুন।`:'GPS location পাওয়া যায়নি।'),{code:best?2:3}));
-                },12000);
-                watchId=navigator.geolocation.watchPosition(pos=>{
-                    const accuracy=Number(pos.coords.accuracy);
-                    if(!Number.isFinite(accuracy)||!Number.isFinite(pos.coords.latitude)||!Number.isFinite(pos.coords.longitude))return;
-                    if(!best||accuracy<Number(best.coords.accuracy))best=pos;
-                    if(accuracy<=80)finish();
-                },err=>{if(err.code===1)finish(err);else if(best&&Number(best.coords.accuracy)<=250)finish();},{enableHighAccuracy:true,maximumAge:0,timeout:11500});
+                let best=null,watchId=null,done=false,lastError=null;
+                let timer=null,earlyTimer=null;
+                const finish=(error)=>{
+                    if(done)return;
+                    done=true;clearTimeout(timer);clearTimeout(earlyTimer);
+                    if(watchId!==null)navigator.geolocation.clearWatch(watchId);
+                    if(best)resolve(best);else reject(error||lastError||Object.assign(new Error('GPS location পাওয়া যায়নি।'),{code:3}));
+                };
+                const accept=pos=>{
+                    if(done||!pos||!pos.coords)return;
+                    const {latitude,longitude}=pos.coords,accuracy=Number(pos.coords.accuracy);
+                    if(!Number.isFinite(latitude)||!Number.isFinite(longitude)||Math.abs(latitude)>90||Math.abs(longitude)>180)return;
+                    if(!best||(!Number.isFinite(Number(best.coords.accuracy))||accuracy<Number(best.coords.accuracy)))best=pos;
+                    if(Number.isFinite(accuracy)&&accuracy<=80)finish();
+                };
+                const fail=err=>{if(done)return;if(err&&err.code===1)finish(err);else lastError=err;};
+                // Coarse network positioning works indoors; high accuracy can refine it.
+                timer=setTimeout(()=>finish(),9000);
+                earlyTimer=setTimeout(()=>{if(best)finish();},4500);
+                try{watchId=navigator.geolocation.watchPosition(accept,fail,{enableHighAccuracy:true,maximumAge:0,timeout:8500});}
+                catch(err){lastError=err;}
+                try{navigator.geolocation.getCurrentPosition(accept,fail,{enableHighAccuracy:false,maximumAge:0,timeout:7000});}
+                catch(err){lastError=err;}
+                if(done&&watchId!==null)navigator.geolocation.clearWatch(watchId);
             });
         }
         function locationAccuracyText(pos){return `±${Math.round(pos.coords.accuracy)}m`;}
@@ -3305,11 +3317,14 @@ body.app-logged-in #view-login{display:none!important}
                     gpsInput.value = coords;
                     lastGpsCoords = coords;
                     lastGpsAt = Date.now();
+                    nameInput.value = `GPS: ${coords}`;
+                    nameInput.dataset.fullName = nameInput.value;
                     nameInput.placeholder = 'Finding location name...';
+                    showLocationAccuracy(nameInput,pos);
+                    updateVisitSubmitState();
 
-                    const resolvedName = await reverseGeocodeFallback(lat, lon);
-                    nameInput.value = resolvedName ? resolvedName.short : `GPS: ${coords}`;
-                    nameInput.dataset.fullName = resolvedName ? resolvedName.full : nameInput.value;
+                    const resolvedName = await reverseGeocodeFallback(lat, lon).catch(()=>null);
+                    if(resolvedName){nameInput.value=resolvedName.short;nameInput.dataset.fullName=resolvedName.full;}
                     nameInput.title = (resolvedName ? resolvedName.full+' • ' : '')+`GPS accuracy: ±${Math.round(accuracy)}m`;
                     nameInput.dataset.accuracy=String(Math.round(accuracy));
                     showLocationAccuracy(nameInput,pos);
