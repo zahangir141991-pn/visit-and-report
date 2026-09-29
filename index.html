@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-29-android-camera-v78">
+    <meta name="dms-app-version" content="2026-09-29-location-fast-short-v79">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -927,7 +927,7 @@ body.app-logged-in #view-login{display:none!important}
                             <div style="margin-top: 10px;">
                                 <input id="visit-native-photo" type="file" accept="image/*" capture="user" hidden aria-label="Take visit selfie with phone camera">
                                 <button type="button" class="btn btn-sm" id="btn-capture" onclick="captureLivePhoto()">📷 Take Selfie</button>
-                                <button type="button" class="btn btn-sm btn-sec android-camera-fallback" onclick="initCamera()">Browser Camera</button>
+                                
                                 <button type="button" class="camera-switch-btn" id="btn-switch-camera" onclick="switchCamera()" title="Switch Front / Back Camera" aria-label="Switch Front / Back Camera">🔄</button>
                                 <button type="button" class="btn btn-sm btn-sec hidden" id="btn-recapture" onclick="resetLivePhoto()">🔄 Retake Selfie</button>
                             </div>
@@ -1162,7 +1162,7 @@ body.app-logged-in #view-login{display:none!important}
                         <div class="form-group"><label>Owner Contact Number</label><input type="text" id="kyc-owner-contact" required inputmode="numeric" maxlength="11" placeholder="01XXXXXXXXX"></div>
                         <div class="form-group"><label>Thana</label><input type="text" id="kyc-thana" required placeholder="Enter thana"></div>
                         <div class="form-group"><label>Bazar Name</label><input type="text" id="kyc-bazar-name" required placeholder="Enter bazar name"></div>
-                        <div class="form-group"><label>Shop Photo (Camera Only)</label><video id="kyc-camera-video" class="kyc-camera-video" autoplay playsinline muted></video><canvas id="kyc-camera-canvas" class="hidden"></canvas><img id="kyc-picture-preview" class="kyc-photo-preview" alt="Shop photo preview"><div class="kyc-camera-actions"><input id="kyc-native-photo" type="file" accept="image/*" capture="environment" hidden aria-label="Take shop photo with phone camera"><button type="button" class="btn btn-sec" id="btn-kyc-camera-start" onclick="startKycShopCamera()">📷 Take Shop Photo</button><button type="button" class="btn btn-sec android-camera-fallback" onclick="startKycBrowserCamera()">Browser Camera</button><button type="button" class="btn hidden" id="btn-kyc-camera-capture" onclick="captureKycShopPhoto()">📸 Capture Shop Photo</button><button type="button" class="btn btn-sec hidden" id="btn-kyc-camera-retake" onclick="resetKycShopPhoto()">🔄 Retake</button></div></div>
+                        <div class="form-group"><label>Shop Photo (Camera Only)</label><video id="kyc-camera-video" class="kyc-camera-video" autoplay playsinline muted></video><canvas id="kyc-camera-canvas" class="hidden"></canvas><img id="kyc-picture-preview" class="kyc-photo-preview" alt="Shop photo preview"><div class="kyc-camera-actions"><input id="kyc-native-photo" type="file" accept="image/*" capture="environment" hidden aria-label="Take shop photo with phone camera"><button type="button" class="btn btn-sec" id="btn-kyc-camera-start" onclick="startKycShopCamera()">📷 Take Shop Photo</button><button type="button" class="btn hidden" id="btn-kyc-camera-capture" onclick="captureKycShopPhoto()">📸 Capture Shop Photo</button><button type="button" class="btn btn-sec hidden" id="btn-kyc-camera-retake" onclick="resetKycShopPhoto()">🔄 Retake</button></div></div>
                         <div class="form-group kyc-wide"><label>Location</label><input type="text" id="kyc-location-name" readonly required placeholder="Location name will appear here"><input type="hidden" id="kyc-location"><div class="kyc-location-actions"><button type="button" class="btn btn-sec" id="btn-kyc-location" onclick="fetchKycLocation()">📍 Get Location</button></div></div>
                     </div>
                     <button type="submit" class="btn" id="btn-kyc-submit" style="width:100%;margin-top:14px;min-height:50px">Submit KYC</button>
@@ -1400,7 +1400,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-29-android-camera-v78';
+        const APP_CACHE_VERSION = '2026-09-29-location-fast-short-v79';
         const APP_RELEASED_AT = 1790247600000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -3124,46 +3124,28 @@ body.app-logged-in #view-login{display:none!important}
         // Do not continuously poll GPS on focus/visibility changes.
         // Location is requested when the Visit form opens or the user presses Refresh.
 
+        const locationNameCache=new Map();
+        function shortLocationName(full){
+            const segments=String(full||'').split(',').map(x=>x.trim()).filter(Boolean);
+            return segments.slice(0,3).join(', ').slice(0,90) || String(full||'').slice(0,90);
+        }
         async function reverseGeocodeFallback(lat, lon) {
-            // Performance-safe reverse geocoding: one fast request first, then one
-            // lower-detail fallback. The old version could perform 10 requests and
-            // wait for a very long time, which caused visible buffering.
-            const zooms = [18, 16];
-            for (const zoom of zooms) {
-                const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=${zoom}&addressdetails=1&accept-language=bn,en`;
-                try {
-                    const controller = new AbortController();
-                    const timer = setTimeout(() => controller.abort(), 3500);
-                    const response = await fetch(url, {
-                        method: 'GET',
-                        mode: 'cors',
-                        cache: 'no-store',
-                        headers: { 'Accept': 'application/json' },
-                        signal: controller.signal
-                    });
-                    clearTimeout(timer);
-                    if (!response.ok) continue;
-
-                    const data = await response.json();
-                    const a = data.address || {};
-                    const parts = [
-                        a.amenity, a.building, a.house_number, a.road,
-                        a.neighbourhood, a.suburb, a.quarter,
-                        a.village, a.town, a.city, a.municipality,
-                        a.upazila, a.county, a.district, a.state
-                    ].map(v => String(v || '').replace(/\s+/g, ' ').trim()).filter(Boolean);
-
-                    const unique = [...new Set(parts)];
-                    if (unique.length) return unique.join(', ');
-
-                    const fallback = String(data.name || data.display_name || '')
-                        .replace(/\s+/g, ' ').trim();
-                    if (fallback) return fallback;
-                } catch (e) {
-                    console.warn('Reverse geocode failed:', e);
-                }
+            // One detailed request; second lower-detail request only when needed.
+            const key=lat.toFixed(4)+','+lon.toFixed(4),cached=locationNameCache.get(key);
+            if(cached&&Date.now()-cached.at<120000)return cached.result;
+            for(const zoom of [18,16]){
+                const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),zoom===18?3000:2200);
+                try{
+                    const url=`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=${zoom}&addressdetails=1&accept-language=bn,en`;
+                    const res=await fetch(url,{cache:'no-store',headers:{Accept:'application/json'},signal:controller.signal});
+                    if(!res.ok)continue;
+                    const data=await res.json(),a=data.address||{};
+                    const parts=[a.amenity||a.shop||a.building,a.road||a.pedestrian,a.neighbourhood||a.suburb||a.quarter||a.village,a.town||a.city||a.municipality||a.county,a.district];
+                    const full=parts.map(v=>String(v||'').trim()).filter(Boolean).filter((v,i,arr)=>arr.indexOf(v)===i).join(', ')||String(data.display_name||'').trim();
+                    if(full){const result={full,short:shortLocationName(full)};locationNameCache.set(key,{result,at:Date.now()});return result;}
+                }catch(e){console.warn('Location name lookup:',e);}finally{clearTimeout(timer);}
             }
-            return '';
+            return null;
         }
 
         function getPosition(options) {
@@ -3299,6 +3281,7 @@ body.app-logged-in #view-login{display:none!important}
 
             gpsInput.value = '';
             nameInput.value = '';
+            nameInput.dataset.fullName='';
             nameInput.placeholder = 'Getting GPS location...';
             nameInput.title = '';
             updateVisitSubmitState();
@@ -3310,10 +3293,10 @@ body.app-logged-in #view-login{display:none!important}
                     // Fresh high-accuracy fix: avoids stale cached coordinates while keeping timeout short.
                     let pos;
                     try {
-                        pos = await getPosition({ enableHighAccuracy: true, timeout: 7000, maximumAge: 0 });
+                        pos = await getPosition({ enableHighAccuracy: true, timeout: 8500, maximumAge: 0 });
                     } catch (firstGpsError) {
                         // Fast fallback for devices where a high-accuracy satellite fix is slow indoors.
-                        pos = await getPosition({ enableHighAccuracy: false, timeout: 6000, maximumAge: 10000 });
+                        pos = await getPosition({ enableHighAccuracy: false, timeout: 3500, maximumAge: 5000 });
                     }
 
                     const lat = Number(pos.coords.latitude);
@@ -3330,20 +3313,9 @@ body.app-logged-in #view-login{display:none!important}
                     nameInput.placeholder = 'Finding location name...';
 
                     const resolvedName = await reverseGeocodeFallback(lat, lon);
-                    if (!resolvedName) {
-                        // GPS itself is valid; keep coordinates so the user is not
-                        // forced to wait again just because reverse geocoding failed.
-                        nameInput.value = `GPS: ${coords}`;
-                        nameInput.title = accuracy ? `GPS accuracy: ±${Math.round(accuracy)}m` : 'GPS location';
-                    } else {
-                        nameInput.value = resolvedName
-                            .replace(/\r?\n/g, ' ')
-                            .replace(/\s+/g, ' ')
-                            .replace(/,\s*,+/g, ', ')
-                            .replace(/^[,\s]+|[,\s]+$/g, '')
-                            .trim();
-                        nameInput.title = accuracy ? `GPS accuracy: ±${Math.round(accuracy)}m` : 'GPS location';
-                    }
+                    nameInput.value = resolvedName ? resolvedName.short : `GPS: ${coords}`;
+                    nameInput.dataset.fullName = resolvedName ? resolvedName.full : nameInput.value;
+                    nameInput.title = (resolvedName ? resolvedName.full+' • ' : '')+(accuracy ? `GPS accuracy: ±${Math.round(accuracy)}m` : 'GPS location');
 
                     setLocationPermissionButton('granted');
                     const deviceBtn = document.getElementById('btn-device-location');
@@ -3546,7 +3518,7 @@ body.app-logged-in #view-login{display:none!important}
                 reviewUpdatedAt: '',
                 reviewUpdatedBy: '',
                 photo: capturedPhotoData,
-                locationName: document.getElementById('gps-location-name').value,
+                locationName: document.getElementById('gps-location-name').dataset.fullName || document.getElementById('gps-location-name').value,
                 gps: document.getElementById('gps-location').value,
                 timestamp: (firebase.apps && firebase.apps.length && db) ? firebase.database.ServerValue.TIMESTAMP : Date.now()
             };
@@ -5576,14 +5548,20 @@ async function fetchKycLocation(showError=true){
     const btn=document.getElementById('btn-kyc-location'),name=document.getElementById('kyc-location-name'),value=document.getElementById('kyc-location');
     if(!name||!value)return;
     if(!navigator.geolocation){if(showError)kycAlert('Geolocation is not supported.','error');return;}
-    if(btn){btn.disabled=true;btn.textContent='Getting location...';}name.placeholder='Getting location...';
+    if(btn){btn.disabled=true;btn.textContent='Getting location...';}
+    name.placeholder='Getting GPS location...';
     try{
-        const pos=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:18000,maximumAge:30000}));
-        const lat=pos.coords.latitude,lng=pos.coords.longitude;value.value=lat.toFixed(6)+','+lng.toFixed(6);
-        let label='Current location';
-        try{const res=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}`,{headers:{'Accept':'application/json'}});if(res.ok){const data=await res.json();label=data.display_name||label;}}catch(e){}
-        name.value=label;name.placeholder='Location name will appear here';
-    }catch(e){name.value='';value.value='';name.placeholder='Location not found — try again';if(showError)kycAlert('Location permission দিন এবং আবার চেষ্টা করুন।','error');}
+        let pos;
+        try{pos=await getPosition({enableHighAccuracy:true,timeout:8500,maximumAge:0});}
+        catch(e){pos=await getPosition({enableHighAccuracy:false,timeout:3500,maximumAge:5000});}
+        const lat=pos.coords.latitude,lon=pos.coords.longitude;
+        value.value=lat.toFixed(7)+','+lon.toFixed(7);
+        name.value='GPS: '+value.value;name.dataset.fullName=name.value;
+        name.placeholder='Finding location name...';
+        const resolved=await reverseGeocodeFallback(lat,lon);
+        if(resolved){name.value=resolved.short;name.dataset.fullName=resolved.full;name.title=resolved.full+' • Accuracy ±'+Math.round(pos.coords.accuracy||0)+'m';}
+        else name.title='GPS accuracy ±'+Math.round(pos.coords.accuracy||0)+'m';
+    }catch(e){name.value='';name.dataset.fullName='';value.value='';name.placeholder='Location not found — try again';if(showError)kycAlert('Location permission দিন এবং আবার চেষ্টা করুন।','error');}
     finally{if(btn){btn.disabled=false;btn.textContent='📍 Get Location';}}
 }
 function getDssNameForWallet(wallet){
@@ -5593,7 +5571,7 @@ function clearKycForm(){
     document.getElementById('kyc-form')?.reset();kycPictureData='';stopKycShopCamera();
     const p=document.getElementById('kyc-picture-preview');if(p){p.src='';p.style.display='none';}
     document.getElementById('btn-kyc-camera-start')?.classList.remove('hidden');document.getElementById('btn-kyc-camera-capture')?.classList.add('hidden');document.getElementById('btn-kyc-camera-retake')?.classList.add('hidden');
-    const n=document.getElementById('kyc-location-name'),v=document.getElementById('kyc-location');if(n)n.value='';if(v)v.value='';populateKycDsoWallets();
+    const n=document.getElementById('kyc-location-name'),v=document.getElementById('kyc-location');if(n){n.value='';n.dataset.fullName='';}if(v)v.value='';populateKycDsoWallets();
 }
 let pendingKycSubmission = null;
 let kycSubmitBusy = false;
@@ -5618,7 +5596,7 @@ async function submitKyc(event){
     if(!/^01\d{9}$/.test(uddoktaNumber)){kycAlert('সঠিক ১১ সংখ্যার Uddokta Number দিন।','error');return;}
     if(!/^01\d{9}$/.test(contact)){kycAlert('সঠিক ১১ সংখ্যার Owner Contact Number দিন।','error');return;}
     if(!kycPictureData){kycAlert('Camera দিয়ে Shop Photo তুলুন।','error');return;}
-    const gps=document.getElementById('kyc-location').value.trim(),locationName=document.getElementById('kyc-location-name').value.trim();
+    const gps=document.getElementById('kyc-location').value.trim(),locationNameInput=document.getElementById('kyc-location-name'),locationName=(locationNameInput.dataset.fullName||locationNameInput.value).trim();
     if(!gps||!locationName){kycAlert('Location নিতে হবে।','error');return;}
     const btn=document.getElementById('btn-kyc-submit');kycSubmitBusy=true;
     if(btn){btn.disabled=true;btn.textContent='Saving KYC...';}
