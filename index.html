@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-29-kyc-submit-confirm-v67">
+    <meta name="dms-app-version" content="2026-09-29-kyc-status-confirm-v68">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -520,7 +520,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%;width:100%;min-width:32
 body{width:100%;min-width:320px;min-height:100vh;min-height:100dvh;overflow-x:hidden;-webkit-overflow-scrolling:touch}
 button,input,select,textarea{font:inherit;-webkit-border-radius:8px;border-radius:8px}
 button,.nav-item,.visit-menu-btn{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-.kyc-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.kyc-form-grid .form-group{margin:0}.kyc-wide{grid-column:1/-1}.kyc-photo-preview{display:none;width:100%;max-width:420px;max-height:320px;margin-top:10px;border-radius:12px;border:1px solid var(--border);object-fit:cover}.kyc-camera-video{display:none;width:100%;max-width:420px;max-height:320px;margin-top:10px;border-radius:12px;background:#0f172a;object-fit:cover}.kyc-camera-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}.kyc-table{min-width:1650px}.kyc-status-control{display:flex;align-items:center;gap:6px;min-width:255px}.kyc-status-select{min-width:135px}.kyc-status-update-btn{min-height:36px!important;padding:7px 10px!important;white-space:nowrap}.kyc-reason{max-width:220px;white-space:normal}.kyc-truncate{display:block;max-width:165px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.kyc-status-history{min-width:115px;text-align:center}.kyc-history-view-btn{border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:9px;min-width:42px;height:36px;padding:0 11px;cursor:pointer;font-size:1.15rem;font-weight:900}.kyc-history-view-btn:hover{background:#dbeafe}.kyc-history-popup-list{display:grid;gap:8px;margin-top:12px}.kyc-history-popup-row{display:flex;justify-content:space-between;gap:16px;padding:11px 12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc}.kyc-history-popup-row b{color:#0f172a}.kyc-history-popup-row span{color:#475569;text-align:right}.kyc-location-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:7px}@media(max-width:700px){.kyc-form-grid{grid-template-columns:1fr}.kyc-wide{grid-column:auto}.kyc-status-control{min-width:0;flex-wrap:wrap}.kyc-truncate{max-width:100%}}
+.kyc-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.kyc-form-grid .form-group{margin:0}.kyc-wide{grid-column:1/-1}.kyc-photo-preview{display:none;width:100%;max-width:420px;max-height:320px;margin-top:10px;border-radius:12px;border:1px solid var(--border);object-fit:cover}.kyc-camera-video{display:none;width:100%;max-width:420px;max-height:320px;margin-top:10px;border-radius:12px;background:#0f172a;object-fit:cover}.kyc-camera-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}.kyc-table{min-width:1650px}.kyc-status-control{display:flex;align-items:center;gap:6px;min-width:255px}.kyc-status-confirmed{color:#059669;font-size:1.16rem;font-weight:900;white-space:nowrap}.kyc-status-select{min-width:135px}.kyc-status-update-btn{min-height:36px!important;padding:7px 10px!important;white-space:nowrap}.kyc-reason{max-width:220px;white-space:normal}.kyc-truncate{display:block;max-width:165px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.kyc-status-history{min-width:115px;text-align:center}.kyc-history-view-btn{border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:9px;min-width:42px;height:36px;padding:0 11px;cursor:pointer;font-size:1.15rem;font-weight:900}.kyc-history-view-btn:hover{background:#dbeafe}.kyc-history-popup-list{display:grid;gap:8px;margin-top:12px}.kyc-history-popup-row{display:flex;justify-content:space-between;gap:16px;padding:11px 12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc}.kyc-history-popup-row b{color:#0f172a}.kyc-history-popup-row span{color:#475569;text-align:right}.kyc-location-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:7px}@media(max-width:700px){.kyc-form-grid{grid-template-columns:1fr}.kyc-wide{grid-column:auto}.kyc-status-control{min-width:0;flex-wrap:wrap}.kyc-truncate{max-width:100%}}
 img,video,canvas,svg{max-width:100%;height:auto}
 .container{width:100%;max-width:100%}
 .section-head>*{min-width:0}
@@ -1319,7 +1319,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-29-kyc-submit-confirm-v67';
+        const APP_CACHE_VERSION = '2026-09-29-kyc-status-confirm-v68';
         const APP_RELEASED_AT = 1790247600000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -5561,10 +5561,14 @@ function startKycRealtime(){
     kycRealtimeRef.on('value',snap=>{const rows=[],nextSnapshot={};snap.forEach(child=>{const row=Object.assign({id:child.key},child.val()||{});rows.push(row);nextSnapshot[child.key]=normalizeKycStatus(row.status);});if(kycStatusSnapshot&&getRoleInfo().role!=='Admin'){const changed=rows.find(row=>canSeeKycRecord(row)&&kycStatusSnapshot[row.id]&&kycStatusSnapshot[row.id]!==nextSnapshot[row.id]);if(changed)showLiveUpdateToast('KYC status update হয়েছে: '+normalizeKycStatus(changed.status));}kycStatusSnapshot=nextSnapshot;kycRecords=rows.sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));renderKycStatus();},e=>console.warn('KYC realtime sync failed:',e));
 }
 function normalizeKycStatus(status){return !status||status==='Submitted'?'Collected':String(status);}
+const kycStatusPendingIds=new Set();
 function kycStatusControl(r){
-    const current=normalizeKycStatus(r.status),role=getRoleInfo();if(role.role!=='Admin')return '<span class="status-badge">'+escapeMorningHtml(current)+'</span>';
+    const current=normalizeKycStatus(r.status),role=getRoleInfo();
+    const mark=r.statusUpdatedAt && current!=='Collected' ? '<span class="kyc-status-confirmed" title="Status saved" aria-label="Status saved">✓</span>' : '';
+    if(role.role!=='Admin')return '<span class="status-badge">'+escapeMorningHtml(current)+'</span> '+mark;
     const states=['Collected','Admin Receive','Mail Send','In Portal','Active','Rejection'],selectId='kyc-status-select-'+String(r.id).replace(/[^a-zA-Z0-9_-]/g,'');
-    return '<div class="kyc-status-control"><select id="'+selectId+'" class="kyc-status-select">'+states.map(s=>'<option value="'+s+'"'+(s===current?' selected':'')+'>'+s+'</option>').join('')+'</select><button type="button" class="btn btn-sm kyc-status-update-btn" onclick="submitKycStatusUpdate(\''+escapeMorningHtml(r.id)+'\',\''+selectId+'\',this)">Update Status</button></div>';
+    const busy=kycStatusPendingIds.has(String(r.id));
+    return '<div class="kyc-status-control"><select id="'+selectId+'" class="kyc-status-select"'+(busy?' disabled':'')+'>'+states.map(state=>'<option value="'+state+'"'+(state===current?' selected':'')+'>'+state+'</option>').join('')+'</select><button type="button" class="btn btn-sm kyc-status-update-btn"'+(busy?' disabled':'')+' onclick="submitKycStatusUpdate(\''+escapeMorningHtml(r.id)+'\',\''+selectId+'\',this)">'+(busy?'Updating...':'Update Status')+'</button>'+mark+'</div>';
 }
 function kycStatusDateField(status){return {'Collected':'collectedAt','Admin Receive':'adminReceiveAt','Mail Send':'mailSendAt','In Portal':'inPortalAt','Active':'activeAt','Rejection':'rejectionAt'}[normalizeKycStatus(status)]||'statusUpdatedAt';}
 function kycStatusDate(r){return r[kycStatusDateField(r.status)]||r.statusUpdatedAt||r.collectedAt||r.submittedAt||r.collectionDate||'—';}
@@ -5591,25 +5595,54 @@ function renderKycStatus(){
 }
 function submitKycStatusUpdate(id,selectId,button){const select=document.getElementById(selectId);if(!select){kycAlert('Status selection পাওয়া যায়নি। আবার চেষ্টা করুন।','error');return;}updateKycStatus(id,select.value,button,select);}
 async function updateKycStatus(id,status,button,select){
+    id=String(id);
     const allowed=['Collected','Admin Receive','Mail Send','In Portal','Active','Rejection'];
     if(getRoleInfo().role!=='Admin'){kycAlert('শুধু Admin KYC Status update করতে পারবেন।','error');return;}
     status=normalizeKycStatus(status);if(!allowed.includes(status)){kycAlert('সঠিক Status নির্বাচন করুন।','error');return;}
-    const record=kycRecords.find(r=>String(r.id)===String(id));if(!record){kycAlert('KYC record পাওয়া যায়নি। Refresh করে আবার চেষ্টা করুন।','error');return;}
+    if(kycStatusPendingIds.has(id))return;
+    const record=kycRecords.find(r=>String(r.id)===id);
+    if(!record){kycAlert('KYC record পাওয়া যায়নি। Refresh করে আবার চেষ্টা করুন।','error');return;}
     if(normalizeKycStatus(record.status)===status){kycAlert('এই Status ইতোমধ্যে selected আছে।','error');return;}
-    let reason='';if(status==='Rejection'){reason=prompt('Rejection reason লিখুন:',record.rejectionReason||'')||'';reason=reason.trim();if(!reason){renderKycStatus();kycAlert('Rejection reason বাধ্যতামূলক।','error');return;}}
-    const oldRecord=JSON.parse(JSON.stringify(record)),oldText=button?button.textContent:'';if(button){button.disabled=true;button.textContent='Updating...';}if(select)select.disabled=true;
+    let reason='';
+    if(status==='Rejection'){
+        reason=(prompt('Rejection reason লিখুন:',record.rejectionReason||'')||'').trim();
+        if(!reason){renderKycStatus();kycAlert('Rejection reason বাধ্যতামূলক।','error');return;}
+    }
+    kycStatusPendingIds.add(id);renderKycStatus();
+    const path='new_uddokta_kyc/'+id;
+    let acknowledged=false;
     try{
         const now=new Date().toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}),nowMs=Date.now();
-        const payload={status,rejectionReason:status==='Rejection'?reason:'',statusUpdatedBy:String(currentUser||'admin'),statusUpdatedAt:now,updatedAt:nowMs};payload[kycStatusDateField(status)]=now;
-        Object.assign(record,payload);renderKycStatus();
-        const path='new_uddokta_kyc/'+id;await firebaseRestWrite(path,JSON.stringify(payload),'PATCH');
-        const verified=await firebaseRestReadFresh(path,'?_='+Date.now());
-        if(!verified||normalizeKycStatus(verified.status)!==status)throw new Error('Server verification failed');
-        Object.assign(record,verified);renderKycStatus();
-        firebaseRestWrite('dms_live_update_signal',JSON.stringify({type:'kyc-status',revision:Date.now(),recordId:id,status}),'PUT').catch(()=>{});
-        kycAlert('Current Status সফলভাবে '+status+' হয়েছে।','success');
-    }catch(e){Object.keys(record).forEach(k=>delete record[k]);Object.assign(record,oldRecord);renderKycStatus();kycAlert('Status update হয়নি: '+String(e&&e.message||'Server error')+'। আবার চেষ্টা করুন।','error');}
-    finally{if(button&&document.body.contains(button)){button.disabled=false;button.textContent=oldText||'Update Status';}if(select&&document.body.contains(select))select.disabled=false;}
+        const payload={status,rejectionReason:status==='Rejection'?reason:'',statusUpdatedBy:String(currentUser||'admin'),statusUpdatedAt:now,updatedAt:nowMs};
+        payload[kycStatusDateField(status)]=now;
+        try{
+            await firebaseRestWrite(path,JSON.stringify(payload),'PATCH',null,16000);
+            acknowledged=true;
+        }catch(writeError){
+            // A timed-out response may still be committed. Check before reporting failure.
+            const saved=await firebaseRestReadFresh(path,'?_='+Date.now());
+            if(!saved||normalizeKycStatus(saved.status)!==status)throw writeError;
+            acknowledged=true;
+        }
+        // HTTP success acknowledges persistence. A follow-up read can fail on mobile
+        // networks without undoing the already saved status.
+        let confirmed=null;
+        try{confirmed=await firebaseRestReadFresh(path,'?_='+Date.now());}catch(e){console.warn('KYC readback unavailable after acknowledged save:',e);}
+        if(confirmed && normalizeKycStatus(confirmed.status)!==status)
+            throw new Error('Server status differs. Refresh and try again.');
+        const current=kycRecords.find(r=>String(r.id)===id);
+        if(current)Object.assign(current,confirmed||payload);
+        firebaseRestWrite('dms_live_update_signal',JSON.stringify({type:'kyc-status',revision:Date.now(),recordId:id,status}),'PUT',null,8000).catch(()=>{});
+        kycAlert('Current Status সফলভাবে '+status+' হয়েছে ✓','success');
+    }catch(error){
+        // Never roll the UI back after a server acknowledgement.
+        if(acknowledged){
+            try{const saved=await firebaseRestReadFresh(path,'?_='+Date.now());if(saved){const current=kycRecords.find(r=>String(r.id)===id);if(current)Object.assign(current,saved);}}catch(_){}
+        }
+        kycAlert('Status নিশ্চিত হয়নি: '+String(error&&error.message||'Server error')+'। আবার Refresh করুন।','error');
+    }finally{
+        kycStatusPendingIds.delete(id);renderKycStatus();
+    }
 }
 async function showKycPicture(id){
     const modal=document.getElementById('visit-details-modal'),box=document.getElementById('visit-details-content');if(!modal||!box||!db)return;modal.classList.remove('hidden');box.innerHTML='<div style="padding:20px;text-align:center">Loading picture...</div>';
