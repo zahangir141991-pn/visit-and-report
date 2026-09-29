@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-29-location-accuracy-v80">
+    <meta name="dms-app-version" content="2026-09-30-login-information-v81">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1400,8 +1400,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-29-location-accuracy-v80';
-        const APP_RELEASED_AT = 1790247600000;
+        const APP_CACHE_VERSION = '2026-09-30-login-information-v81';
+        const APP_RELEASED_AT = 1790708160000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -1786,7 +1786,7 @@ body.app-logged-in #view-login{display:none!important}
         function updateLoginHeartbeat(){if(!db||!currentUser||registeredLoginUser!==String(currentUser))return;db.ref('user_login_sessions/'+String(currentUser)+'/'+getDeviceId()).update({lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText(),active:true}).catch(()=>{});}
         async function recordLoginSession(){
             if(!db||!currentUser)return false;const userId=String(currentUser),deviceId=getDeviceId();if(registeredLoginUser===userId){updateLoginHeartbeat();return true;}registeredLoginUser=userId;stopLoginHeartbeat();
-            try{const root=db.ref('user_login_sessions/'+userId),snap=await root.once('value'),existing=snap.val()||{},now=Date.now(),otherIds=Object.keys(existing).filter(id=>id!==deviceId&&existing[id]&&existing[id].active&&now-Number(existing[id].lastSeen||0)<180000),session={userId,deviceId,deviceLabel:getDeviceLabel(),userAgent:String(navigator.userAgent||'').slice(0,220),loginAt:firebase.database.ServerValue.TIMESTAMP,loginTime:loginTimeText(now),lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText(now),active:true};await root.child(deviceId).set(session);try{root.child(deviceId).onDisconnect().update({active:false,lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText()});}catch(_){}if(otherIds.length)await db.ref('admin_login_alerts').push().set({userId,deviceId,deviceLabel:session.deviceLabel,otherDeviceCount:otherIds.length,loginTime:session.loginTime,createdAt:firebase.database.ServerValue.TIMESTAMP,read:false,message:'একই User ID অন্য একটি Device ID থেকে login করেছে।'});loginHeartbeatTimer=setInterval(updateLoginHeartbeat,60000);if(userId==='admin'){startAdminLoginMonitoring();loadAdminLoginInfo();}return true;}catch(e){registeredLoginUser='';console.warn('Login device information could not be saved:',e);return false;}
+            try{const root=db.ref('user_login_sessions/'+userId),now=Date.now();let existing={};try{const snap=await Promise.race([root.once('value'),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Session read timed out')),2500))]);existing=snap.val()||{};}catch(readError){console.warn('Existing login sessions unavailable; saving current session:',readError);}const otherIds=Object.keys(existing).filter(id=>id!==deviceId&&existing[id]&&existing[id].active&&now-Number(existing[id].lastSeen||0)<180000),session={userId,deviceId,deviceLabel:getDeviceLabel(),userAgent:String(navigator.userAgent||'').slice(0,220),loginAt:firebase.database.ServerValue.TIMESTAMP,loginTime:loginTimeText(now),lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText(now),active:true};await root.child(deviceId).set(session);try{root.child(deviceId).onDisconnect().update({active:false,lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText()});}catch(_){}if(otherIds.length)await db.ref('admin_login_alerts').push().set({userId,deviceId,deviceLabel:session.deviceLabel,otherDeviceCount:otherIds.length,loginTime:session.loginTime,createdAt:firebase.database.ServerValue.TIMESTAMP,read:false,message:'একই User ID অন্য একটি Device ID থেকে login করেছে।'});loginHeartbeatTimer=setInterval(updateLoginHeartbeat,60000);if(userId==='admin'){startAdminLoginMonitoring();loadAdminLoginInfo();}return true;}catch(e){registeredLoginUser='';console.warn('Login device information could not be saved:',e);return false;}
         }
         function markCurrentLoginOffline(){stopLoginHeartbeat();if(db&&currentUser&&registeredLoginUser===String(currentUser))db.ref('user_login_sessions/'+String(currentUser)+'/'+getDeviceId()).update({active:false,lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText()}).catch(()=>{});registeredLoginUser='';}
         function renderAdminLoginInfo(data){const body=document.getElementById('admin-login-info-body');if(!body)return;const rows=[];Object.keys(data||{}).forEach(userId=>Object.keys(data[userId]||{}).forEach(deviceId=>rows.push(Object.assign({userId,deviceId},data[userId][deviceId]||{}))));rows.sort((a,b)=>Number(b.lastSeen||b.loginAt||0)-Number(a.lastSeen||a.loginAt||0));body.innerHTML=rows.length?rows.map(r=>{const active=!!r.active&&Date.now()-Number(r.lastSeen||0)<150000;return '<tr><td data-label="User ID">'+escapeMorningHtml(r.userId||'')+'</td><td data-label="Login Time">'+escapeMorningHtml(r.loginTime||loginTimeText(r.loginAt))+'</td><td data-label="Last Active">'+escapeMorningHtml(r.lastActiveTime||loginTimeText(r.lastSeen))+'</td><td data-label="Device ID"><span title="'+escapeMorningHtml(r.deviceId||'')+'">'+escapeMorningHtml(String(r.deviceId||'').slice(0,16))+'...</span></td><td data-label="Device / Browser">'+escapeMorningHtml(r.deviceLabel||'Unknown')+'</td><td data-label="Status"><span class="status-badge">'+(active?'Online':'Offline')+'</span></td></tr>';}).join(''):'<tr><td colspan="6" class="empty-state">No login information found.</td></tr>';}
@@ -1797,15 +1797,20 @@ body.app-logged-in #view-login{display:none!important}
             if(adminLoginLoadInFlight)return adminLoginLoadInFlight;
             body.innerHTML='<tr><td colspan="6">Login information loading...</td></tr>';
             adminLoginLoadInFlight=(async()=>{
+                let timeoutId;
                 try{
-                    // REST has a fixed timeout, so a disconnected realtime socket cannot hold this page forever.
-                    const data=await firebaseRestReadFresh('user_login_sessions','?timeout=8s&_='+Date.now());
+                    // Always settle the visible page, including when mobile fetch remains pending.
+                    const timedOut=new Promise((_,reject)=>{timeoutId=setTimeout(()=>reject(new Error('Login information request timed out')),7000);});
+                    const data=await Promise.race([firebaseRestReadFresh('user_login_sessions','?timeout=6s&_='+Date.now()),timedOut]);
                     if(String(currentUser)==='admin')renderAdminLoginInfo(data||{});
                     if(!db)ensureFirebaseSdk().then(()=>{if(db){recordLoginSession();startAdminLoginMonitoring();}}).catch(e=>console.warn('Login monitoring unavailable:',e));
                 }catch(e){
                     console.warn('Login information load failed:',e);
-                    if(String(currentUser)==='admin'&&body.textContent.includes('Login information loading'))body.innerHTML='<tr><td colspan="6" style="color:#b91c1c">Login information পাওয়া যায়নি। Internet/Database permission পরীক্ষা করে Refresh চাপুন।</td></tr>';
-                }
+                    if(String(currentUser)==='admin'&&body.textContent.includes('Login information loading')){
+                        const reason=/401|403|permission/i.test(String(e.message||''))?'Database permission বন্ধ আছে।':'Server থেকে data পাওয়া যাচ্ছে না।';
+                        body.innerHTML='<tr><td colspan="6" style="color:#b91c1c">'+reason+' Internet/Database পরীক্ষা করে Refresh চাপুন।</td></tr>';
+                    }
+                }finally{clearTimeout(timeoutId);}
             })();
             try{return await adminLoginLoadInFlight;}finally{adminLoginLoadInFlight=null;}
         }
