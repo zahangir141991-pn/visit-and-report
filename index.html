@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-29-agent-width-light-zero-v72">
+    <meta name="dms-app-version" content="2026-09-29-agentname-sticky-short-v73">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -475,6 +475,14 @@
 #view-morning-report .enhanced-report-table tbody tr.zero-b2b-row td,#view-afternoon-report .enhanced-report-table tbody tr.zero-b2b-row td{background:#fff8df!important;color:#604900!important;font-weight:700}
 #view-morning-report .enhanced-report-table tbody tr.zero-b2b-row:hover td,#view-afternoon-report .enhanced-report-table tbody tr.zero-b2b-row:hover td{background:#fff1c9!important}
 @media(max-width:767px){#view-morning-report .enhanced-report-table,#view-afternoon-report .enhanced-report-table{--agent-width:125px}}
+
+/* Keep AGENTNAME visible during horizontal scrolling in both reports. */
+#view-morning-report .enhanced-report-table .agent-name-col,#view-afternoon-report .enhanced-report-table .agent-name-col{position:sticky!important;left:var(--name-left)!important;z-index:10!important;width:var(--name-width)!important;min-width:var(--name-width)!important;max-width:var(--name-width)!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;box-shadow:4px 0 8px rgba(15,23,42,.12)!important}
+#view-morning-report .enhanced-report-table th.agent-name-col,#view-afternoon-report .enhanced-report-table th.agent-name-col{top:0!important;z-index:16!important;background:#dbeafe!important}
+#view-morning-report .enhanced-report-table td.agent-name-col,#view-afternoon-report .enhanced-report-table td.agent-name-col{background:#fff!important}
+#view-morning-report .enhanced-report-table tbody tr:nth-child(even) td.agent-name-col,#view-afternoon-report .enhanced-report-table tbody tr:nth-child(even) td.agent-name-col{background:#f8fafc!important}
+#view-morning-report .enhanced-report-table tbody tr.zero-b2b-row td.agent-name-col,#view-afternoon-report .enhanced-report-table tbody tr.zero-b2b-row td.agent-name-col{background:#fff8df!important}
+#view-morning-report .enhanced-report-table .agent-name-text,#view-afternoon-report .enhanced-report-table .agent-name-text{display:block;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 
 <style id="mobile-navigation-and-assignment-ui">
@@ -1345,7 +1353,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-29-agent-width-light-zero-v72';
+        const APP_CACHE_VERSION = '2026-09-29-agentname-sticky-short-v73';
         const APP_RELEASED_AT = 1790247600000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -5095,7 +5103,7 @@ function reportHeaderHtml(report,cols){
 }
 function reportCellHtml(col,row){
     const value=String(col.value(row)??''),cls=col.key==='agent'?'agent-col':(col.key==='agentName'?'agent-name-col':(col.key==='dso'?'dso-col':''));
-    if(col.key==='agentName')return '<td class="'+cls+'" title="'+escapeMorningHtml(value)+'"><span class="agent-name-text">'+escapeMorningHtml(value)+'</span></td>';
+    if(col.key==='agentName'){const short=value.length>20?value.slice(0,17).trimEnd()+'...':value;return '<td class="'+cls+'" title="'+escapeMorningHtml(value)+'"><span class="agent-name-text">'+escapeMorningHtml(short)+'</span></td>'; }
     return '<td class="'+cls+'" title="'+escapeMorningHtml(value)+'">'+escapeMorningHtml(value)+'</td>';
 }
 function morningRatioInfo(row,map){
