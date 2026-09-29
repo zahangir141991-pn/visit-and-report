@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-29-only-agentname-sticky-v74">
+    <meta name="dms-app-version" content="2026-09-29-report-scroll-spacing-v75">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -496,6 +496,19 @@
   #view-morning-report .enhanced-report-table th.agent-col,#view-morning-report .enhanced-report-table td.agent-col,
   #view-afternoon-report .enhanced-report-table th.agent-col,#view-afternoon-report .enhanced-report-table td.agent-col{position:static!important;left:auto!important}
 }
+
+/* All report headers stay at the top; only AGENTNAME stays at the left. */
+#view-morning-report .enhanced-report-table thead th,#view-afternoon-report .enhanced-report-table thead th{position:sticky!important;top:0!important;left:auto!important;z-index:14!important;vertical-align:middle;background:#dbeafe!important}
+#view-morning-report .enhanced-report-table thead th.agent-name-col,#view-afternoon-report .enhanced-report-table thead th.agent-name-col{left:0!important;z-index:18!important}
+#view-morning-report .enhanced-report-table tbody td.dso-col,#view-morning-report .enhanced-report-table tbody td.agent-col,
+#view-afternoon-report .enhanced-report-table tbody td.dso-col,#view-afternoon-report .enhanced-report-table tbody td.agent-col{position:static!important;left:auto!important;z-index:auto!important;vertical-align:middle}
+#view-morning-report .enhanced-report-table tbody td.agent-name-col,#view-afternoon-report .enhanced-report-table tbody td.agent-name-col{position:sticky!important;left:0!important;z-index:8!important;vertical-align:middle}
+/* Use available screen height for rows and trim the unused report-page footer gap. */
+#view-morning-report .morning-table-wrap,#view-afternoon-report .morning-table-wrap{height:auto!important;min-height:0!important;max-height:calc(100vh - 235px)!important;max-height:calc(100dvh - 235px)!important;margin-bottom:0!important;padding-bottom:0!important}
+#main-app:has(#view-morning-report.active),#main-app:has(#view-afternoon-report.active){padding-bottom:8px!important}
+body:has(#view-morning-report.active),body:has(#view-afternoon-report.active){padding-bottom:0!important}
+body:has(#view-morning-report.active) #app-copyright,body:has(#view-afternoon-report.active) #app-copyright{padding:10px 12px 12px!important}
+@media(max-width:767px){#view-morning-report .morning-table-wrap,#view-afternoon-report .morning-table-wrap{max-height:calc(100vh - 205px)!important;max-height:calc(100dvh - 205px)!important}}
 </style>
 
 <style id="mobile-navigation-and-assignment-ui">
@@ -1366,7 +1379,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-29-only-agentname-sticky-v74';
+        const APP_CACHE_VERSION = '2026-09-29-report-scroll-spacing-v75';
         const APP_RELEASED_AT = 1790247600000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
