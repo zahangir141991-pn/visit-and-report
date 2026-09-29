@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-29-agentname-sticky-short-v73">
+    <meta name="dms-app-version" content="2026-09-29-only-agentname-sticky-v74">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -483,6 +483,19 @@
 #view-morning-report .enhanced-report-table tbody tr:nth-child(even) td.agent-name-col,#view-afternoon-report .enhanced-report-table tbody tr:nth-child(even) td.agent-name-col{background:#f8fafc!important}
 #view-morning-report .enhanced-report-table tbody tr.zero-b2b-row td.agent-name-col,#view-afternoon-report .enhanced-report-table tbody tr.zero-b2b-row td.agent-name-col{background:#fff8df!important}
 #view-morning-report .enhanced-report-table .agent-name-text,#view-afternoon-report .enhanced-report-table .agent-name-text{display:block;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* AGENTNAME is the only horizontally frozen report column. */
+#view-morning-report .enhanced-report-table th.dso-col,#view-morning-report .enhanced-report-table td.dso-col,
+#view-morning-report .enhanced-report-table th.agent-col,#view-morning-report .enhanced-report-table td.agent-col,
+#view-afternoon-report .enhanced-report-table th.dso-col,#view-afternoon-report .enhanced-report-table td.dso-col,
+#view-afternoon-report .enhanced-report-table th.agent-col,#view-afternoon-report .enhanced-report-table td.agent-col{position:static!important;left:auto!important;box-shadow:none!important}
+#view-morning-report .enhanced-report-table th.agent-name-col,#view-morning-report .enhanced-report-table td.agent-name-col,
+#view-afternoon-report .enhanced-report-table th.agent-name-col,#view-afternoon-report .enhanced-report-table td.agent-name-col{position:sticky!important;left:0!important;z-index:10!important}
+#view-morning-report .enhanced-report-table th.agent-name-col,#view-afternoon-report .enhanced-report-table th.agent-name-col{top:0!important;z-index:16!important}
+@media(max-width:767px){
+  #view-morning-report .enhanced-report-table th.agent-col,#view-morning-report .enhanced-report-table td.agent-col,
+  #view-afternoon-report .enhanced-report-table th.agent-col,#view-afternoon-report .enhanced-report-table td.agent-col{position:static!important;left:auto!important}
+}
 </style>
 
 <style id="mobile-navigation-and-assignment-ui">
@@ -1353,7 +1366,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-29-agentname-sticky-short-v73';
+        const APP_CACHE_VERSION = '2026-09-29-only-agentname-sticky-v74';
         const APP_RELEASED_AT = 1790247600000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
