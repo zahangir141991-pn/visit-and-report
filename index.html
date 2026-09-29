@@ -3108,7 +3108,7 @@ body.app-logged-in #view-login{display:none!important}
             osmMap.setView([lat, lon], zoom, {animate:true});
             if (osmMarker) osmMap.removeLayer(osmMarker);
             osmMarker = L.marker([lat, lon]).addTo(osmMap)
-                .bindPopup(`📍 Current GPS location${accuracy ? `<br>Accuracy: ±${Math.round(accuracy)}m` : ''}`).openPopup();
+                .bindPopup(`📍 Current GPS location${accuracy ? `<br>Accuracy: ±${Math.round(accuracy)}m` : ''}`);
             setTimeout(() => osmMap.invalidateSize(), 150);
         }
 
@@ -3164,11 +3164,11 @@ body.app-logged-in #view-login{display:none!important}
                 };
                 const fail=err=>{if(done)return;if(err&&err.code===1)finish(err);else lastError=err;};
                 // Coarse network positioning works indoors; high accuracy can refine it.
-                timer=setTimeout(()=>finish(),6500);
-                earlyTimer=setTimeout(()=>{if(best)finish();},1800);
-                try{watchId=navigator.geolocation.watchPosition(accept,fail,{enableHighAccuracy:true,maximumAge:10000,timeout:6000});}
+                timer=setTimeout(()=>finish(),5500);
+                earlyTimer=setTimeout(()=>{if(best)finish();},900);
+                try{watchId=navigator.geolocation.watchPosition(accept,fail,{enableHighAccuracy:true,maximumAge:15000,timeout:5000});}
                 catch(err){lastError=err;}
-                try{navigator.geolocation.getCurrentPosition(accept,fail,{enableHighAccuracy:false,maximumAge:10000,timeout:5500});}
+                try{navigator.geolocation.getCurrentPosition(accept,fail,{enableHighAccuracy:false,maximumAge:15000,timeout:4500});}
                 catch(err){lastError=err;}
                 if(done&&watchId!==null)navigator.geolocation.clearWatch(watchId);
             });
@@ -3210,7 +3210,7 @@ body.app-logged-in #view-login{display:none!important}
 
         function openDeviceLocationSettings() { try { if (/Android/i.test(navigator.userAgent || '')) { window.location.href = 'intent:#Intent;action=android.settings.LOCATION_SOURCE_SETTINGS;end'; return; } } catch(e) {} showAlert('Phone Settings → Location/GPS → ON করুন, তারপর আবার Location চেষ্টা করুন.', 'info'); }
 
-        function showLocationError(err) {
+        function showLocationError(err, notifyUser=true) {
             const nameInput = document.getElementById('gps-location-name');
             const btn = document.getElementById('btn-location-permission');
             const deviceBtn = document.getElementById('btn-device-location');
@@ -3224,23 +3224,23 @@ body.app-logged-in #view-login{display:none!important}
                     btn.disabled = false;
                     btn.textContent = '📍 Allow Location';
                 }
-                showAlert('Location permission Block করা আছে। Chrome Site settings → Location → Allow করুন, তারপর আবার Submit করুন।', 'error');
+                if(notifyUser)showAlert('Location permission Block করা আছে। Chrome Site settings → Location → Allow করুন।', 'error');
             } else if (err && err.code === 2) {
                 nameInput.placeholder = 'Location unavailable — turn on Device Location';
                 nameInput.title = 'Turn on Windows/Android Location Services and try again.';
                 setLocationPermissionButton('prompt');
                 if (deviceBtn) deviceBtn.style.display = /Android/i.test(navigator.userAgent || '') ? 'inline-flex' : 'none';
-                showAlert(err.message && err.message.includes('accuracy') ? err.message : 'Phone-এর Location/GPS ON করে খোলা জায়গায় আবার চেষ্টা করুন।', 'error');
+                if(notifyUser)showAlert('Phone-এর Location/GPS ON করে আবার চেষ্টা করুন।', 'error');
             } else if (err && err.code === 3) {
                 nameInput.placeholder = 'GPS timeout — location will retry automatically';
                 nameInput.title = 'The device took too long to determine the location.';
                 setLocationPermissionButton('prompt');
-                showAlert('Location পেতে বেশি সময় লাগছে। Location আবার স্বয়ংক্রিয়ভাবে নেওয়ার চেষ্টা হবে।', 'error');
+                if(notifyUser)showAlert('Location পেতে সময় লাগছে। Phone Location ON আছে কি দেখুন, তারপর আবার চেষ্টা করুন।', 'error');
             } else {
                 nameInput.placeholder = 'Location unavailable — try again';
                 nameInput.title = 'The browser could not determine your location.';
                 setLocationPermissionButton('prompt');
-                showAlert('Location পাওয়া যায়নি। Device Location ON করে আবার চেষ্টা করুন.', 'error');
+                if(notifyUser)showAlert('Location পাওয়া যায়নি। Device Location ON করে আবার চেষ্টা করুন.', 'error');
             }
             updateVisitSubmitState();
         }
@@ -3263,8 +3263,7 @@ body.app-logged-in #view-login{display:none!important}
                 // IMPORTANT: request permission directly from the user's click.
                 // Do not block the request just because Permissions API says "denied";
                 // browser/OS permission state can be stale until a new geolocation call.
-                await fetchGPS(true);
-                return true;
+                return await fetchGPS(true);
             } catch (err) {
                 console.warn('Location permission request:', err);
                 if (err && err.message === 'Location requires HTTPS') {
@@ -3294,9 +3293,8 @@ body.app-logged-in #view-login{display:none!important}
             // Never run multiple GPS/reverse-geocode jobs at the same time.
             if (gpsRequestInFlight) return gpsRequestInFlight;
 
-            gpsInput.value = '';
-            nameInput.value = '';
-            nameInput.dataset.fullName='';
+            const previousCoords=gpsInput.value;
+            if(!previousCoords){nameInput.value='';nameInput.dataset.fullName='';}
             nameInput.placeholder = 'Getting GPS location...';
             nameInput.title = '';
             updateVisitSubmitState();
@@ -3337,8 +3335,7 @@ body.app-logged-in #view-login{display:none!important}
                     return true;
                 } catch (err) {
                     console.warn('GPS error:', err);
-                    gpsInput.value = '';
-                    showLocationError(err);
+                    if(!previousCoords){gpsInput.value='';showLocationError(err,fromPermissionButton);}
                     return false;
                 } finally {
                     gpsRequestInFlight = null;
@@ -3424,7 +3421,6 @@ body.app-logged-in #view-login{display:none!important}
                 !locationNameEl || !String(locationNameEl.value || '').trim() ||
                 String(locationNameEl.value || '').trim() === 'Getting location...';
             if (locationMissing) {
-                showAlert('এই Visit Submit করতে Current Location প্রয়োজন। Location permission দিন।', 'error');
                 const gotLocation = await requestLocationPermission();
                 const gpsReady = gotLocation && gpsEl && String(gpsEl.value || '').trim() &&
                     locationNameEl && String(locationNameEl.value || '').trim();
@@ -5557,9 +5553,12 @@ function captureKycShopPhoto(){
 function resetKycShopPhoto(){
     kycPictureData='';const preview=document.getElementById('kyc-picture-preview');if(preview){preview.src='';preview.style.display='none';}document.getElementById('btn-kyc-camera-retake')?.classList.add('hidden');document.getElementById('btn-kyc-camera-start')?.classList.remove('hidden');startKycShopCamera();
 }
+let kycLocationInFlight=null;
 async function fetchKycLocation(showError=true){
     const btn=document.getElementById('btn-kyc-location'),name=document.getElementById('kyc-location-name'),value=document.getElementById('kyc-location');
     if(!name||!value)return;
+    if(kycLocationInFlight)return kycLocationInFlight;
+    kycLocationInFlight=(async()=>{
     if(btn){btn.disabled=true;btn.textContent='Getting accurate GPS...';}
     name.placeholder='Getting accurate GPS...';
     try{
@@ -5574,8 +5573,10 @@ async function fetchKycLocation(showError=true){
         name.dataset.accuracy=String(Math.round(pos.coords.accuracy));
         name.title='GPS accuracy '+locationAccuracyText(pos);
         showLocationAccuracy(name,pos);
-    }catch(e){name.value='';name.dataset.fullName='';value.value='';name.placeholder='Location not found — try again';if(showError)kycAlert(e.message||'Accurate GPS পাওয়া যায়নি।','error');}
+    }catch(e){if(!value.value){name.value='';name.dataset.fullName='';name.placeholder='Location not found — try again';}if(showError)kycAlert(e.message||'GPS পাওয়া যায়নি।','error');}
     finally{if(btn){btn.disabled=false;btn.textContent='📍 Get Location';}}
+    })();
+    try{return await kycLocationInFlight;}finally{kycLocationInFlight=null;}
 }
 function getDssNameForWallet(wallet){
     const w=normalizeScopeWallet(wallet);for(const [dss,set] of dssDsoAssignmentIndex.entries()){if(set&&set.has(w))return dss;}return '';
