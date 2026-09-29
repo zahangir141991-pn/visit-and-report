@@ -936,7 +936,7 @@ body.app-logged-in #view-login{display:none!important}
 
                     <div class="form-group">
                         <label>GPS Location Name</label>
-                        <input type="text" id="gps-location-name" required placeholder="GPS name appears here; correct it if needed">
+                        <input type="text" id="gps-location-name" required readonly placeholder="GPS location will appear here">
                         <input type="hidden" id="gps-location">
                         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
                             <button type="button" class="btn btn-primary" id="btn-location-permission" style="padding:9px 12px;font-size:0.82rem;" onclick="requestLocationPermission()">📍 Allow Location Permission</button>
@@ -1163,7 +1163,7 @@ body.app-logged-in #view-login{display:none!important}
                         <div class="form-group"><label>Thana</label><input type="text" id="kyc-thana" required placeholder="Enter thana"></div>
                         <div class="form-group"><label>Bazar Name</label><input type="text" id="kyc-bazar-name" required placeholder="Enter bazar name"></div>
                         <div class="form-group"><label>Shop Photo (Camera Only)</label><video id="kyc-camera-video" class="kyc-camera-video" autoplay playsinline muted></video><canvas id="kyc-camera-canvas" class="hidden"></canvas><img id="kyc-picture-preview" class="kyc-photo-preview" alt="Shop photo preview"><div class="kyc-camera-actions"><input id="kyc-native-photo" type="file" accept="image/*" capture="environment" hidden aria-label="Take shop photo with phone camera"><button type="button" class="btn btn-sec" id="btn-kyc-camera-start" onclick="startKycShopCamera()">📷 Take Shop Photo</button><button type="button" class="btn hidden" id="btn-kyc-camera-capture" onclick="captureKycShopPhoto()">📸 Capture Shop Photo</button><button type="button" class="btn btn-sec hidden" id="btn-kyc-camera-retake" onclick="resetKycShopPhoto()">🔄 Retake</button></div></div>
-                        <div class="form-group kyc-wide"><label>Location</label><input type="text" id="kyc-location-name" required placeholder="GPS name appears here; correct it if needed"><input type="hidden" id="kyc-location"><div class="kyc-location-actions"><button type="button" class="btn btn-sec" id="btn-kyc-location" onclick="fetchKycLocation()">📍 Get Location</button></div></div>
+                        <div class="form-group kyc-wide"><label>Location</label><input type="text" id="kyc-location-name" required readonly placeholder="GPS location will appear here"><input type="hidden" id="kyc-location"><div class="kyc-location-actions"><button type="button" class="btn btn-sec" id="btn-kyc-location" onclick="fetchKycLocation()">📍 Get Location</button></div></div>
                     </div>
                     <button type="submit" class="btn" id="btn-kyc-submit" style="width:100%;margin-top:14px;min-height:50px">Submit KYC</button>
                 </form>
@@ -3130,8 +3130,8 @@ body.app-logged-in #view-login{display:none!important}
         }
         async function reverseGeocodeFallback(lat, lon) {
             // Resolve the actual GPS fix; never reuse an address from nearby coordinates.
-            for(const zoom of [18,16]){
-                const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),zoom===18?4500:3000);
+            for(const zoom of [18]){
+                const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),2500);
                 try{
                     const url=`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=${zoom}&addressdetails=1&accept-language=bn,en`;
                     const res=await fetch(url,{cache:'no-store',headers:{Accept:'application/json'},signal:controller.signal});
@@ -3164,11 +3164,11 @@ body.app-logged-in #view-login{display:none!important}
                 };
                 const fail=err=>{if(done)return;if(err&&err.code===1)finish(err);else lastError=err;};
                 // Coarse network positioning works indoors; high accuracy can refine it.
-                timer=setTimeout(()=>finish(),9000);
-                earlyTimer=setTimeout(()=>{if(best)finish();},4500);
-                try{watchId=navigator.geolocation.watchPosition(accept,fail,{enableHighAccuracy:true,maximumAge:0,timeout:8500});}
+                timer=setTimeout(()=>finish(),6500);
+                earlyTimer=setTimeout(()=>{if(best)finish();},1800);
+                try{watchId=navigator.geolocation.watchPosition(accept,fail,{enableHighAccuracy:true,maximumAge:10000,timeout:6000});}
                 catch(err){lastError=err;}
-                try{navigator.geolocation.getCurrentPosition(accept,fail,{enableHighAccuracy:false,maximumAge:0,timeout:7000});}
+                try{navigator.geolocation.getCurrentPosition(accept,fail,{enableHighAccuracy:false,maximumAge:10000,timeout:5500});}
                 catch(err){lastError=err;}
                 if(done&&watchId!==null)navigator.geolocation.clearWatch(watchId);
             });
@@ -3323,9 +3323,10 @@ body.app-logged-in #view-login{display:none!important}
                     showLocationAccuracy(nameInput,pos);
                     updateVisitSubmitState();
 
-                    const resolvedName = await reverseGeocodeFallback(lat, lon).catch(()=>null);
-                    if(resolvedName){nameInput.value=resolvedName.short;nameInput.dataset.fullName=resolvedName.full;}
-                    nameInput.title = (resolvedName ? resolvedName.full+' • ' : '')+`GPS accuracy: ±${Math.round(accuracy)}m`;
+                    reverseGeocodeFallback(lat, lon).then(resolvedName=>{
+                        if(resolvedName&&gpsInput.value===coords){nameInput.value=resolvedName.short;nameInput.dataset.fullName=resolvedName.full;nameInput.title=resolvedName.full+' • GPS accuracy: ±'+Math.round(accuracy)+'m';}
+                    }).catch(()=>{});
+                    nameInput.title = `GPS accuracy: ±${Math.round(accuracy)}m`;
                     nameInput.dataset.accuracy=String(Math.round(accuracy));
                     showLocationAccuracy(nameInput,pos);
 
@@ -5566,10 +5567,12 @@ async function fetchKycLocation(showError=true){
         value.value=lat.toFixed(7)+','+lon.toFixed(7);
         name.value='GPS: '+value.value;name.dataset.fullName=name.value;
         name.placeholder='Finding location name...';
-        const resolved=await reverseGeocodeFallback(lat,lon);
-        if(resolved){name.value=resolved.short;name.dataset.fullName=resolved.full;}
+        const capturedCoords=value.value;
+        reverseGeocodeFallback(lat,lon).then(resolved=>{
+            if(resolved&&value.value===capturedCoords){name.value=resolved.short;name.dataset.fullName=resolved.full;name.title=resolved.full+' • GPS accuracy '+locationAccuracyText(pos);}
+        }).catch(()=>{});
         name.dataset.accuracy=String(Math.round(pos.coords.accuracy));
-        name.title=(resolved?resolved.full+' • ':'')+'GPS accuracy '+locationAccuracyText(pos);
+        name.title='GPS accuracy '+locationAccuracyText(pos);
         showLocationAccuracy(name,pos);
     }catch(e){name.value='';name.dataset.fullName='';value.value='';name.placeholder='Location not found — try again';if(showError)kycAlert(e.message||'Accurate GPS পাওয়া যায়নি।','error');}
     finally{if(btn){btn.disabled=false;btn.textContent='📍 Get Location';}}
@@ -5941,12 +5944,6 @@ document.addEventListener('DOMContentLoaded',()=>{
     });
 },{once:true});
 
-document.addEventListener('DOMContentLoaded',()=>{
-    ['gps-location-name','kyc-location-name'].forEach(id=>{
-        const input=document.getElementById(id);if(!input)return;
-        input.addEventListener('input',()=>{input.dataset.fullName=input.value.trim();});
-    });
-},{once:true});
     </script>
 </body>
 </html>
