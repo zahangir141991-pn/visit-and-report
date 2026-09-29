@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-29-report-page-scroll-v76">
+    <meta name="dms-app-version" content="2026-09-29-floating-report-header-v77">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -522,6 +522,12 @@ body:has(#view-morning-report.active) #app-copyright,body:has(#view-afternoon-re
 #view-morning-report .enhanced-report-table tbody td.agent-name-col,#view-afternoon-report .enhanced-report-table tbody td.agent-name-col{position:sticky!important;top:auto!important;left:0!important;z-index:4!important}
 #main-app:has(#view-morning-report.active),#main-app:has(#view-afternoon-report.active){padding-bottom:0!important}
 body:has(#view-morning-report.active) #app-copyright,body:has(#view-afternoon-report.active) #app-copyright{padding:8px 12px 12px!important}
+
+/* Header mirror appears only while the real header has scrolled above the app bar. */
+.report-floating-head{position:fixed;z-index:190;overflow:hidden;background:#dbeafe;border:1px solid #b8cbe8;box-shadow:0 3px 8px rgba(15,23,42,.12);pointer-events:none}
+.report-floating-head table{border-collapse:separate;border-spacing:0;table-layout:fixed;margin:0;min-width:0!important}
+.report-floating-head th{height:auto;background:#dbeafe!important;text-align:center;border-right:1px solid #cfdbed;border-bottom:2px solid #93b4e4;color:#15346b;white-space:normal;font-size:.76rem;vertical-align:middle}
+.report-floating-head button{pointer-events:auto}
 </style>
 
 <style id="mobile-navigation-and-assignment-ui">
@@ -1392,7 +1398,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-29-report-page-scroll-v76';
+        const APP_CACHE_VERSION = '2026-09-29-floating-report-header-v77';
         const APP_RELEASED_AT = 1790247600000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -5860,6 +5866,39 @@ if (document.readyState !== 'loading') {
     try { preventMobilePullToRefresh(); } catch(e) {}
 }
 
+
+// Keep the report column names visible while the page itself scrolls vertically.
+(function(){
+  let mirror=null, sourceId='', lastSignature='';
+  function removeMirror(){if(mirror){mirror.remove();mirror=null;}sourceId='';lastSignature='';}
+  function refresh(){
+    const active=document.querySelector('#view-morning-report.active,#view-afternoon-report.active');
+    if(!active){removeMirror();return;}
+    const wrap=active.querySelector('.morning-table-wrap'),table=wrap&&wrap.querySelector('table'),head=table&&table.tHead;
+    if(!wrap||!table||!head||!head.rows.length||!head.rows[0].cells.length||!table.tBodies[0]?.rows.length){removeMirror();return;}
+    const header=document.getElementById('app-header'),top=header?Math.max(0,header.getBoundingClientRect().bottom):0;
+    const rect=wrap.getBoundingClientRect(),headRect=head.getBoundingClientRect(),headHeight=Math.ceil(headRect.height);
+    if(!headHeight||headRect.top>=top||rect.bottom<=top+headHeight){if(mirror)mirror.style.display='none';return;}
+    const signature=active.id+'|'+head.innerHTML+'|'+Array.from(head.rows[0].cells).map(c=>Math.round(c.getBoundingClientRect().width)).join(',');
+    if(!mirror||signature!==lastSignature){
+      removeMirror();mirror=document.createElement('div');mirror.className='report-floating-head';mirror.setAttribute('aria-hidden','true');
+      const clone=document.createElement('table');clone.className='morning-table enhanced-report-table';
+      const clonedHead=head.cloneNode(true);clonedHead.removeAttribute('id');clone.appendChild(clonedHead);mirror.appendChild(clone);document.body.appendChild(mirror);
+      const sourceCells=Array.from(head.rows[0].cells),copyCells=Array.from(clonedHead.rows[0].cells);
+      sourceCells.forEach((cell,i)=>{const width=cell.getBoundingClientRect().width;copyCells[i].style.setProperty('width',width+'px','important');copyCells[i].style.setProperty('min-width',width+'px','important');copyCells[i].style.setProperty('max-width',width+'px','important');});
+      clone.style.width=Math.ceil(table.getBoundingClientRect().width)+'px';sourceId=active.id;lastSignature=signature;
+    }
+    mirror.style.display='block';mirror.style.top=top+'px';mirror.style.left=rect.left+'px';mirror.style.width=rect.width+'px';mirror.style.height=headHeight+'px';
+    mirror.firstElementChild.style.transform='translateX('+-wrap.scrollLeft+'px)';
+  }
+  let pending=false;function schedule(){if(pending)return;pending=true;requestAnimationFrame(()=>{pending=false;refresh();});}
+  document.addEventListener('scroll',schedule,true);window.addEventListener('resize',schedule,{passive:true});
+  document.addEventListener('DOMContentLoaded',()=>{
+    ['morning-report-head','afternoon-report-head'].forEach(id=>{const el=document.getElementById(id);if(el)new MutationObserver(schedule).observe(el,{childList:true,subtree:true});});
+    document.querySelectorAll('#view-morning-report .morning-table-wrap,#view-afternoon-report .morning-table-wrap').forEach(el=>el.addEventListener('scroll',schedule,{passive:true}));
+    schedule();
+  },{once:true});
+})();
     </script>
 </body>
 </html>
