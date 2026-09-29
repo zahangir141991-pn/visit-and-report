@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-29-report-scroll-spacing-v75">
+    <meta name="dms-app-version" content="2026-09-29-report-page-scroll-v76">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -509,6 +509,19 @@
 body:has(#view-morning-report.active),body:has(#view-afternoon-report.active){padding-bottom:0!important}
 body:has(#view-morning-report.active) #app-copyright,body:has(#view-afternoon-report.active) #app-copyright{padding:10px 12px 12px!important}
 @media(max-width:767px){#view-morning-report .morning-table-wrap,#view-afternoon-report .morning-table-wrap{max-height:calc(100vh - 205px)!important;max-height:calc(100dvh - 205px)!important}}
+
+/* One vertical page scroll: cards leave the screen completely and the footer follows the last row. */
+#view-morning-report .morning-table-wrap,#view-afternoon-report .morning-table-wrap{max-height:none!important;height:auto!important;min-height:0!important;overflow-x:auto!important;overflow-y:hidden!important;overscroll-behavior-x:contain;margin:0!important;padding:0!important}
+#view-morning-report .enhanced-report-table,#view-afternoon-report .enhanced-report-table{margin:0!important}
+/* Disable vertical stickiness inside the horizontally scrolling wrapper.
+   Only AGENTNAME stays frozen to the left during horizontal scroll. */
+#view-morning-report .enhanced-report-table thead th,#view-afternoon-report .enhanced-report-table thead th{position:relative!important;top:auto!important;left:auto!important;z-index:2!important;background:#dbeafe!important}
+#view-morning-report .enhanced-report-table thead th.agent-name-col,#view-afternoon-report .enhanced-report-table thead th.agent-name-col{position:sticky!important;top:auto!important;left:0!important;z-index:5!important}
+#view-morning-report .enhanced-report-table tbody td.dso-col,#view-morning-report .enhanced-report-table tbody td.agent-col,
+#view-afternoon-report .enhanced-report-table tbody td.dso-col,#view-afternoon-report .enhanced-report-table tbody td.agent-col{position:static!important;top:auto!important;left:auto!important;z-index:auto!important}
+#view-morning-report .enhanced-report-table tbody td.agent-name-col,#view-afternoon-report .enhanced-report-table tbody td.agent-name-col{position:sticky!important;top:auto!important;left:0!important;z-index:4!important}
+#main-app:has(#view-morning-report.active),#main-app:has(#view-afternoon-report.active){padding-bottom:0!important}
+body:has(#view-morning-report.active) #app-copyright,body:has(#view-afternoon-report.active) #app-copyright{padding:8px 12px 12px!important}
 </style>
 
 <style id="mobile-navigation-and-assignment-ui">
@@ -1379,7 +1392,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-29-report-scroll-spacing-v75';
+        const APP_CACHE_VERSION = '2026-09-29-report-page-scroll-v76';
         const APP_RELEASED_AT = 1790247600000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
