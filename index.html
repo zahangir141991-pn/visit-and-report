@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-29-zero-b2b-compact-v70">
+    <meta name="dms-app-version" content="2026-09-29-agent-width-light-zero-v72">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -462,6 +462,19 @@
 #view-morning-report .enhanced-report-table tbody tr.zero-b2b-row td,#view-afternoon-report .enhanced-report-table tbody tr.zero-b2b-row td{background:#ffeb99!important;color:#543a00!important;font-weight:800}
 #view-morning-report .enhanced-report-table tbody tr.zero-b2b-row:hover td,#view-afternoon-report .enhanced-report-table tbody tr.zero-b2b-row:hover td{background:#ffe077!important}
 @media(max-width:600px){#view-morning-report .morning-summary,#view-afternoon-report .morning-summary{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px}#view-morning-report .morning-summary .card,#view-afternoon-report .morning-summary .card{padding:8px!important}#view-morning-report .enhanced-report-table td,#view-afternoon-report .enhanced-report-table td{font-size:.74rem}}
+
+/* Center report headers while keeping the sort icon visible at the right. */
+#view-morning-report .enhanced-report-table th,#view-afternoon-report .enhanced-report-table th{text-align:center!important}
+#view-morning-report .table-sort-btn,#view-afternoon-report .table-sort-btn{position:relative;justify-content:center;text-align:center;padding:4px 18px!important;white-space:normal;line-height:1.2}
+#view-morning-report .table-sort-state,#view-afternoon-report .table-sort-state{position:absolute;right:2px;top:50%;transform:translateY(-50%)}
+#view-morning-report .table-sort-btn:hover .table-sort-state,#view-afternoon-report .table-sort-btn:hover .table-sort-state{transform:translateY(-50%)}
+
+/* Fit full agent numbers and preserve the sticky column offsets. */
+#view-morning-report .enhanced-report-table,#view-afternoon-report .enhanced-report-table{--agent-width:145px}
+#view-morning-report .enhanced-report-table th.agent-col,#view-morning-report .enhanced-report-table td.agent-col,#view-afternoon-report .enhanced-report-table th.agent-col,#view-afternoon-report .enhanced-report-table td.agent-col{width:var(--agent-width)!important;min-width:var(--agent-width)!important;max-width:var(--agent-width)!important;overflow:visible!important;white-space:nowrap!important;font-variant-numeric:tabular-nums}
+#view-morning-report .enhanced-report-table tbody tr.zero-b2b-row td,#view-afternoon-report .enhanced-report-table tbody tr.zero-b2b-row td{background:#fff8df!important;color:#604900!important;font-weight:700}
+#view-morning-report .enhanced-report-table tbody tr.zero-b2b-row:hover td,#view-afternoon-report .enhanced-report-table tbody tr.zero-b2b-row:hover td{background:#fff1c9!important}
+@media(max-width:767px){#view-morning-report .enhanced-report-table,#view-afternoon-report .enhanced-report-table{--agent-width:125px}}
 </style>
 
 <style id="mobile-navigation-and-assignment-ui">
@@ -1332,7 +1345,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-29-zero-b2b-compact-v70';
+        const APP_CACHE_VERSION = '2026-09-29-agent-width-light-zero-v72';
         const APP_RELEASED_AT = 1790247600000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
