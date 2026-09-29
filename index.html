@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-29-kyc-status-confirm-v68">
+    <meta name="dms-app-version" content="2026-09-29-zero-b2b-compact-v70">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -449,6 +449,19 @@
 }
         .table-img{content-visibility:auto;}
         .reports-table tbody tr{contain:layout paint;}
+
+/* Compact summary and higher-contrast report tables. */
+#view-morning-report .morning-summary,#view-afternoon-report .morning-summary{grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:7px;margin:10px 0 12px}
+#view-morning-report .morning-summary .card,#view-afternoon-report .morning-summary .card{padding:10px 11px!important;border-radius:9px;border:1px solid #d5dfed;box-shadow:0 1px 4px rgba(15,23,42,.05)}
+#view-morning-report .morning-summary .card span,#view-afternoon-report .morning-summary .card span{font-size:.68rem;font-weight:700;letter-spacing:.01em;color:#475569;line-height:1.2}
+#view-morning-report .morning-summary b,#view-afternoon-report .morning-summary b{font-size:clamp(.94rem,1.5vw,1.1rem);line-height:1.2;margin-top:5px;color:#16429b}
+#view-morning-report .morning-table-wrap,#view-afternoon-report .morning-table-wrap{border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 2px 9px rgba(15,23,42,.07)}
+#view-morning-report .enhanced-report-table th,#view-afternoon-report .enhanced-report-table th{background:#dbeafe!important;color:#15346b;border-bottom:2px solid #93b4e4!important}
+#view-morning-report .enhanced-report-table td,#view-afternoon-report .enhanced-report-table td{border-bottom:1px solid #d9e2ee;border-right:1px solid #e1e8f2;color:#17243b;font-size:.79rem}
+#view-morning-report .enhanced-report-table tbody tr:hover td,#view-afternoon-report .enhanced-report-table tbody tr:hover td{background:#edf5ff!important}
+#view-morning-report .enhanced-report-table tbody tr.zero-b2b-row td,#view-afternoon-report .enhanced-report-table tbody tr.zero-b2b-row td{background:#ffeb99!important;color:#543a00!important;font-weight:800}
+#view-morning-report .enhanced-report-table tbody tr.zero-b2b-row:hover td,#view-afternoon-report .enhanced-report-table tbody tr.zero-b2b-row:hover td{background:#ffe077!important}
+@media(max-width:600px){#view-morning-report .morning-summary,#view-afternoon-report .morning-summary{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px}#view-morning-report .morning-summary .card,#view-afternoon-report .morning-summary .card{padding:8px!important}#view-morning-report .enhanced-report-table td,#view-afternoon-report .enhanced-report-table td{font-size:.74rem}}
 </style>
 
 <style id="mobile-navigation-and-assignment-ui">
@@ -586,9 +599,9 @@ img,video,canvas,svg{max-width:100%;height:auto}
 .table-head-box{display:flex;flex-direction:column;gap:6px;min-width:0}
 .table-sort-btn{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;min-height:36px;border:0;background:transparent;color:#1e3a8a;font:inherit;font-weight:900;padding:3px 2px;cursor:pointer;text-align:left;white-space:nowrap;touch-action:manipulation}
 .table-sort-btn:hover{color:#2563eb}
-.table-sort-state{display:inline-flex;align-items:center;justify-content:center;width:27px;height:27px;flex:0 0 27px;border-radius:50%;background:linear-gradient(145deg,#fff,#eaf2ff);color:#2563eb;border:1px solid #bfdbfe;font-size:.92rem;line-height:1;font-weight:900;box-shadow:0 2px 5px rgba(37,99,235,.12);transition:.16s ease}
-.table-sort-btn:hover .table-sort-state,.table-sort-btn:focus-visible .table-sort-state{background:#2563eb;color:#fff;border-color:#2563eb;transform:translateY(-1px)}
-.table-sort-state.active{background:#2563eb;color:#fff;border-color:#1d4ed8}
+.table-sort-state{display:inline-flex;align-items:center;justify-content:center;width:auto;height:auto;flex:0 0 auto;border:0;border-radius:0;background:transparent;color:#2563eb;font-size:.92rem;line-height:1;font-weight:900;box-shadow:none;transition:color .16s ease}
+.table-sort-btn:hover .table-sort-state,.table-sort-btn:focus-visible .table-sort-state{background:transparent;color:#1d4ed8;border:0;transform:none}
+.table-sort-state.active{background:transparent;color:#1d4ed8;border:0}
 .enhanced-report-table .dso-col{position:sticky!important;left:0!important;width:var(--dso-width)!important;min-width:var(--dso-width)!important;max-width:var(--dso-width)!important;z-index:6!important;background:#f8fafc!important}
 .enhanced-report-table th.dso-col{z-index:12!important;background:#dbeafe!important}
 .enhanced-report-table .agent-col{position:sticky!important;left:var(--agent-left,0)!important;width:var(--agent-width);min-width:var(--agent-width);max-width:var(--agent-width);z-index:6!important;background:#f8fafc!important}
@@ -1319,7 +1332,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-29-kyc-status-confirm-v68';
+        const APP_CACHE_VERSION = '2026-09-29-zero-b2b-compact-v70';
         const APP_RELEASED_AT = 1790247600000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -5056,9 +5069,11 @@ function clearReportTableFilters(report){
     const state=reportTableUi[report];if(!state)return;state.sortKey='';state.sortDir=1;
     report==='morning'?renderMorningReport():renderAfternoonReport();
 }
-function applyReportTableUi(report,rows,cols){
+function applyReportTableUi(report,rows,cols,isZeroRow){
     const state=reportTableUi[report]||{sortKey:'',sortDir:1};let output=rows.slice();
     const sortCol=cols.find(c=>c.key===state.sortKey);if(sortCol)output.sort((a,b)=>{const av=sortCol.value(a),bv=sortCol.value(b),an=parseMorningNumber(av),bn=parseMorningNumber(bv),numeric=sortCol.number===true;const cmp=numeric?(an-bn):String(av).localeCompare(String(bv),undefined,{numeric:true,sensitivity:'base'});return cmp*state.sortDir;});
+    // Keep ZERO B2B first even after a user sorts another column. Stable sort preserves order inside each group.
+    if(isZeroRow)output.sort((a,b)=>Number(!!isZeroRow(b))-Number(!!isZeroRow(a)));
     return output;
 }
 function reportHeaderHtml(report,cols){
@@ -5107,6 +5122,14 @@ function populateMorningDsoFilter(){
         const own=normalizeScopeWallet(role.dsoWallet);select.innerHTML='<option value="'+escapeMorningHtml(own)+'">'+escapeMorningHtml(own)+'</option>';select.value=own;select.disabled=true;
     }else{select.disabled=false;if(values.includes(current))select.value=current;}
 }
+function morningDsoWallet(row,map){
+    if(map.dso>=0)return normalizeScopeWallet(row[map.dso]);
+    const agent=map.agent>=0?String(row[map.agent]??'').trim():'';
+    if(!agent)return '';
+    const master=(typeof authoritativeUddoktaDB!=='undefined'&&Array.isArray(authoritativeUddoktaDB))?authoritativeUddoktaDB:[];
+    if(!morningDsoWallet.index || morningDsoWallet.source!==master){morningDsoWallet.index=new Map(master.map(item=>[String(item?.[1]??'').trim(),normalizeScopeWallet(item?.[0])]));morningDsoWallet.source=master;}
+    return morningDsoWallet.index.get(agent)||'';
+}
 function renderMorningReport(){
     const headers=currentMorningReport.headers||[], rows=currentMorningReport.rows||[];
     const map=morningColumnMap(headers);
@@ -5119,10 +5142,9 @@ function renderMorningReport(){
     if(dsoValue&&map.dso>=0)filtered=filtered.filter(r=>normalizeScopeWallet(r[map.dso])===dsoValue);
     if(typeValue==='cash-in')filtered=filtered.filter(r=>!morningRatioInfo(r,map).isCashOut);
     if(typeValue==='cash-out')filtered=filtered.filter(r=>morningRatioInfo(r,map).isCashOut);
-    if(typeValue==='zero-b2b'){
-        const zeroKeys=afternoonZeroB2BAgentKeys();
-        filtered=filtered.filter(r=>map.agent>=0&&zeroKeys.has(reportAgentKey(r[map.agent])));
-    }
+    const zeroKeys=afternoonZeroB2BAgentKeys();
+    const isMorningZero=r=>map.agent>=0&&zeroKeys.has(reportAgentKey(r[map.agent]));
+    if(typeValue==='zero-b2b')filtered=filtered.filter(isMorningZero);
     if(q)filtered=filtered.filter(r=>[map.agent>=0?r[map.agent]:'',map.agentName>=0?r[map.agentName]:''].some(v=>String(v).toLowerCase().includes(q)));
     // Cash Out dominant agents stay at the top; within that group, higher ratio comes first.
     filtered.sort((a,b)=>{
@@ -5151,7 +5173,10 @@ function renderMorningReport(){
     set('morning-kpi-cash-in-percent',formatPercent(totalCashInPercent));
     set('morning-kpi-balance',formatMorningNumber(balance));
     const head=document.getElementById('morning-report-head'),body=document.getElementById('morning-report-body');
+    const role=getRoleInfo();
+    const showWallet=role.role==='Admin'||role.role==='DM';
     const reportCols=[
+        ...(showWallet?[{title:'DSO Wallet',key:'dso',value:r=>morningDsoWallet(r,map)}]:[]),
         {title:'AGENT',key:'agent',value:r=>map.agent>=0?(r[map.agent]??''):''},
         {title:'AGENTNAME',key:'agentName',value:r=>map.agentName>=0?(r[map.agentName]??''):''},
         {title:'AGENT TYPE',key:'agentType',value:r=>morningAgentType(r,map)},
@@ -5160,10 +5185,10 @@ function renderMorningReport(){
         {title:'MTD ISLAMIC CICO',key:'islamicCico',number:true,value:r=>map.islamicCico>=0?formatMorningNumber(parseMorningNumber(r[map.islamicCico])):''},
         {title:'LAST_DAY_TXN',key:'lastDayTxn',number:true,value:r=>map.lastDayTxn>=0?formatMorningNumber(parseMorningNumber(r[map.lastDayTxn])):''}
     ];
-    filtered=applyReportTableUi('morning',filtered,reportCols);
-    const table=document.getElementById('morning-report-table');if(table){table.style.setProperty('--agent-left','0px');table.style.setProperty('--name-left','var(--agent-width)');}
+    filtered=applyReportTableUi('morning',filtered,reportCols,isMorningZero);
+    const table=document.getElementById('morning-report-table');if(table){table.style.setProperty('--agent-left',showWallet?'var(--dso-width)':'0px');table.style.setProperty('--name-left',showWallet?'calc(var(--dso-width) + var(--agent-width))':'var(--agent-width)');}
     if(head)head.innerHTML=reportHeaderHtml('morning',reportCols);
-    if(body)body.innerHTML=filtered.length?filtered.map(r=>'<tr>'+reportCols.map(c=>reportCellHtml(c,r)).join('')+'</tr>').join(''):'<tr><td colspan="7">No matching data found.</td></tr>';
+    if(body)body.innerHTML=filtered.length?filtered.map(r=>'<tr class="'+(isMorningZero(r)?'zero-b2b-row':'')+'">'+reportCols.map(c=>reportCellHtml(c,r)).join('')+'</tr>').join(''):'<tr><td colspan="'+reportCols.length+'">No matching data found.</td></tr>';
     const dl=document.getElementById('btn-download-morning');if(dl)dl.disabled=!filtered.length;
     currentMorningReport.filteredRows=filtered;currentMorningReport.reportCols=reportCols;
 }
@@ -5384,13 +5409,13 @@ function renderAfternoonReport(){
     const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=formatMorningNumber(v);};
     set('afternoon-kpi-agent-count',agents.size);set('afternoon-kpi-balance',totals.balance);set('afternoon-kpi-cash-in',totals.cashIn);set('afternoon-kpi-cash-out',totals.cashOut);set('afternoon-kpi-total-txn',totals.totalTxn);set('afternoon-kpi-b2bs',totals.b2bs);set('afternoon-kpi-b2br',totals.b2br);set('afternoon-kpi-zero-b2b',zeroB2BAgents.size);
     const cols=[
-        ...(role.role==='DSO'?[]:[{title:'DSO',key:'dso',number:false}]),{title:'AGENT',key:'agent',number:false},{title:'AGENTNAME',key:'agentName',number:false},
+        ...(role.role==='DSO'?[]:[{title:'DSO Wallet',key:'dso',number:false}]),{title:'AGENT',key:'agent',number:false},{title:'AGENTNAME',key:'agentName',number:false},
         {title:'AGENT TYPE',key:'agentType',custom:r=>getType(r).label},
         {title:'BALANCE',key:'balance',number:true},{title:'CASH_IN',key:'cashIn',number:true},{title:'CASH_OUT',key:'cashOut',number:true},
         {title:'TOTAL_TXN',key:'totalTxn',number:true},{title:'B2BS_AMT',key:'b2bs',number:true},{title:'B2BR_AMT',key:'b2br',number:true}
-    ].map(c=>({title:c.title,key:c.key,number:c.number===true,value:r=>c.custom?c.custom(r):(map[c.key]>=0?(c.number?formatMorningNumber(parseMorningNumber(r[map[c.key]])):(r[map[c.key]]??'')):'')}));
+    ].map(c=>({title:c.title,key:c.key,number:c.number===true,value:r=>c.custom?c.custom(r):(map[c.key]>=0?(c.key==='dso'?normalizeScopeWallet(r[map[c.key]]):(c.number?formatMorningNumber(parseMorningNumber(r[map[c.key]])):(r[map[c.key]]??''))):'')}));
     const head=document.getElementById('afternoon-report-head'),body=document.getElementById('afternoon-report-body');
-    filtered=applyReportTableUi('afternoon',filtered,cols);
+    filtered=applyReportTableUi('afternoon',filtered,cols,isZeroB2BRow);
     const table=document.getElementById('afternoon-report-table');if(table){table.style.setProperty('--agent-left',role.role==='DSO'?'0px':'var(--dso-width)');table.style.setProperty('--name-left',role.role==='DSO'?'var(--agent-width)':'calc(var(--dso-width) + var(--agent-width))');}
     if(head)head.innerHTML=reportHeaderHtml('afternoon',cols);
     if(body)body.innerHTML=filtered.length?filtered.map(r=>'<tr class="'+(isZeroB2BRow(r)?'zero-b2b-row':'')+'">'+cols.map(c=>reportCellHtml(c,r)).join('')+'</tr>').join(''):'<tr><td colspan="'+cols.length+'">No matching data found.</td></tr>';
