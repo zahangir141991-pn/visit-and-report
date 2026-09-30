@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-30-login-information-v81">
+    <meta name="dms-app-version" content="2026-09-30-review-fixes-v83">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -724,6 +724,8 @@ img,video,canvas,svg{max-width:100%;height:auto}
 </style>
 
 
+<style>.kyc-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px;margin:12px 0}.kyc-summary .card{padding:10px;margin:0;text-align:left}.kyc-summary b{display:block;font-size:1.35rem;color:var(--primary)}.kyc-summary span{font-size:.78rem;color:#64748b}</style>
+</head>
 <body style="margin:0;background:#f8fafc;color:#0f172a;min-height:100vh;">
 <header id="app-header" style="display:block;background:#2563eb;color:#fff;padding:18px 20px;text-align:center;">
   <button type="button" id="mobile-menu-btn" aria-label="Open navigation" aria-expanded="false" onclick="toggleMobileNav()">☰</button>
@@ -1044,6 +1046,7 @@ body.app-logged-in #view-login{display:none!important}
             <!-- Admin-only Login Information Page -->
             <div id="view-login-info" class="page">
                 <div class="section-head"><div><h2>User Login Information</h2><small style="color:#64748b">শুধু Admin দেখতে পারবেন · IMEI-এর পরিবর্তে নিরাপদ Device ID</small></div><button type="button" class="btn btn-sm btn-sec" onclick="loadAdminLoginInfo()">↻ Refresh</button></div>
+                <div class="card" style="text-align:left;margin-bottom:12px"><div class="filter-grid"><div><label>Date</label><input type="date" id="login-filter-date" onchange="loadAdminLoginInfo()"></div><div><label>DSS</label><select id="login-filter-dss" onchange="renderAdminLoginInfo(loginSessionsData)"></select></div><div><label>DSO</label><select id="login-filter-dso" onchange="renderAdminLoginInfo(loginSessionsData)"></select></div></div><small id="login-history-note" style="color:#64748b"></small></div>
                 <div id="admin-multi-device-alert" class="alert alert-error" style="display:none;margin-bottom:12px"></div>
                 <div class="card" style="text-align:left">
                     <div class="table-responsive"><table class="reports-table" style="min-width:920px"><thead><tr><th>User ID</th><th>Login Time</th><th>Last Active</th><th>Device ID</th><th>Device / Browser</th><th>Status</th></tr></thead><tbody id="admin-login-info-body"><tr><td colspan="6">Login information loading...</td></tr></tbody></table></div>
@@ -1171,8 +1174,9 @@ body.app-logged-in #view-login{display:none!important}
 
             <!-- New Uddokta KYC Status -->
             <div id="view-kyc-status" class="page">
-                <div class="section-head"><div><h2>KYC Status</h2><small style="color:#64748b">Track submitted KYC applications in real time</small></div><button type="button" class="btn btn-sm btn-sec" onclick="renderKycStatus()">↻ Refresh</button></div>
-                <div class="card" style="text-align:left;margin-bottom:14px"><div class="filter-grid"><div><label>Date</label><input type="date" id="kyc-filter-date" onchange="renderKycStatus()"></div><div><label>Month</label><input type="month" id="kyc-filter-month" onchange="renderKycStatus()"></div><div><label>Status</label><select id="kyc-filter-status" onchange="renderKycStatus()"><option value="">All Status</option><option value="Collected">Collected</option><option value="Admin Receive">Admin Receive</option><option value="Mail Send">Mail Send</option><option value="In Portal">In Portal</option><option value="Active">Active</option><option value="Rejection">Rejection</option></select></div><div><label>Search</label><input type="search" id="kyc-filter-search" placeholder="Shop / owner / mobile / thana / bazar" oninput="renderKycStatus()"></div></div></div>
+                <div class="section-head"><div><h2>KYC Status</h2><small style="color:#64748b">Track submitted KYC applications in real time</small></div><button type="button" class="btn btn-sm btn-sec" onclick="refreshVisiblePageDataFast().catch(e=>showLiveUpdateToast(e.message))">↻ Refresh</button></div>
+                <div class="card" style="text-align:left;margin-bottom:14px"><div class="filter-grid"><div><label>Date</label><input type="date" id="kyc-filter-date" onchange="document.getElementById('kyc-filter-month').value='';renderKycStatus()"></div><div><label>Month</label><input type="month" id="kyc-filter-month" onchange="document.getElementById('kyc-filter-date').value='';renderKycStatus()"></div><div><label>DSS</label><select id="kyc-filter-dss" onchange="kycStatusPage=1;renderKycStatus()"></select></div><div><label>DM</label><select id="kyc-filter-dm" onchange="kycStatusPage=1;renderKycStatus()"><option value="">All DM</option><option value="zahangir">Zahangir Kabir</option></select></div><div><label>DSO</label><select id="kyc-filter-dso" onchange="kycStatusPage=1;renderKycStatus()"></select></div><div><label>Status</label><select id="kyc-filter-status" onchange="renderKycStatus()"><option value="">All Status</option><option value="Collected">Collected</option><option value="Admin Receive">Admin Receive</option><option value="Mail Send">Mail Send</option><option value="In Portal">In Portal</option><option value="Active">Active</option><option value="Rejection">Rejection</option></select></div><div><label>Search</label><input type="search" id="kyc-filter-search" placeholder="Shop / owner / mobile / thana / bazar" oninput="renderKycStatus()"></div></div></div>
+                <div id="kyc-summary" class="kyc-summary"></div><div id="kyc-page-controls" style="display:flex;gap:12px;align-items:center;margin:10px 0"></div>
                 <div class="table-responsive"><table class="reports-table kyc-table"><thead><tr><th>Collection Date</th><th>DSO Wallet</th><th>Uddokta Number</th><th>Shop Name</th><th>Owner Name</th><th>Contact Number</th><th>Thana</th><th>Bazar Name</th><th>Picture</th><th>Location</th><th>Submitted By</th><th>Current Status</th><th>Status Date</th><th>Status History</th><th>Rejection Reason</th></tr></thead><tbody id="kyc-status-body"><tr><td colspan="15">Loading KYC data...</td></tr></tbody></table></div>
             </div>
 
@@ -1311,8 +1315,9 @@ body.app-logged-in #view-login{display:none!important}
                 script.src = src;
                 script.async = true;
                 script.dataset.runtimeLibrary = key;
-                script.onload = () => resolve(true);
-                script.onerror = () => reject(new Error(key + ' library could not load.'));
+                const timeout=setTimeout(()=>{script.remove();reject(new Error(key+' library load timed out. Check connection and refresh.'));},12000);
+                script.onload=()=>{clearTimeout(timeout);resolve(true);};
+                script.onerror=()=>{clearTimeout(timeout);script.remove();reject(new Error(key+' library could not load.'));};
                 document.head.appendChild(script);
             });
             runtimeScriptPromises.set(key, promise);
@@ -1400,8 +1405,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-30-login-information-v81';
-        const APP_RELEASED_AT = 1790708160000;
+        const APP_CACHE_VERSION = '2026-09-30-review-fixes-v83';
+        const APP_RELEASED_AT = 1790764500000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -1442,6 +1447,7 @@ body.app-logged-in #view-login{display:none!important}
         // Keep the last known-good data available while Firebase reconnects. Realtime
         // listeners replace it with the latest cloud snapshot as soon as it arrives.
         function clearRuntimeDataCaches() {
+            resetSessionFilters();rescopeExcelReports();
             try { localStorage.setItem('dms_last_cloud_sync_request',String(Date.now())); } catch (_) {}
         }
 
@@ -1567,7 +1573,7 @@ body.app-logged-in #view-login{display:none!important}
         }
 
         function dssHasAssignedDso(dssName, dsoWallet) {
-            const dss = String(dssName || '').trim().toUpperCase();
+            const dss = resolveDssName(dssName);
             const dso = normalizeScopeWallet(dsoWallet);
             if (!dss || !dso) return false;
             const assigned = dssDsoAssignmentIndex.get(dss);
@@ -1575,7 +1581,7 @@ body.app-logged-in #view-login{display:none!important}
         }
 
         function getAssignedDsoWalletsForDss(dssName) {
-            const dss = String(dssName || '').trim().toUpperCase();
+            const dss = resolveDssName(dssName);
             const assigned = dssDsoAssignmentIndex.get(dss);
             return assigned ? new Set(assigned) : new Set();
         }
@@ -1768,11 +1774,15 @@ body.app-logged-in #view-login{display:none!important}
         async function readCloudAuth(userId){
             const base=String(firebaseConfig.databaseURL||'').replace(/\/$/,''),url=base+'/user_auth/'+encodeURIComponent(String(userId))+'.json?_='+Date.now();
             const controller=typeof AbortController!=='undefined'?new AbortController():null,timer=controller?setTimeout(()=>controller.abort(),6000):null;
-            try{const res=await fetch(url,{cache:'no-store',credentials:'omit',headers:{'Cache-Control':'no-cache'},signal:controller?controller.signal:undefined});if(!res.ok)throw new Error('Password server unavailable');return await res.json();}finally{if(timer)clearTimeout(timer);}
+            try{const res=await fetch(url,{cache:'no-store',credentials:'omit',signal:controller?controller.signal:undefined});if(!res.ok)throw new Error('Password server unavailable');return await res.json();}finally{if(timer)clearTimeout(timer);}
         }
         async function saveCloudAuth(userId,password,forceChange){
-            const record={passwordHash:await hashPassword(password,userId),forceChange:!!forceChange,updatedAt:Date.now(),updatedBy:String(currentUser||userId||'system')},base=String(firebaseConfig.databaseURL||'').replace(/\/$/,''),url=base+'/user_auth/'+encodeURIComponent(String(userId))+'.json';
-            const res=await fetch(url,{method:'PUT',cache:'no-store',credentials:'omit',headers:{'Content-Type':'application/json','Cache-Control':'no-cache'},body:JSON.stringify(record)});if(!res.ok)throw new Error('Password server save failed');return record;
+            const record={passwordHash:await hashPassword(password,userId),forceChange:!!forceChange,updatedAt:Date.now(),updatedBy:String(currentUser||userId||'system')};
+            const base=String(firebaseConfig.databaseURL||'').replace(/\/$/,''),url=base+'/user_auth/'+encodeURIComponent(String(userId))+'.json';
+            const controller=typeof AbortController!=='undefined'?new AbortController():null;
+            const timer=controller?setTimeout(()=>controller.abort(),8000):null;
+            try{const res=await fetch(url,{method:'PUT',cache:'no-store',credentials:'omit',headers:{'Content-Type':'application/json'},body:JSON.stringify(record),signal:controller?controller.signal:undefined});if(!res.ok)throw new Error('Password server save failed');return record;}
+            finally{if(timer)clearTimeout(timer);}
         }
 
         // Browsers do not expose phone IMEI. A persistent random Device ID provides
@@ -1785,42 +1795,43 @@ body.app-logged-in #view-login{display:none!important}
         function stopLoginHeartbeat(){if(loginHeartbeatTimer)clearInterval(loginHeartbeatTimer);loginHeartbeatTimer=null;}
         function updateLoginHeartbeat(){if(!db||!currentUser||registeredLoginUser!==String(currentUser))return;db.ref('user_login_sessions/'+String(currentUser)+'/'+getDeviceId()).update({lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText(),active:true}).catch(()=>{});}
         async function recordLoginSession(){
-            if(!db||!currentUser)return false;const userId=String(currentUser),deviceId=getDeviceId();if(registeredLoginUser===userId){updateLoginHeartbeat();return true;}registeredLoginUser=userId;stopLoginHeartbeat();
-            try{const root=db.ref('user_login_sessions/'+userId),now=Date.now();let existing={};try{const snap=await Promise.race([root.once('value'),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Session read timed out')),2500))]);existing=snap.val()||{};}catch(readError){console.warn('Existing login sessions unavailable; saving current session:',readError);}const otherIds=Object.keys(existing).filter(id=>id!==deviceId&&existing[id]&&existing[id].active&&now-Number(existing[id].lastSeen||0)<180000),session={userId,deviceId,deviceLabel:getDeviceLabel(),userAgent:String(navigator.userAgent||'').slice(0,220),loginAt:firebase.database.ServerValue.TIMESTAMP,loginTime:loginTimeText(now),lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText(now),active:true};await root.child(deviceId).set(session);try{root.child(deviceId).onDisconnect().update({active:false,lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText()});}catch(_){}if(otherIds.length)await db.ref('admin_login_alerts').push().set({userId,deviceId,deviceLabel:session.deviceLabel,otherDeviceCount:otherIds.length,loginTime:session.loginTime,createdAt:firebase.database.ServerValue.TIMESTAMP,read:false,message:'একই User ID অন্য একটি Device ID থেকে login করেছে।'});loginHeartbeatTimer=setInterval(updateLoginHeartbeat,60000);if(userId==='admin'){startAdminLoginMonitoring();loadAdminLoginInfo();}return true;}catch(e){registeredLoginUser='';console.warn('Login device information could not be saved:',e);return false;}
+            if(!db||!currentUser)return false;const userId=String(currentUser),deviceId=getDeviceId(),generation=appSessionGeneration;if(registeredLoginUser===userId){updateLoginHeartbeat();return true;}registeredLoginUser=userId;stopLoginHeartbeat();
+            try{const root=db.ref('user_login_sessions/'+userId),now=Date.now();let existing={};try{const snap=await Promise.race([root.once('value'),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Session read timed out')),2500))]);existing=snap.val()||{};}catch(readError){console.warn('Existing login sessions unavailable; saving current session:',readError);}if(generation!==appSessionGeneration||String(currentUser)!==userId)return false;const otherIds=Object.keys(existing).filter(id=>id!==deviceId&&existing[id]&&existing[id].active&&now-Number(existing[id].lastSeen||0)<180000),session={userId,deviceId,deviceLabel:getDeviceLabel(),userAgent:String(navigator.userAgent||'').slice(0,220),loginAt:firebase.database.ServerValue.TIMESTAMP,loginTime:loginTimeText(now),lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText(now),active:true};session.loginEventId=userId+'-'+deviceId+'-'+now;await root.child(deviceId).set(session);if(generation!==appSessionGeneration||String(currentUser)!==userId){root.child(deviceId).update({active:false}).catch(()=>{});return false;}
+                db.ref('user_login_history/'+getDhakaToday()).push().set(Object.assign({},session,{loginDate:getDhakaToday()})).catch(e=>console.warn('Daily login history could not save:',e));try{root.child(deviceId).onDisconnect().update({active:false,lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText()});}catch(_){}if(otherIds.length)await db.ref('admin_login_alerts').push().set({userId,deviceId,deviceLabel:session.deviceLabel,otherDeviceCount:otherIds.length,loginTime:session.loginTime,createdAt:firebase.database.ServerValue.TIMESTAMP,read:false,message:'একই User ID অন্য একটি Device ID থেকে login করেছে।'});if(generation!==appSessionGeneration||String(currentUser)!==userId)return false;loginHeartbeatTimer=setInterval(updateLoginHeartbeat,60000);if(userId==='admin'){startAdminLoginMonitoring();loadAdminLoginInfo();}return true;}catch(e){registeredLoginUser='';console.warn('Login device information could not be saved:',e);return false;}
         }
-        function markCurrentLoginOffline(){stopLoginHeartbeat();if(db&&currentUser&&registeredLoginUser===String(currentUser))db.ref('user_login_sessions/'+String(currentUser)+'/'+getDeviceId()).update({active:false,lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText()}).catch(()=>{});registeredLoginUser='';}
-        function renderAdminLoginInfo(data){const body=document.getElementById('admin-login-info-body');if(!body)return;const rows=[];Object.keys(data||{}).forEach(userId=>Object.keys(data[userId]||{}).forEach(deviceId=>rows.push(Object.assign({userId,deviceId},data[userId][deviceId]||{}))));rows.sort((a,b)=>Number(b.lastSeen||b.loginAt||0)-Number(a.lastSeen||a.loginAt||0));body.innerHTML=rows.length?rows.map(r=>{const active=!!r.active&&Date.now()-Number(r.lastSeen||0)<150000;return '<tr><td data-label="User ID">'+escapeMorningHtml(r.userId||'')+'</td><td data-label="Login Time">'+escapeMorningHtml(r.loginTime||loginTimeText(r.loginAt))+'</td><td data-label="Last Active">'+escapeMorningHtml(r.lastActiveTime||loginTimeText(r.lastSeen))+'</td><td data-label="Device ID"><span title="'+escapeMorningHtml(r.deviceId||'')+'">'+escapeMorningHtml(String(r.deviceId||'').slice(0,16))+'...</span></td><td data-label="Device / Browser">'+escapeMorningHtml(r.deviceLabel||'Unknown')+'</td><td data-label="Status"><span class="status-badge">'+(active?'Online':'Offline')+'</span></td></tr>';}).join(''):'<tr><td colspan="6" class="empty-state">No login information found.</td></tr>';}
+        function markCurrentLoginOffline(){if(adminLoginSessionsRef){adminLoginSessionsRef.off();adminLoginSessionsRef=null;}if(adminLoginAlertRef){adminLoginAlertRef.off();adminLoginAlertRef=null;}kycPhotoViewToken++;kycPhotoCache.clear();if(loginHistoryRef){loginHistoryRef.off();loginHistoryRef=null;}loginLoadGeneration++;loginHistoryData={};loginSessionsData={};loginCurrentSessions={};stopLoginHeartbeat();if(db&&currentUser&&registeredLoginUser===String(currentUser))db.ref('user_login_sessions/'+String(currentUser)+'/'+getDeviceId()).update({active:false,lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText()}).catch(()=>{});registeredLoginUser='';}
+        function renderAdminLoginInfo(data){loginSessionsData=data||{};setupReportFilters('login');const body=document.getElementById('admin-login-info-body');if(!body)return;const rows=[];Object.keys(data||{}).forEach(userId=>Object.keys(data[userId]||{}).forEach(deviceId=>rows.push(Object.assign({userId,deviceId},data[userId][deviceId]||{}))));const date=document.getElementById('login-filter-date').value,dss=document.getElementById('login-filter-dss').value,dso=document.getElementById('login-filter-dso').value;
+            const filtered=rows.filter(r=>(!date||dhakaDateOf(r.loginAt)===date)&&(!dss||loginDss(r.userId)===dss)&&(!dso||normalizeScopeWallet(r.userId)===dso));
+            rows.length=0;rows.push(...filtered);rows.sort((a,b)=>Number(b.loginAt||0)-Number(a.loginAt||0));body.innerHTML=rows.length?rows.map(r=>{const active=!!r.active&&Date.now()-Number(r.lastSeen||0)<150000;return '<tr><td data-label="User ID">'+escapeMorningHtml(r.userId||'')+'</td><td data-label="Login Time">'+escapeMorningHtml(r.loginTime||loginTimeText(r.loginAt))+'</td><td data-label="Last Active">'+escapeMorningHtml(r.lastActiveTime||loginTimeText(r.lastSeen))+'</td><td data-label="Device ID"><span title="'+escapeMorningHtml(r.deviceId||'')+'">'+escapeMorningHtml(String(r.deviceId||'').slice(0,16))+'...</span></td><td data-label="Device / Browser">'+escapeMorningHtml(r.deviceLabel||'Unknown')+'</td><td data-label="Status"><span class="status-badge">'+(active?'Online':'Offline')+'</span></td></tr>';}).join(''):'<tr><td colspan="6" class="empty-state">No login information found.</td></tr>';}
         let adminLoginLoadInFlight=null;
         async function loadAdminLoginInfo(){
-            const body=document.getElementById('admin-login-info-body');
-            if(String(currentUser)!=='admin'||!body)return;
-            if(adminLoginLoadInFlight)return adminLoginLoadInFlight;
-            body.innerHTML='<tr><td colspan="6">Login information loading...</td></tr>';
-            adminLoginLoadInFlight=(async()=>{
-                let timeoutId;
-                try{
-                    // Always settle the visible page, including when mobile fetch remains pending.
-                    const timedOut=new Promise((_,reject)=>{timeoutId=setTimeout(()=>reject(new Error('Login information request timed out')),7000);});
-                    const data=await Promise.race([firebaseRestReadFresh('user_login_sessions','?timeout=6s&_='+Date.now()),timedOut]);
-                    if(String(currentUser)==='admin')renderAdminLoginInfo(data||{});
-                    if(!db)ensureFirebaseSdk().then(()=>{if(db){recordLoginSession();startAdminLoginMonitoring();}}).catch(e=>console.warn('Login monitoring unavailable:',e));
-                }catch(e){
-                    console.warn('Login information load failed:',e);
-                    if(String(currentUser)==='admin'&&body.textContent.includes('Login information loading')){
-                        const reason=/401|403|permission/i.test(String(e.message||''))?'Database permission বন্ধ আছে।':'Server থেকে data পাওয়া যাচ্ছে না।';
-                        body.innerHTML='<tr><td colspan="6" style="color:#b91c1c">'+reason+' Internet/Database পরীক্ষা করে Refresh চাপুন।</td></tr>';
-                    }
-                }finally{clearTimeout(timeoutId);}
-            })();
-            try{return await adminLoginLoadInFlight;}finally{adminLoginLoadInFlight=null;}
+            if(String(currentUser)!=='admin')return;
+            setupReportFilters('login');const dateInput=document.getElementById('login-filter-date');if(!dateInput.value)dateInput.value=getDhakaToday();const date=dateInput.value;
+            const generation=++loginLoadGeneration;loginHistoryData={};renderLoginDay();
+            const note=document.getElementById('login-history-note');note.textContent='';
+            if(loginHistoryRef){loginHistoryRef.off();loginHistoryRef=null;}
+            try{
+                const history=await firebaseRestReadFresh('user_login_history/'+date);
+                if(generation!==loginLoadGeneration)return;
+                loginHistoryData=history||{};
+                if(!db||!Object.keys(loginHistoryData).length){loginCurrentSessions=await firebaseRestReadFresh('user_login_sessions');if(generation!==loginLoadGeneration)return;}
+                renderLoginDay();
+                if(!Object.keys(loginHistoryData).length)note.textContent='আগের login ইতিহাস সংরক্ষিত ছিল না; পাওয়া সর্বশেষ login দেখানো হচ্ছে।';
+            }catch(e){if(generation!==loginLoadGeneration)return;loginHistoryData={};note.textContent='Login history পড়া যায়নি। Database permission / connection পরীক্ষা করুন।';renderLoginDay();}
+            if(db&&generation===loginLoadGeneration){
+                loginHistoryRef=db.ref('user_login_history/'+date);
+                loginHistoryRef.on('value',snap=>{if(generation!==loginLoadGeneration)return;loginHistoryData=snap.val()||{};renderLoginDay();},e=>{note.textContent='Login history permission / connection unavailable.';});
+                startAdminLoginMonitoring();
+            }
         }
         function openLoginInformation(){if(String(currentUser)!=='admin')return;switchTab('login-info');}
-        async function loadAdminLatestLoginAlert(){if(!db||String(currentUser)!=='admin')return;try{const snap=await db.ref('admin_login_alerts').limitToLast(1).once('value');let latest=null;snap.forEach(c=>{latest=c.val()||{};});if(latest&&String(latest.userId||'')!=='admin'){const box=document.getElementById('admin-multi-device-alert');if(box){box.textContent='⚠️ '+String(latest.userId||'User')+' একাধিক active device থেকে login করেছে। সর্বশেষ: '+String(latest.deviceLabel||latest.deviceId||'Unknown')+' · '+String(latest.loginTime||'');box.style.display='block';}}}catch(e){}}
-        function startAdminLoginMonitoring(){if(!db||String(currentUser)!=='admin')return;if(!adminLoginSessionsRef){adminLoginSessionsRef=db.ref('user_login_sessions');adminLoginSessionsRef.on('value',s=>renderAdminLoginInfo(s.val()||{}),e=>{console.warn('Login information realtime unavailable:',e);adminLoginSessionsRef=null;});}if(!adminLoginAlertRef){adminLoginAlertRef=db.ref('admin_login_alerts');adminLoginAlertRef.limitToLast(1).once('value').then(initial=>{let latest=0;initial.forEach(c=>{latest=Math.max(latest,Number((c.val()||{}).createdAt||0));});adminLoginAlertRef.on('child_added',snap=>{const a=snap.val()||{};if(Number(a.createdAt||0)<=latest||String(a.userId||'')==='admin')return;const box=document.getElementById('admin-multi-device-alert'),msg='⚠️ '+String(a.userId||'User')+' অন্য device থেকে login করেছে। Device: '+String(a.deviceLabel||a.deviceId||'Unknown')+' · '+String(a.loginTime||'');if(box){box.textContent=msg;box.style.display='block';}alert(msg);});}).catch(()=>{});}}
+        async function loadAdminLatestLoginAlert(){if(!db||String(currentUser)!=='admin')return;try{const generation=appSessionGeneration,snap=await db.ref('admin_login_alerts').limitToLast(1).once('value');if(generation!==appSessionGeneration||String(currentUser)!=='admin')return;let latest=null;snap.forEach(c=>{latest=c.val()||{};});if(latest&&String(latest.userId||'')!=='admin'){const box=document.getElementById('admin-multi-device-alert');if(box){box.textContent='⚠️ '+String(latest.userId||'User')+' একাধিক active device থেকে login করেছে। সর্বশেষ: '+String(latest.deviceLabel||latest.deviceId||'Unknown')+' · '+String(latest.loginTime||'');box.style.display='block';}}}catch(e){}}
+        function startAdminLoginMonitoring(){if(!db||String(currentUser)!=='admin')return;if(!adminLoginSessionsRef){adminLoginSessionsRef=db.ref('user_login_sessions');adminLoginSessionsRef.on('value',s=>{if(String(currentUser)!=='admin')return;loginCurrentSessions=s.val()||{};renderLoginDay();},e=>{console.warn('Login information realtime unavailable:',e);adminLoginSessionsRef=null;});}if(!adminLoginAlertRef){adminLoginAlertRef=db.ref('admin_login_alerts').limitToLast(1);const watched=adminLoginAlertRef;watched.once('value').then(initial=>{if(String(currentUser)!=='admin'||adminLoginAlertRef!==watched)return;let latest=0;initial.forEach(c=>{latest=Math.max(latest,Number((c.val()||{}).createdAt||0));});adminLoginAlertRef.on('child_added',snap=>{if(String(currentUser)!=='admin')return;const a=snap.val()||{};if(Number(a.createdAt||0)<=latest||String(a.userId||'')==='admin')return;const box=document.getElementById('admin-multi-device-alert'),msg='⚠️ '+String(a.userId||'User')+' অন্য device থেকে login করেছে। Device: '+String(a.deviceLabel||a.deviceId||'Unknown')+' · '+String(a.loginTime||'');if(box){box.textContent=msg;box.style.display='block';}alert(msg);});}).catch(()=>{});}}
 
         // App code/design updates are mandatory. Live data continues updating
         // without a reload, while a newer deployed app locks the UI until updated.
         let lastHostedAppCheckAt = 0;
+        let verifiedHostedAppVersion='';
         let appUpdateMonitorTimer = null;
         let pendingHostedVersion = '';
         function showAppUpdatePrompt(version) {
@@ -1859,6 +1870,7 @@ body.app-logged-in #view-login{display:none!important}
                 if (!res.ok) return false;
                 const html = await res.text();
                 const m = html.match(/<meta\s+name=["']dms-app-version["']\s+content=["']([^"']+)["']/i) || html.match(/const\s+APP_CACHE_VERSION\s*=\s*['\"]([^'\"]+)['\"]/);
+                if(m&&m[1])verifiedHostedAppVersion=m[1];
                 if (m && m[1] && m[1] !== APP_CACHE_VERSION) {
                     showAppUpdatePrompt(m[1]);
                     return true;
@@ -1881,7 +1893,7 @@ body.app-logged-in #view-login{display:none!important}
             return false;
         }
         function announceCurrentAppRelease() {
-            if (!db) return;
+            if(!db||!/^https?:$/.test(location.protocol)||['localhost','127.0.0.1','[::1]'].includes(location.hostname)||verifiedHostedAppVersion!==APP_CACHE_VERSION)return;
             try {
                 db.ref('dms_app_release').transaction(current => {
                     if (!current || Number(current.releasedAt || 0) < APP_RELEASED_AT) {
@@ -1892,7 +1904,7 @@ body.app-logged-in #view-login{display:none!important}
             } catch (_) {}
         }
         function handleMandatoryUpdateCheck() {
-            checkForHostedAppUpdate(true);
+            checkForHostedAppUpdate(true).then(()=>announceCurrentAppRelease());
             checkCloudAppRelease();
         }
         function startAppUpdateMonitor() {
@@ -1912,16 +1924,23 @@ body.app-logged-in #view-login{display:none!important}
         window.addEventListener('focus', handleMandatoryUpdateCheck);
         document.addEventListener('visibilitychange', () => { if (!document.hidden) handleMandatoryUpdateCheck(); });
         let liveUpdateToastTimer = null;
-        function showLiveUpdateToast(message) {
+        function showLiveUpdateToast(message,type='success') {
             const toast = document.getElementById('live-update-toast');
             if (!toast) return;
-            toast.textContent = String(message || 'নতুন data update হয়েছে ✓');
+            toast.textContent = String(message || 'নতুন data update হয়েছে ✓');toast.style.background=type==='error'?'#b91c1c':'#065f46';
             toast.classList.add('show');
             if (liveUpdateToastTimer) clearTimeout(liveUpdateToastTimer);
-            liveUpdateToastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+            liveUpdateToastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
-        async function firebaseRestReadFresh(path, queryString = '') {
+        const restReadsInFlight=new Map();
+        function firebaseRestReadFresh(path,queryString=''){
+            const key=path+'|'+queryString;
+            if(restReadsInFlight.has(key))return restReadsInFlight.get(key);
+            const task=fetchFirebaseRestFresh(path,queryString).finally(()=>restReadsInFlight.delete(key));
+            restReadsInFlight.set(key,task);return task;
+        }
+        async function fetchFirebaseRestFresh(path, queryString = '') {
             const clean = String(path || '').split('/').filter(Boolean).map(encodeURIComponent).join('/');
             const base = String(firebaseConfig.databaseURL || '').replace(/\/$/, '');
             const url = `${base}/${clean}.json${queryString || '?timeout=12s'}`;
@@ -1930,7 +1949,6 @@ body.app-logged-in #view-login{display:none!important}
             try {
                 const response = await fetch(url, {
                     method:'GET', cache:'no-store', credentials:'omit',
-                    headers:{'Cache-Control':'no-cache, no-store, max-age=0','Pragma':'no-cache'},
                     signal:controller ? controller.signal : undefined
                 });
                 if (!response.ok) throw new Error(`Server read failed (${response.status})`);
@@ -2060,6 +2078,7 @@ body.app-logged-in #view-login{display:none!important}
             serverUpdatePollTimer = setTimeout(pollServerUpdateSignal, 1000);
         }
         async function refreshAllDataFromServerOnLogin() {
+            if(db&&firebaseListenersStarted)return refreshAllLiveData(true);
             if (!currentUser || !document.body?.classList.contains('app-logged-in')) return false;
             if (loginServerSyncPromise) return loginServerSyncPromise;
 
@@ -2141,14 +2160,16 @@ body.app-logged-in #view-login{display:none!important}
             const user = normalizeLoginUserId(rawUser);
             const pass = passEl ? String(passEl.value || '') : '';
             if(!user||!pass){showLoginAlert('User ID এবং Password দিন।','error');return false;}
+            if(!fixedUserIds.includes(user)&&!/^013325178(?:0[1-9]|[1-3]\d|4[0-5])$/.test(user)){showLoginAlert('অনুমোদিত User ID দিন।','error');return false;}
             loginInProgress = true;
             if(loginButton){loginButton.disabled=true;loginButton.textContent='Checking...';}
 
+            try{
             // Support both the current wallet-based DSO IDs and the old numeric 801-845 keys.
             const legacyUser = String(rawUser || '').trim().toLowerCase();
             let passwordOk = false;
             let cloudAuth=null;
-            try{cloudAuth=await readCloudAuth(user);}catch(e){console.warn('Cloud password check unavailable; using local fallback.',e);}
+            try{cloudAuth=await readCloudAuth(user);}catch(e){showLoginAlert('Password যাচাইয়ের Server পাওয়া যাচ্ছে না। Internet ঠিক করে আবার Login করুন।','error');return false;}
             if(cloudAuth&&cloudAuth.passwordHash)passwordOk=(await hashPassword(pass,user))===String(cloudAuth.passwordHash);
             else if(Object.prototype.hasOwnProperty.call(userPasswords,user)&&String(userPasswords[user])===pass)passwordOk=true;
             else if(legacyUser&&Object.prototype.hasOwnProperty.call(userPasswords,legacyUser)&&String(userPasswords[legacyUser])===pass)passwordOk=true;
@@ -2164,7 +2185,7 @@ body.app-logged-in #view-login{display:none!important}
 
             // Login itself must never depend on Firebase/network/table loading.
             // Enter the app first, then initialize optional data services safely.
-            currentUser = user;
+            appSessionGeneration++;currentUser = user;
             mustChangeDefaultPassword = cloudAuth&&typeof cloudAuth.forceChange==='boolean'?cloudAuth.forceChange:(pass==='1234');
             clearRuntimeDataCaches();
             document.body.classList.add('app-logged-in');
@@ -2250,6 +2271,8 @@ body.app-logged-in #view-login{display:none!important}
                 if (loginButton) { loginButton.disabled = false; loginButton.textContent='Login'; }
             }
             return false;
+            }catch(error){showLoginAlert('Login সম্পন্ন হয়নি। আবার চেষ্টা করুন।','error');console.warn('Login failed:',error);return false;}
+            finally{loginInProgress=false;if(loginButton){loginButton.disabled=false;loginButton.textContent='Login';}}
         }
 
         function clearVisitFormForNewVisit() {
@@ -2293,6 +2316,7 @@ body.app-logged-in #view-login{display:none!important}
         }
 
         function logout() {
+            appSessionGeneration++;kycPhotoViewToken++;visitPhotoMemoryCache.clear();kycPhotoRequests.clear();pendingKycSubmission=null;closeVisitDetails();stopKycShopCamera();clearKycForm();resetSessionFilters();
             closeMobileNav();
             stopServerUpdatePolling();
             markCurrentLoginOffline();
@@ -2324,7 +2348,9 @@ body.app-logged-in #view-login{display:none!important}
             document.getElementById('login-pass').value = '';
             document.getElementById('login-user').focus();
             // Show login instantly. Non-visible cleanup runs after the browser paints.
+            const logoutGeneration=appSessionGeneration;
             const cleanup = () => {
+                if(logoutGeneration!==appSessionGeneration||currentUser)return;
                 try { clearVisitFormForNewVisit(); } catch (e) { console.warn('Visit form reset on logout skipped:', e); }
             };
             if ('requestIdleCallback' in window) requestIdleCallback(cleanup, {timeout:500});
@@ -2624,26 +2650,26 @@ body.app-logged-in #view-login{display:none!important}
             if (commonDssDsoAssignmentsLoaded) return;
             const next = new Map();
             (Array.isArray(rows) ? rows : []).forEach(item => {
-                const dss = String((item && item[3]) || '').trim().toUpperCase();
+                const dss = resolveDssName(item && item[3]);
                 const dso = normalizeScopeWallet(item && item[0]);
                 if (!dss || !dso) return;
                 if (!next.has(dss)) next.set(dss, new Set());
                 next.get(dss).add(dso);
             });
-            dssDsoAssignmentIndex = next;
+            dssDsoAssignmentIndex = next;rescopeExcelReports();
         }
         function applyCommonDssDsoAssignments(data) {
             const values=Array.isArray(data)?data:Object.values(data||{}),next=new Map();
-            values.forEach(item=>{const dss=String((item&&item.dss)||'').trim().toUpperCase(),dso=normalizeScopeWallet(item&&item.dso);if(!dss||!dso)return;if(!next.has(dss))next.set(dss,new Set());next.get(dss).add(dso);});
+            values.forEach(item=>{const dss=resolveDssName(item&&item.dss),dso=normalizeScopeWallet(item&&item.dso);if(!dss||!dso)return;if(!next.has(dss))next.set(dss,new Set());next.get(dss).add(dso);});
             if(!next.size)return false;
-            commonDssDsoAssignmentsLoaded=true;dssDsoAssignmentIndex=next;
+            commonDssDsoAssignmentsLoaded=true;dssDsoAssignmentIndex=next;rescopeExcelReports();
             try{localStorage.setItem('dss_dso_assignments_common',JSON.stringify(values));}catch(e){}
             return true;
         }
         function listenCommonDssDsoAssignments(){
             try{const cached=JSON.parse(localStorage.getItem('dss_dso_assignments_common')||'null');if(cached)applyCommonDssDsoAssignments(cached);}catch(e){}
             if(!db)return;
-            db.ref('dss_dso_assignments_common').on('value',snap=>{if(applyCommonDssDsoAssignments(snap.val())){try{populateDsoFilter();populateMorningFilters();populateAfternoonFilters();renderMorningReport();renderAfternoonReport();}catch(e){}}},err=>console.warn('Assignment sync error:',err));
+            db.ref('dss_dso_assignments_common').on('value',snap=>{if(applyCommonDssDsoAssignments(snap.val())){try{populateDsoFilter();populateMorningFilters();populateAfternoonFilters();renderMorningReport();renderAfternoonReport();renderKycStatus();if(currentUser==='admin')renderLoginDay();}catch(e){}}},err=>console.warn('Assignment sync error:',err));
         }
 
         let remoteMasterAuthorityMeta = null;
@@ -4179,9 +4205,9 @@ body.app-logged-in #view-login{display:none!important}
                 const idx=reportsData.indexOf(r);
                 const reportKey = String(r.reportId || r.id || '');
                 const isDss = role.role === 'DSS';
-                const reviewHtml = isDss && reportKey && (r.festoonStatus==='Not OK'||r.bannerStatus==='Not OK'||r.fileStatus==='Not OK') ? `<div class="review-grid">${r.festoonStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${reportKey}','OK','festoonStatus')">✓ Festoon OK</button>`:''}${r.bannerStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${reportKey}','OK','bannerStatus')">✓ Banner OK</button>`:''}${r.fileStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${reportKey}','OK','fileStatus')">✓ File OK</button>`:''}</div>` : `<span>${r.reviewStatus||'Pending'}</span>`;
-                const updatedText = r.reviewUpdatedAt ? `<div class="review-update">Updated: ${r.reviewUpdatedAt}${r.reviewUpdatedBy?' · '+r.reviewUpdatedBy:''}</div>` : '';
-                tr.innerHTML=`<td data-label="Visit Time">${r.visitTime||(r.timestamp?new Date(r.timestamp).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}):'')}</td><td data-label="DSO">${r.dsoWallet||r.dsoNumber||''}</td><td data-label="Uddokta Name">${r.uddoktaName||''}</td><td data-label="Uddokta Number">${r.uddoktaNumber||''}</td><td data-label="Festoon">${r.festoonStatus||'Pending'}</td><td data-label="Banner">${r.bannerStatus||'Pending'}</td><td data-label="File">${r.fileStatus||'Pending'}</td><td data-label="Review" data-wide="1">${reviewHtml}${updatedText}</td><td data-label="Location" data-wide="1"><small>${r.locationName||r.gps||''}</small></td><td data-label="Photo">${(r.photo||r.hasPhoto)?`<button class="mobile-photo-btn" onclick="showVisitDetails(${idx})">Photo</button>`:'—'}</td><td data-label="Details"><button class="detail-btn" onclick="showVisitDetails(${idx})">View</button></td>`;
+                const reviewHtml = isDss && reportKey && (r.festoonStatus==='Not OK'||r.bannerStatus==='Not OK'||r.fileStatus==='Not OK') ? `<div class="review-grid">${r.festoonStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${reportKey}','OK','festoonStatus')">✓ Festoon OK</button>`:''}${r.bannerStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${reportKey}','OK','bannerStatus')">✓ Banner OK</button>`:''}${r.fileStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${reportKey}','OK','fileStatus')">✓ File OK</button>`:''}</div>` : `<span>${escapeMorningHtml(r.reviewStatus||'Pending')}</span>`;
+                const updatedText = r.reviewUpdatedAt ? `<div class="review-update">Updated: ${escapeMorningHtml(r.reviewUpdatedAt)}${r.reviewUpdatedBy?' · '+escapeMorningHtml(r.reviewUpdatedBy):''}</div>` : '';
+                tr.innerHTML=`<td data-label="Visit Time">${r.visitTime||(r.timestamp?new Date(r.timestamp).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}):'')}</td><td data-label="DSO">${escapeMorningHtml(r.dsoWallet||r.dsoNumber||'')}</td><td data-label="Uddokta Name">${escapeMorningHtml(r.uddoktaName||'')}</td><td data-label="Uddokta Number">${escapeMorningHtml(r.uddoktaNumber||'')}</td><td data-label="Festoon">${escapeMorningHtml(r.festoonStatus||'Pending')}</td><td data-label="Banner">${escapeMorningHtml(r.bannerStatus||'Pending')}</td><td data-label="File">${escapeMorningHtml(r.fileStatus||'Pending')}</td><td data-label="Review" data-wide="1">${reviewHtml}${updatedText}</td><td data-label="Location" data-wide="1"><small>${escapeMorningHtml(r.locationName||r.gps||'')}</small></td><td data-label="Photo">${(r.photo||r.hasPhoto)?`<button class="mobile-photo-btn" onclick="showVisitDetails(${idx})">Photo</button>`:'—'}</td><td data-label="Details"><button class="detail-btn" onclick="showVisitDetails(${idx})">View</button></td>`;
                 reportFragment.appendChild(tr);
             });
             tableBody.replaceChildren(reportFragment);
@@ -4412,56 +4438,49 @@ body.app-logged-in #view-login{display:none!important}
                 img.src=dataUrl;
             });
         }
-        async function loadVisitPhotoFast(r, slot) {
-            const id=String(r?.reportId || r?.id || '');
-            if(!id || !slot || !db) return;
-            if(visitPhotoMemoryCache.has(id)) { slot.innerHTML=`<img src="${visitPhotoMemoryCache.get(id)}" class="detail-photo" alt="Visit Uddokta Photo" loading="lazy" decoding="async">`; return; }
-            slot.innerHTML='<div style="padding:12px;color:#64748b">Loading compressed photo...</div>';
-            try {
-                let source='separate';
-                let snap=await db.ref('visit_report_photos/'+id).once('value');
-                let photo=snap.val()||'';
-                if(!photo){ source='legacy'; snap=await db.ref('visit_reports/'+id+'/photo').once('value'); photo=snap.val()||''; }
-                if(!photo){ slot.innerHTML='<div style="padding:12px;color:#94a3b8">Photo not available</div>'; return; }
-                const compressed=await compressStoredVisitPhoto(photo);
-                visitPhotoMemoryCache.set(id,compressed);
-                slot.innerHTML=`<img src="${compressed}" class="detail-photo" alt="Visit Uddokta Photo" loading="lazy" decoding="async">`;
-                // Self-heal old/large photos: future opens download the small copy only.
-                if(compressed && compressed.length < String(photo).length && (source==='legacy' || String(photo).length>135000)) {
-                    const updates={}; updates['visit_report_photos/'+id]=compressed;
-                    if(source==='legacy') updates['visit_reports/'+id+'/photo']=null;
-                    db.ref().update(updates).catch(()=>{});
-                }
-            } catch(e){ slot.innerHTML='<div style="padding:12px;color:#b91c1c">Photo load failed. Please check internet.</div>'; }
+        async function loadVisitPhotoFast(r,slot){
+            const id=String(r?.reportId||r?.id||'');if(!id||!slot||!canSeeReport(r))return;
+            const generation=appSessionGeneration,token=kycPhotoViewToken;
+            const valid=()=>generation===appSessionGeneration&&token===kycPhotoViewToken&&!!currentUser;
+            const show=photo=>{if(!valid())return;slot.replaceChildren();if(!photo){slot.textContent='Photo not available';return;}const img=document.createElement('img');img.src=photo;img.className='detail-photo';img.alt='Visit Uddokta Photo';img.decoding='async';slot.appendChild(img);};
+            if(visitPhotoMemoryCache.has(id)){show(visitPhotoMemoryCache.get(id));return;}
+            slot.textContent='Loading photo...';
+            try{
+                let photo=await firebaseRestReadFresh('visit_report_photos/'+id);
+                if(!photo)photo=await firebaseRestReadFresh('visit_reports/'+id+'/photo');
+                if(!valid())return;
+                if(photo){visitPhotoMemoryCache.set(id,photo);if(visitPhotoMemoryCache.size>30)visitPhotoMemoryCache.delete(visitPhotoMemoryCache.keys().next().value);}
+                show(photo);
+            }catch(e){if(valid())slot.textContent='Photo load failed. Please try again.';}
         }
 
-        function showVisitDetails(index){
+        function showVisitDetails(index){kycPhotoViewToken++;
             const r=reportsData[index];
-            if(!r) return;
+            if(!r||!canSeeReport(r))return;
             const modal=document.getElementById('visit-details-modal');
             const box=document.getElementById('visit-details-content');
             const time=r.visitTime||(r.timestamp?new Date(r.timestamp).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}):'');
             box.innerHTML=`
                 <div class="details-grid">
-                    <div class="detail-box"><b>Visit Time</b><span>${time||'—'}</span></div>
-                    <div class="detail-box"><b>DSO Wallet</b><span>${r.dsoWallet||r.dsoNumber||'—'}</span></div>
-                    <div class="detail-box"><b>DSS Name</b><span>${r.dssName||'—'}</span></div>
-                    <div class="detail-box"><b>Uddokta Name</b><span>${r.uddoktaName||'—'}</span></div>
-                    <div class="detail-box"><b>Uddokta Number</b><span>${r.uddoktaNumber||'—'}</span></div>
+                    <div class="detail-box"><b>Visit Time</b><span>${escapeMorningHtml(time||'—')}</span></div>
+                    <div class="detail-box"><b>DSO Wallet</b><span>${escapeMorningHtml(r.dsoWallet||r.dsoNumber||'—')}</span></div>
+                    <div class="detail-box"><b>DSS Name</b><span>${escapeMorningHtml(r.dssName||'—')}</span></div>
+                    <div class="detail-box"><b>Uddokta Name</b><span>${escapeMorningHtml(r.uddoktaName||'—')}</span></div>
+                    <div class="detail-box"><b>Uddokta Number</b><span>${escapeMorningHtml(r.uddoktaNumber||'—')}</span></div>
                     <div class="detail-box"><b>Festoon</b><span>${r.festoonStatus||'Pending'}</span></div>
                     <div class="detail-box"><b>Banner</b><span>${r.bannerStatus||'Pending'}</span></div>
                     <div class="detail-box"><b>File</b><span>${r.fileStatus||'Pending'}</span></div>
-                    <div class="detail-box"><b>Review Update</b><span>${r.reviewUpdatedAt||'—'}${r.reviewUpdatedBy?' · '+r.reviewUpdatedBy:''}</span></div>
-                    <div class="detail-box" style="grid-column:1/-1"><b>Feedback</b><span>${r.feedback||'—'}</span></div>
-                    <div class="detail-box" style="grid-column:1/-1"><b>Location</b><span>${r.locationName||r.gps||'—'}</span></div>
+                    <div class="detail-box"><b>Review Update</b><span>${escapeMorningHtml(r.reviewUpdatedAt||'—')}${r.reviewUpdatedBy?' · '+escapeMorningHtml(r.reviewUpdatedBy):''}</span></div>
+                    <div class="detail-box" style="grid-column:1/-1"><b>Feedback</b><span>${escapeMorningHtml(r.feedback||'—')}</span></div>
+                    <div class="detail-box" style="grid-column:1/-1"><b>Location</b><span>${escapeMorningHtml(r.locationName||r.gps||'—')}</span></div>
                 </div>
-                <div id="visit-detail-photo-slot">${r.photo?`<img src="${r.photo}" class="detail-photo" alt="Visit Uddokta Photo" loading="lazy" decoding="async">`:''}</div>`;
+                <div id="visit-detail-photo-slot">${r.photo?`<img src="${escapeMorningHtml(r.photo)}" class="detail-photo" alt="Visit Uddokta Photo" loading="eager" decoding="async">`:''}</div>`;
             modal.classList.remove('hidden');
             if (!r.photo && r.hasPhoto && db) {
                 loadVisitPhotoFast(r, document.getElementById('visit-detail-photo-slot'));
             }
         }
-        function closeVisitDetails(){ document.getElementById('visit-details-modal')?.classList.add('hidden'); }
+        function closeVisitDetails(){kycPhotoViewToken++; document.getElementById('visit-details-modal')?.classList.add('hidden'); }
 
         let dashboardVisitChart = null;
 let gpsRequestInFlight = null;
@@ -4829,6 +4848,7 @@ let firebaseListenersStarted = false;
 
 /* ---- bundled inline script 3 ---- */
 let pendingMorningExcel = null;
+let fullMorningReport=null,fullAfternoonReport=null;
 let currentMorningReport = {headers:[], rows:[], date:''};
 let morningReportRealtimeRef = null;
 let afternoonReportRealtimeRef = null;
@@ -4884,7 +4904,7 @@ async function saveReportInParallelChunks(reportType,payload){
     const meta=Object.assign({},payload,{rows:[],chunked:true,chunkRoot,chunkCount:chunks.length,rowCount:rows.length,schemaVersion:3});
     paintUploadProgress(97,'Final data confirmation...');
     await firebaseRestWrite(reportType+'_report_current',JSON.stringify(meta),'PUT');
-    await firebaseRestWrite('dms_live_update_signal',JSON.stringify({type:reportType,revision:Date.now(),uploadId}),'PUT');
+    await firebaseRestWrite('dms_live_update_signal',JSON.stringify({type:reportType,revision:Date.now(),uploadId}),'PUT',null,8000).catch(e=>console.warn('Report saved; update signal unavailable:',e));
     paintUploadProgress(99,'Final data confirmation...');
     return Object.assign({},meta,{rows});
 }
@@ -4905,14 +4925,24 @@ function firebaseRestWrite(path,body,method='PUT',onProgress,timeoutMs=45000){
     });
 }
 
+const resolvedChunkReports=new Map();
 async function resolveChunkedReport(reportType,data){
+    if(!data||!data.chunked||!data.chunkRoot)return data;
+    const key=reportType+'|'+data.chunkRoot+'|'+data.uploadedAt+'|'+data.rowCount;
+    if(resolvedChunkReports.has(key))return resolvedChunkReports.get(key);
+    const task=fetchChunkedReport(reportType,data).catch(e=>{resolvedChunkReports.delete(key);throw e;});
+    resolvedChunkReports.set(key,task);
+    if(resolvedChunkReports.size>4)resolvedChunkReports.delete(resolvedChunkReports.keys().next().value);
+    return task;
+}
+async function fetchChunkedReport(reportType,data){
     if(!data||!data.chunked||!data.chunkRoot)return data;
     const count=Math.max(0,Number(data.chunkCount||0));
     if(!count)return Object.assign({},data,{rows:[]});
     const expected=Math.max(0,Number(data.rowCount||0));
     for(let attempt=0;attempt<4;attempt++){
         const parts=await Promise.all(Array.from({length:count},(_,i)=>firebaseRestReadFresh(data.chunkRoot+'/chunk_'+i).catch(async err=>{
-            if(!db)throw err;const snap=await db.ref(data.chunkRoot+'/chunk_'+i).once('value');return snap.val();
+            if(!db)throw err;const snap=await Promise.race([db.ref(data.chunkRoot+'/chunk_'+i).once('value'),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Report chunk request timed out')),8000))]);return snap.val();
         })));
         const rows=[];parts.forEach(part=>{if(Array.isArray(part))rows.push(...part);else if(part&&typeof part==='object')Object.keys(part).sort((a,b)=>Number(a)-Number(b)).forEach(k=>rows.push(part[k]));});
         if(!expected||rows.length>=expected)return Object.assign({},data,{rows:expected?rows.slice(0,expected):rows});
@@ -5060,14 +5090,14 @@ async function saveMorningExcel(){
     const payload={headers:pendingMorningExcel.headers,rows:pendingMorningExcel.rows,fileName:pendingMorningExcel.fileName,sheetName:pendingMorningExcel.sheetName,uploadedBy:String(currentUser||''),uploadedAt:firebase.database.ServerValue.TIMESTAMP,rowCount:pendingMorningExcel.rows.length,schemaVersion:2};
     // Save the compact report locally before the network round-trip, so this device can
     // open Morning Report immediately even while Firebase is syncing.
-    try{localStorage.setItem('morning_report_current',JSON.stringify({...payload,uploadedAt:Date.now()}));}catch(e){}
+    
     try{
-        await saveReportInParallelChunks('morning',payload);
+        const saved=await saveReportInParallelChunks('morning',payload);try{localStorage.setItem('morning_report_current',JSON.stringify({...saved,uploadedAt:Date.now()}));}catch(_){}applyMorningReportData({...saved,uploadedAt:Date.now()},'saved cloud');
         setMorningStatus('morning-upload-preview',`Upload successful. ${pendingMorningExcel.rows.length} rows saved. Previous Morning Excel has been replaced.`,'ok');
         completeUploadProgress('Morning Report uploaded successfully');
     }catch(err){
         failUploadProgress('Morning Report upload failed');
-        try{localStorage.setItem('morning_report_current',JSON.stringify({...payload,uploadedAt:Date.now()}));setMorningStatus('morning-upload-preview','Network save failed; a local backup was saved. Error: '+err.message,'error');}catch(e){setMorningStatus('morning-upload-preview','Upload failed: '+err.message,'error');}
+        setMorningStatus('morning-upload-preview','Upload failed: '+err.message,'error');
     }finally{if(btn)btn.disabled=false;}
 }
 function canSeeMorningRow(row, headers){
@@ -5079,6 +5109,7 @@ function canSeeMorningRow(row, headers){
 }
 function applyMorningReportData(data,source){
     if(!data||!Array.isArray(data.headers)||!Array.isArray(data.rows))return false;
+    fullMorningReport=data;
     const scoped=data.rows.filter(row=>Array.isArray(row)&&canSeeMorningRow(row,data.headers));
     currentMorningReport={headers:data.headers,rows:scoped,fileName:data.fileName||'',uploadedBy:data.uploadedBy||'',uploadedAt:data.uploadedAt||0};
     populateMorningFilters();
@@ -5101,7 +5132,7 @@ function startMorningReportRealtime(){
                 try{localStorage.setItem('morning_report_current',JSON.stringify(data));}catch(e){}
                 applyMorningReportData(data,'live cloud');
             }else{
-                currentMorningReport={headers:[],rows:[]};populateMorningFilters();renderMorningReport();
+                fullMorningReport=null;currentMorningReport={headers:[],rows:[]};try{localStorage.removeItem('morning_report_current');}catch(_){}populateMorningFilters();renderMorningReport();
                 setMorningStatus('morning-report-status','No Morning Excel file was found.','error');
             }
         }).catch(e=>setMorningStatus('morning-report-status','Morning data load failed: '+e.message,'error'));
@@ -5115,7 +5146,7 @@ async function loadMorningReport(){
     };
     let cached=null;
     try{cached=JSON.parse(localStorage.getItem('morning_report_current')||'null');}catch(e){}
-    const cacheShown=applyData(cached,'cached');
+    const cacheShown=applyData(fullMorningReport||cached,fullMorningReport?'live memory':'cached');
     if(!cacheShown)setMorningStatus('morning-report-status','Loading latest Morning Report...');
     if(!db){
         if(!cacheShown){currentMorningReport={headers:[],rows:[]};renderMorningReport();setMorningStatus('morning-report-status','No Morning Excel file was found.','error');}
@@ -5213,7 +5244,7 @@ function renderMorningReport(){
     const dsoValue=normalizeScopeWallet((document.getElementById('morning-report-dso')||{}).value||'');
     const typeValue=String((document.getElementById('morning-report-agent-type')||{}).value||'all');
     const q=String((document.getElementById('morning-report-search')||{}).value||'').trim().toLowerCase();
-    let filtered=rows.slice();
+    let filtered=rows.filter(r=>canSeeMorningRow(r,headers));
     if(dssValue&&map.dso>=0){const allowed=getAssignedDsoWalletsForDss(dssValue);filtered=filtered.filter(r=>allowed.has(normalizeScopeWallet(r[map.dso])));}
     if(dsoValue&&map.dso>=0)filtered=filtered.filter(r=>normalizeScopeWallet(r[map.dso])===dsoValue);
     if(typeValue==='cash-in')filtered=filtered.filter(r=>!morningRatioInfo(r,map).isCashOut);
@@ -5394,9 +5425,9 @@ async function saveAfternoonExcel(){
     setMorningStatus('afternoon-upload-preview','Uploading Afternoon/Evening data...');
     beginUploadProgress('Afternoon/Evening Report Upload');
     const payload={headers:pendingAfternoonExcel.headers,rows:pendingAfternoonExcel.rows,fileName:pendingAfternoonExcel.fileName,sheetName:pendingAfternoonExcel.sheetName,uploadedBy:String(currentUser||''),uploadedAt:firebase.database.ServerValue.TIMESTAMP,rowCount:pendingAfternoonExcel.rows.length,schemaVersion:1};
-    try{localStorage.setItem('afternoon_report_current',JSON.stringify({...payload,uploadedAt:Date.now()}));}catch(e){}
+    
     try{
-        await saveReportInParallelChunks('afternoon',payload);
+        const saved=await saveReportInParallelChunks('afternoon',payload);try{localStorage.setItem('afternoon_report_current',JSON.stringify({...saved,uploadedAt:Date.now()}));}catch(_){}applyAfternoonReportData({...saved,uploadedAt:Date.now()},'saved cloud');
         setMorningStatus('afternoon-upload-preview',`Upload successful. ${pendingAfternoonExcel.rows.length} rows saved. Previous file was replaced.`,'ok');
         completeUploadProgress('Afternoon/Evening Report uploaded successfully');
     }catch(err){failUploadProgress('Afternoon/Evening upload failed');setMorningStatus('afternoon-upload-preview','Upload failed: '+err.message,'error');}
@@ -5411,6 +5442,7 @@ function canSeeAfternoonRow(row,headers){
 }
 function applyAfternoonReportData(data,source){
     if(!data||!Array.isArray(data.headers)||!Array.isArray(data.rows))return false;
+    fullAfternoonReport=data;
     // Rows come only from Afternoon/Evening upload; AGENT TYPE is joined live from Morning by AGENT number.
     const scoped=data.rows.filter(row=>Array.isArray(row)&&canSeeAfternoonRow(row,data.headers));
     currentAfternoonReport={headers:data.headers,rows:scoped,fileName:data.fileName||'',uploadedAt:data.uploadedAt||0};
@@ -5430,7 +5462,7 @@ function startAfternoonReportRealtime(){
                 try{localStorage.setItem('afternoon_report_current',JSON.stringify(data));}catch(e){}
                 applyAfternoonReportData(data,'live cloud');
             }else{
-                currentAfternoonReport={headers:[],rows:[]};populateAfternoonFilters();renderAfternoonReport();
+                fullAfternoonReport=null;currentAfternoonReport={headers:[],rows:[]};try{localStorage.removeItem('afternoon_report_current');}catch(_){}populateAfternoonFilters();renderAfternoonReport();
                 setMorningStatus('afternoon-report-status','No Afternoon/Evening Excel file was found.','error');
             }
         }).catch(e=>setMorningStatus('afternoon-report-status','Afternoon/Evening data load failed: '+e.message,'error'));
@@ -5440,7 +5472,7 @@ function startAfternoonReportRealtime(){
 async function loadAfternoonReport(){
     const applyData=applyAfternoonReportData;
     let cached=null;try{cached=JSON.parse(localStorage.getItem('afternoon_report_current')||'null');}catch(e){}
-    const cacheShown=applyData(cached,'cached');if(!cacheShown)setMorningStatus('afternoon-report-status','Loading latest Afternoon/Evening upload...');
+    const cacheShown=applyData(fullAfternoonReport||cached,fullAfternoonReport?'live memory':'cached');if(!cacheShown)setMorningStatus('afternoon-report-status','Loading latest Afternoon/Evening upload...');
     if(!db){if(!cacheShown){currentAfternoonReport={headers:[],rows:[]};renderAfternoonReport();setMorningStatus('afternoon-report-status','No Afternoon/Evening Excel file was found.','error');}return;}
     // Start both listeners: Afternoon rows update live and Morning changes update their AGENT TYPE live.
     startMorningReportRealtime();
@@ -5471,7 +5503,7 @@ function renderAfternoonReport(){
     const typeIndex=morningAgentTypeIndex();
     const isZeroB2BRow=r=>(map.totalTxn>=0?parseMorningNumber(r[map.totalTxn]):0)>0 && (map.b2bs>=0?parseMorningNumber(r[map.b2bs]):0)===0 && (map.b2br>=0?parseMorningNumber(r[map.b2br]):0)===0;
     const getType=r=>typeIndex.get(reportAgentKey(map.agent>=0?r[map.agent]:''))||{key:'unknown',label:'Not found in Morning'};
-    let filtered=rows.slice();if(dss&&map.dso>=0){const allowed=getAssignedDsoWalletsForDss(dss);filtered=filtered.filter(r=>allowed.has(normalizeScopeWallet(r[map.dso])));}if(dso&&map.dso>=0)filtered=filtered.filter(r=>normalizeScopeWallet(r[map.dso])===dso);
+    let filtered=rows.filter(r=>canSeeAfternoonRow(r,headers));if(dss&&map.dso>=0){const allowed=getAssignedDsoWalletsForDss(dss);filtered=filtered.filter(r=>allowed.has(normalizeScopeWallet(r[map.dso])));}if(dso&&map.dso>=0)filtered=filtered.filter(r=>normalizeScopeWallet(r[map.dso])===dso);
     if(type==='zero-b2b')filtered=filtered.filter(isZeroB2BRow);
     if(type==='cash-in'||type==='cash-out')filtered=filtered.filter(r=>getType(r).key===type);
     if(q)filtered=filtered.filter(r=>[map.agent>=0?r[map.agent]:'',map.agentName>=0?r[map.agentName]:''].some(v=>String(v).toLowerCase().includes(q)));
@@ -5537,6 +5569,7 @@ function populateKycDsoWallets(){
     if(role.role==='DSO'){select.value=wallets[0]||'';select.disabled=true;}else{select.disabled=false;if(wallets.includes(current))select.value=current;}
 }
 function kycAlert(message,type='success'){
+    if(document.getElementById('view-kyc-status')?.classList.contains('active')){showLiveUpdateToast(message,type);return;}
     const el=document.getElementById('kyc-alert');if(!el)return;
     el.className='alert alert-'+type;el.textContent=message;el.style.display='block';
     setTimeout(()=>{el.style.display='none';},3000);
@@ -5635,18 +5668,18 @@ async function submitKyc(event){
     if(!kycPictureData){kycAlert('Camera দিয়ে Shop Photo তুলুন।','error');return;}
     const gps=document.getElementById('kyc-location').value.trim(),locationNameInput=document.getElementById('kyc-location-name'),locationName=(locationNameInput.dataset.fullName||locationNameInput.value).trim();
     if(!gps||!locationName){kycAlert('Location নিতে হবে।','error');return;}
-    const btn=document.getElementById('btn-kyc-submit');kycSubmitBusy=true;
+    const submitGeneration=appSessionGeneration;const btn=document.getElementById('btn-kyc-submit');kycSubmitBusy=true;
     if(btn){btn.disabled=true;btn.textContent='Saving KYC...';}
     try{
         const role=getRoleInfo(),dsoWallet=selectedDsoWallet;
-        const fingerprint=JSON.stringify([String(currentUser||''),dsoWallet,uddoktaNumber,contact,kycPictureData.slice(0,120),gps]);
+        const fingerprint=JSON.stringify([String(currentUser||''),dsoWallet,uddoktaNumber,contact,kycPictureData,gps,locationName,...['kyc-shop-name','kyc-owner-name','kyc-thana','kyc-bazar-name'].map(id=>document.getElementById(id).value.trim())]);
         // A retry of this unchanged form keeps its original ID.
         const retrying=!!(pendingKycSubmission && pendingKycSubmission.fingerprint===fingerprint);
         if(!retrying){
             const ref=db.ref('new_uddokta_kyc').push(),id=ref.key;
             const collectedAt=new Date().toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true});
             const dssName=role.role==='DSS'?String(role.dssName||'').trim().toUpperCase():getDssNameForWallet(dsoWallet);
-            const record={id,collectionDate:getDhakaToday(),dsoWallet,uddoktaNumber,shopName:document.getElementById('kyc-shop-name').value.trim(),ownerName:document.getElementById('kyc-owner-name').value.trim(),ownerContact:contact,thana:document.getElementById('kyc-thana').value.trim(),bazarName:document.getElementById('kyc-bazar-name').value.trim(),locationName,gps,submittedBy:String(currentUser||''),submitterRole:role.role,dssName,status:'Collected',collectedAt,submittedAt:collectedAt,rejectionReason:'',hasPhoto:true,createdAt:firebase.database.ServerValue.TIMESTAMP,updatedAt:firebase.database.ServerValue.TIMESTAMP};
+            const record={id,collectionDate:getDhakaToday(),dsoWallet,uddoktaNumber,shopName:document.getElementById('kyc-shop-name').value.trim(),ownerName:document.getElementById('kyc-owner-name').value.trim(),ownerContact:contact,thana:document.getElementById('kyc-thana').value.trim(),bazarName:document.getElementById('kyc-bazar-name').value.trim(),locationName,gps,submittedBy:String(currentUser||''),submitterRole:role.role,dmId:'zahangir',dssName,status:'Collected',collectedAt,submittedAt:collectedAt,rejectionReason:'',hasPhoto:true,createdAt:firebase.database.ServerValue.TIMESTAMP,updatedAt:firebase.database.ServerValue.TIMESTAMP};
             const updates={};updates['new_uddokta_kyc/'+id]=record;updates['new_uddokta_kyc_photos/'+id]=kycPictureData;
             pendingKycSubmission={id,fingerprint,updates};
         }
@@ -5660,25 +5693,36 @@ async function submitKyc(event){
                 if(!saved)throw new Error('Server confirmation পাওয়া যায়নি। একই ফর্ম রেখে আবার Submit চাপুন।');
             }
         }
-        pendingKycSubmission=null;
+        if(submitGeneration===appSessionGeneration)pendingKycSubmission=null;
         db.ref('dms_live_update_signal').set({type:'kyc',revision:firebase.database.ServerValue.TIMESTAMP,recordId:id}).catch(()=>{});
+        if(submitGeneration!==appSessionGeneration)return;
         clearKycForm();kycAlert('KYC successfully submitted. Current Status: Collected','success');
-        setTimeout(()=>switchTab('kyc-status'),350);
-    }catch(e){kycAlert('KYC submit হয়নি: '+e.message,'error');}
+        setTimeout(()=>{if(submitGeneration===appSessionGeneration)switchTab('kyc-status');},350);
+    }catch(e){if(submitGeneration===appSessionGeneration)kycAlert('KYC submit হয়নি: '+e.message,'error');}
     finally{kycSubmitBusy=false;if(btn){btn.disabled=false;btn.textContent='Submit KYC';}}
 }
 function canSeeKycRecord(r){
     const role=getRoleInfo(),me=String(currentUser||'').trim().toLowerCase(),submitter=String(r.submittedBy||'').trim().toLowerCase(),wallet=normalizeScopeWallet(r.dsoWallet||r.submittedBy||'');
     if(role.role==='Admin'||role.role==='DM')return true;
-    if(role.role==='DSS')return String(r.dssName||'').trim().toUpperCase()===String(role.dssName||'').trim().toUpperCase()||getAssignedDsoWalletsForDss(role.dssName).has(wallet)||submitter===me;
+    if(role.role==='DSS')return (getAssignedDsoWalletsForDss(role.dssName).has(wallet)||(!commonDssDsoAssignmentsLoaded&&namesMatch(r.dssName,role.dssName))||submitter===me);
     if(role.role==='DSO')return wallet===normalizeScopeWallet(role.dsoWallet)||submitter===me;
     return submitter===me;
 }
+let kycPaintTimer=null;
 function startKycRealtime(){
     if(!db||kycRealtimeRef)return;
     kycRealtimeRef=db.ref('new_uddokta_kyc');
-    kycRealtimeRef.on('value',snap=>{const rows=[],nextSnapshot={};snap.forEach(child=>{const row=Object.assign({id:child.key},child.val()||{});rows.push(row);nextSnapshot[child.key]=normalizeKycStatus(row.status);});if(kycStatusSnapshot&&getRoleInfo().role!=='Admin'){const changed=rows.find(row=>canSeeKycRecord(row)&&kycStatusSnapshot[row.id]&&kycStatusSnapshot[row.id]!==nextSnapshot[row.id]);if(changed)showLiveUpdateToast('KYC status update হয়েছে: '+normalizeKycStatus(changed.status));}kycStatusSnapshot=nextSnapshot;kycRecords=rows.sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));renderKycStatus();},e=>console.warn('KYC realtime sync failed:',e));
+    const apply=snap=>{
+        const row=Object.assign({id:snap.key},snap.val()||{}),index=kycRecords.findIndex(r=>String(r.id)===String(snap.key));
+        if(index>=0){const previous=kycRecords[index];if(normalizeKycStatus(previous.status)!==normalizeKycStatus(row.status)&&canSeeKycRecord(row)&&getRoleInfo().role!=='Admin')showLiveUpdateToast('KYC status update হয়েছে: '+normalizeKycStatus(row.status));kycRecords[index]=row;}
+        else kycRecords.push(row);
+        clearTimeout(kycPaintTimer);kycPaintTimer=setTimeout(()=>{kycRecords.sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));renderKycStatus();},80);
+    };
+    const error=e=>{console.warn('KYC realtime sync failed:',e);if(kycRealtimeRef){kycRealtimeRef.off();kycRealtimeRef=null;}};
+    kycRealtimeRef.on('child_added',apply,error);kycRealtimeRef.on('child_changed',apply,error);
+    kycRealtimeRef.on('child_removed',snap=>{kycRecords=kycRecords.filter(r=>String(r.id)!==String(snap.key));renderKycStatus();},error);
 }
+
 function normalizeKycStatus(status){return !status||status==='Submitted'?'Collected':String(status);}
 const kycStatusPendingIds=new Set();
 function kycStatusControl(r){
@@ -5693,23 +5737,35 @@ function kycStatusDateField(status){return {'Collected':'collectedAt','Admin Rec
 function kycStatusDate(r){return r[kycStatusDateField(r.status)]||r.statusUpdatedAt||r.collectedAt||r.submittedAt||r.collectionDate||'—';}
 function kycHistoryKey(status){return {'Collected':'collected','Admin Receive':'adminReceive','Mail Send':'mailSend','In Portal':'inPortal','Active':'active','Rejection':'rejection'}[normalizeKycStatus(status)]||'status';}
 function getKycStatusHistoryEntries(r){
-    const items=[['Collected',r.collectedAt||r.submittedAt||r.collectionDate],['Admin Receive',r.adminReceiveAt],['Mail Send',r.mailSendAt],['In Portal',r.inPortalAt],['Active',r.activeAt],['Rejection',r.rejectionAt]];
-    return items.filter(x=>x[1]);
+    const stages=[['Collected',r.collectedAt||r.submittedAt||r.collectionDate],['Admin Receive',r.adminReceiveAt],['Mail Send',r.mailSendAt],['In Portal',r.inPortalAt],['Active',r.activeAt],['Rejection',r.rejectionAt]].filter(x=>x[1]);
+    const events=Object.values(r.statusHistory||{}).filter(e=>e&&e.status&&e.at).sort((a,b)=>Number(a.timestamp||0)-Number(b.timestamp||0));
+    const old=stages.filter(([status,at])=>!events.some(e=>normalizeKycStatus(e.status)===status&&e.at===at));
+    return old.concat(events.map(e=>[normalizeKycStatus(e.status),e.at+(e.by?' · '+e.by:'')+(e.reason?' · '+e.reason:'')]));
 }
+
 function kycStatusHistoryHtml(r){
     return getKycStatusHistoryEntries(r).length?'<button type="button" class="kyc-history-view-btn" title="View all status history" aria-label="View all status history" onclick="showKycStatusHistory(\''+escapeMorningHtml(r.id)+'\')">🕘</button>':'—';
 }
-function showKycStatusHistory(id){
-    const r=kycRecords.find(x=>String(x.id)===String(id)),modal=document.getElementById('visit-details-modal'),box=document.getElementById('visit-details-content');if(!r||!modal||!box)return;
+function showKycStatusHistory(id){kycPhotoViewToken++;
+    const r=kycRecords.find(x=>String(x.id)===String(id)),modal=document.getElementById('visit-details-modal'),box=document.getElementById('visit-details-content');if(!r||!canSeeKycRecord(r)||!modal||!box)return;
     const items=getKycStatusHistoryEntries(r),title=escapeMorningHtml(r.shopName||r.uddoktaNumber||'KYC');
     box.innerHTML='<h3 style="margin:0 0 4px">Status History</h3><div style="color:#64748b;font-size:.84rem">'+title+' · '+escapeMorningHtml(r.uddoktaNumber||'')+'</div><div class="kyc-history-popup-list">'+(items.length?items.map(x=>'<div class="kyc-history-popup-row"><b>'+escapeMorningHtml(x[0])+'</b><span>'+escapeMorningHtml(x[1])+'</span></div>').join(''):'<div class="empty-state">No history found.</div>')+'</div>';
     modal.classList.remove('hidden');
 }
 function kycTruncated(value){const text=String(value||'—');return '<span class="kyc-truncate" title="'+escapeMorningHtml(text)+'">'+escapeMorningHtml(text)+'</span>';}
 function renderKycStatus(){
-    const body=document.getElementById('kyc-status-body');if(!body)return;
+    const body=document.getElementById('kyc-status-body');if(!body)return;setupReportFilters('kyc');
     const date=String((document.getElementById('kyc-filter-date')||{}).value||''),month=String((document.getElementById('kyc-filter-month')||{}).value||''),status=String((document.getElementById('kyc-filter-status')||{}).value||''),q=String((document.getElementById('kyc-filter-search')||{}).value||'').trim().toLowerCase();
-    let rows=kycRecords.filter(canSeeKycRecord);if(date)rows=rows.filter(r=>String(r.collectionDate||'')===date);if(month)rows=rows.filter(r=>String(r.collectionDate||'').slice(0,7)===month);if(status)rows=rows.filter(r=>normalizeKycStatus(r.status)===status);if(q)rows=rows.filter(r=>[r.dsoWallet,r.uddoktaNumber,r.shopName,r.ownerName,r.ownerContact,r.thana,r.bazarName,r.locationName,r.submittedBy].some(v=>String(v||'').toLowerCase().includes(q)));
+    const dss=document.getElementById('kyc-filter-dss').value,dso=document.getElementById('kyc-filter-dso').value,dm=document.getElementById('kyc-filter-dm').value;
+    let rows=kycRecords.filter(canSeeKycRecord).filter(r=>(!dss||kycDss(r)===dss)&&(!dso||normalizeScopeWallet(r.dsoWallet)===dso)&&(!dm||String(r.dmId||'zahangir').toLowerCase()===dm));if(date)rows=rows.filter(r=>String(r.collectionDate||'')===date);if(month)rows=rows.filter(r=>String(r.collectionDate||'').slice(0,7)===month);if(q)rows=rows.filter(r=>[r.dsoWallet,r.uddoktaNumber,r.shopName,r.ownerName,r.ownerContact,r.thana,r.bazarName,r.locationName,r.submittedBy].some(v=>String(v||'').toLowerCase().includes(q)));
+    const states=rows.map(r=>normalizeKycStatus(r.status));
+    const cards=[['Total Collection',rows.length],['Admin Received',states.filter(x=>x==='Admin Receive').length],['Mail Send',states.filter(x=>x==='Mail Send').length],['Active',states.filter(x=>x==='Active').length],['Active Pending',states.filter(x=>!['Active','Rejection'].includes(x)).length]];
+    document.getElementById('kyc-summary').innerHTML=cards.map(([label,count])=>'<div class="card"><span>'+label+'</span><b>'+count+'</b></div>').join('');
+    if(status)rows=rows.filter(r=>normalizeKycStatus(r.status)===status);
+    const signature=[date,month,status,q,dss,dso,dm].join('|');if(signature!==kycFilterSignature){kycStatusPage=1;kycFilterSignature=signature;}
+    const pages=Math.max(1,Math.ceil(rows.length/100));kycStatusPage=Math.min(kycStatusPage,pages);
+    document.getElementById('kyc-page-controls').innerHTML='<button type="button" class="btn btn-sm btn-sec" '+(kycStatusPage===1?'disabled':'')+' onclick="kycStatusPage--;renderKycStatus()">Previous</button><span>'+kycStatusPage+' / '+pages+' · '+rows.length+' records</span><button type="button" class="btn btn-sm btn-sec" '+(kycStatusPage===pages?'disabled':'')+' onclick="kycStatusPage++;renderKycStatus()">Next</button>';
+    rows=rows.slice((kycStatusPage-1)*100,kycStatusPage*100);
     body.innerHTML=rows.length?rows.map(r=>'<tr><td data-label="Collection Date">'+escapeMorningHtml(r.collectionDate||'')+'</td><td data-label="DSO Wallet">'+escapeMorningHtml(r.dsoWallet?String(r.dsoWallet).slice(-3):'')+'</td><td data-label="Uddokta Number">'+escapeMorningHtml(r.uddoktaNumber||'')+'</td><td data-label="Shop Name">'+kycTruncated(r.shopName)+'</td><td data-label="Owner Name">'+escapeMorningHtml(r.ownerName||'')+'</td><td data-label="Contact Number">'+escapeMorningHtml(r.ownerContact||'')+'</td><td data-label="Thana">'+kycTruncated(r.thana)+'</td><td data-label="Bazar Name">'+kycTruncated(r.bazarName)+'</td><td data-label="Picture">'+(r.hasPhoto?'<button type="button" class="btn btn-sm btn-sec" onclick="showKycPicture(\''+escapeMorningHtml(r.id)+'\')">View</button>':'—')+'</td><td data-label="Location">'+kycTruncated(r.locationName||r.gps)+'</td><td data-label="Submitted By">'+escapeMorningHtml(r.submittedBy||'')+'</td><td data-label="Current Status">'+kycStatusControl(r)+'</td><td data-label="Status Date">'+escapeMorningHtml(kycStatusDate(r))+'</td><td data-label="Status History" class="kyc-status-history">'+kycStatusHistoryHtml(r)+'</td><td data-label="Rejection Reason" class="kyc-reason">'+escapeMorningHtml(r.rejectionReason||'—')+'</td></tr>').join(''):'<tr><td colspan="15" class="empty-state">No KYC record found.</td></tr>';
 }
 function submitKycStatusUpdate(id,selectId,button){const select=document.getElementById(selectId);if(!select){kycAlert('Status selection পাওয়া যায়নি। আবার চেষ্টা করুন।','error');return;}updateKycStatus(id,select.value,button,select);}
@@ -5734,6 +5790,9 @@ async function updateKycStatus(id,status,button,select){
         const now=new Date().toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}),nowMs=Date.now();
         const payload={status,rejectionReason:status==='Rejection'?reason:'',statusUpdatedBy:String(currentUser||'admin'),statusUpdatedAt:now,updatedAt:nowMs};
         payload[kycStatusDateField(status)]=now;
+        const historyId=String(nowMs)+'_'+Math.random().toString(36).slice(2,10);
+        const historyEvent={status,at:now,timestamp:nowMs,by:String(currentUser),reason:status==='Rejection'?reason:''};
+        payload['statusHistory/'+historyId]=historyEvent;
         try{
             await firebaseRestWrite(path,JSON.stringify(payload),'PATCH',null,16000);
             acknowledged=true;
@@ -5750,7 +5809,7 @@ async function updateKycStatus(id,status,button,select){
         if(confirmed && normalizeKycStatus(confirmed.status)!==status)
             throw new Error('Server status differs. Refresh and try again.');
         const current=kycRecords.find(r=>String(r.id)===id);
-        if(current)Object.assign(current,confirmed||payload);
+        if(current){Object.assign(current,confirmed||payload);if(!confirmed){current.statusHistory=Object.assign({},current.statusHistory||{},{[historyId]:historyEvent});delete current['statusHistory/'+historyId];}}
         firebaseRestWrite('dms_live_update_signal',JSON.stringify({type:'kyc-status',revision:Date.now(),recordId:id,status}),'PUT',null,8000).catch(()=>{});
         kycAlert('Current Status সফলভাবে '+status+' হয়েছে ✓','success');
     }catch(error){
@@ -5764,8 +5823,13 @@ async function updateKycStatus(id,status,button,select){
     }
 }
 async function showKycPicture(id){
-    const modal=document.getElementById('visit-details-modal'),box=document.getElementById('visit-details-content');if(!modal||!box||!db)return;modal.classList.remove('hidden');box.innerHTML='<div style="padding:20px;text-align:center">Loading picture...</div>';
-    try{const snap=await db.ref('new_uddokta_kyc_photos/'+id).once('value'),photo=snap.val();box.innerHTML=photo?'<img src="'+photo+'" class="detail-photo" alt="KYC Picture">':'<div style="padding:20px;text-align:center">Picture not found.</div>';}catch(e){box.innerHTML='<div style="padding:20px;text-align:center;color:#b91c1c">Picture could not load.</div>';}
+    const r=kycRecords.find(r=>String(r.id)===String(id));if(!r||!canSeeKycRecord(r))return;
+    const modal=document.getElementById('visit-details-modal'),box=document.getElementById('visit-details-content');if(!modal||!box)return;
+    const token=++kycPhotoViewToken;modal.classList.remove('hidden');box.innerHTML='<div style="padding:20px;text-align:center">Loading picture...</div>';
+    try{
+        const photo=await getKycPhoto(id);if(token!==kycPhotoViewToken||modal.classList.contains('hidden'))return;
+        box.replaceChildren();if(photo){const img=document.createElement('img');img.src=photo;img.className='detail-photo';img.alt='KYC Picture';img.decoding='async';box.appendChild(img);}else box.textContent='Picture not found.';
+    }catch(e){if(token===kycPhotoViewToken)box.textContent='Picture could not load. Please try again.';}
 }
 document.addEventListener('DOMContentLoaded',()=>{document.getElementById('kyc-form')?.addEventListener('submit',submitKyc);},{once:true});
 document.addEventListener('click',e=>{const panel=document.getElementById('kyc-menu-panel');const parent=e.target.closest&&e.target.closest('#nav-kyc');if(panel&&!parent&&!e.target.closest('#kyc-menu-panel'))panel.classList.remove('open');});
@@ -5786,74 +5850,16 @@ function startLiveUpdateSignal(){
         try { scopedReportLoads.clear(); } catch (_) {}
         setTimeout(()=>{
             refreshVisiblePageDataFast().then(()=>showLiveUpdateToast('নতুন data স্বয়ংক্রিয়ভাবে update হয়েছে ✓')).catch(err=>console.warn('Visible realtime refresh failed:',err));
-            try{refreshAllLiveData(true);}catch(_){}
+            
         },50);
     },err=>console.warn('Live update signal error:',err));
 }
-async function refreshAllLiveData(force = false) {
-    if (!db || !currentUser || !document.body?.classList.contains('app-logged-in')) return false;
-    const now = Date.now();
-    if (!force && (liveRefreshPromise || now - lastLiveRefreshAt < 15000)) return liveRefreshPromise || false;
-    if (liveRefreshPromise) return liveRefreshPromise;
-    lastLiveRefreshAt = now;
-
-    // Listeners are started for every logged-in role so updates arrive even before
-    // the user opens Morning, Afternoon or KYC pages.
-    try { startMorningReportRealtime(); } catch (_) {}
-    try { startAfternoonReportRealtime(); } catch (_) {}
-    try { startKycRealtime(); } catch (_) {}
-    try { startLiveUpdateSignal(); } catch (_) {}
-
-    liveRefreshPromise = (async () => {
-        const jobs = [
-            db.ref('morning_report_current').once('value'),
-            db.ref('afternoon_report_current').once('value'),
-            db.ref('visit_reports_index').once('value'),
-            db.ref('uddokta_master').once('value'),
-            db.ref(UDDOKTA_MASTER_META_PATH).once('value'),
-            db.ref('dss_dso_assignments_common').once('value'),
-            db.ref('new_uddokta_kyc').once('value')
-        ];
-        const results = await Promise.allSettled(jobs);
-        const valueAt = i => results[i]?.status === 'fulfilled' ? results[i].value.val() : null;
-
-        const morning = await resolveChunkedReport('morning',valueAt(0));
-        if (morning && Array.isArray(morning.headers) && Array.isArray(morning.rows)) {
-            try { localStorage.setItem('morning_report_current', JSON.stringify(morning)); } catch (_) {}
-            applyMorningReportData(morning, 'latest cloud');
-        }
-        const afternoon = await resolveChunkedReport('afternoon',valueAt(1));
-        if (afternoon && Array.isArray(afternoon.headers) && Array.isArray(afternoon.rows)) {
-            try { localStorage.setItem('afternoon_report_current', JSON.stringify(afternoon)); } catch (_) {}
-            applyAfternoonReportData(afternoon, 'latest cloud');
-        }
-        const reportIndex = valueAt(2);
-        if (reportIndex && typeof reportIndex === 'object' && Object.keys(reportIndex).length) {
-            applyLightReportSnapshot(reportIndex);
-        } else {
-            try {
-                const legacySnap=await db.ref('visit_reports').orderByChild('timestamp').limitToLast(500).once('value');
-                const legacy=legacySnap.val()||{};
-                if(Object.keys(legacy).length)applyLightReportSnapshot(legacy);
-            } catch(e) { console.warn('Visit report recovery load failed:',e); }
-        }
-
-        const master = valueAt(3), masterMeta = valueAt(4);
-        if (masterMeta) remoteMasterAuthorityMeta = masterMeta;
-        if (master) acceptFirebaseMasterIfAuthoritative(master);
-
-        const assignments = valueAt(5);
-        if (assignments) applyCommonDssDsoAssignments(assignments);
-        const kycCloud = valueAt(6);
-        if (kycCloud && typeof kycCloud === 'object') {
-            kycRecords=Object.keys(kycCloud).map(id=>Object.assign({id},kycCloud[id]||{})).sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));
-            renderKycStatus();
-        }
-        return true;
-    })().catch(err => {
-        console.warn('Live data refresh failed:', err);
-        return false;
-    }).finally(() => { liveRefreshPromise = null; });
+async function refreshAllLiveData(force=false){
+    if(!db||!currentUser||!document.body?.classList.contains('app-logged-in'))return false;
+    startMorningReportRealtime();startAfternoonReportRealtime();startKycRealtime();startLiveUpdateSignal();
+    if(liveRefreshPromise)return liveRefreshPromise;
+    const now=Date.now();if(!force&&now-lastLiveRefreshAt<15000)return true;lastLiveRefreshAt=now;
+    liveRefreshPromise=refreshVisiblePageDataFast().then(()=>true).catch(e=>{console.warn('Visible data refresh failed:',e);return false;}).finally(()=>{liveRefreshPromise=null;});
     return liveRefreshPromise;
 }
 
@@ -5968,6 +5974,69 @@ document.addEventListener('DOMContentLoaded',()=>{
     });
 },{once:true});
 
-    </script>
+    
+let loginSessionsData={},loginCurrentSessions={},loginHistoryData={},loginHistoryRef=null,loginLoadGeneration=0;
+let kycStatusPage=1,kycFilterSignature='',kycPhotoViewToken=0;
+const kycPhotoCache=new Map(),kycPhotoRequests=new Map();
+function dhakaDateOf(ts){return ts?new Date(Number(ts)).toLocaleDateString('en-CA',{timeZone:'Asia/Dhaka'}):'';}
+function loginDss(userId){
+ const u=String(userId||'').toLowerCase();if(DSS_LOGIN_IDS[u])return DSS_LOGIN_IDS[u].toUpperCase();
+ const wallet=normalizeScopeWallet(u);for(const [name,wallets] of dssDsoAssignmentIndex)if(wallets.has(wallet))return name;return '';
+}
+function kycDss(r){return resolveDssName(getDssNameForWallet(r.dsoWallet)||r.dssName||loginDss(r.submittedBy));}
+function setupReportFilters(prefix){
+ const role=getRoleInfo(),date=document.getElementById(prefix+'-filter-date');
+ if(date&&date.dataset.owner!==String(currentUser)){date.value=getDhakaToday();date.dataset.owner=String(currentUser);}
+ let names=[...new Set([...Object.values(DSS_LOGIN_IDS).map(x=>x.toUpperCase()),...dssDsoAssignmentIndex.keys()])];
+ let wallets=Array.from({length:45},(_,i)=>String(801+i));
+ if(prefix==='kyc'){
+  if(role.role==='DSS'){names=[String(role.dssName).toUpperCase()];wallets=[...getAssignedDsoWalletsForDss(role.dssName)];}
+  if(role.role==='DSO'){wallets=[normalizeScopeWallet(role.dsoWallet)];names=names.filter(n=>getAssignedDsoWalletsForDss(n).has(wallets[0]));}
+ }
+ for(const [kind,values] of [['dss',names],['dso',wallets]]){
+  const el=document.getElementById(prefix+'-filter-'+kind);if(!el)continue;
+  const old=el.value,opts='<option value="">All '+kind.toUpperCase()+'</option>'+values.sort().map(v=>'<option value="'+escapeMorningHtml(v)+'">'+escapeMorningHtml(v)+'</option>').join('');
+  if(el.innerHTML!==opts){el.innerHTML=opts;if(values.includes(old))el.value=old;}
+ }
+}
+function renderLoginDay(){
+ if(String(currentUser)!=='admin')return;
+ const grouped={},seen=new Set();
+ Object.entries(loginHistoryData).forEach(([id,r])=>{const u=r.userId||'';if(!grouped[u])grouped[u]={};grouped[u][id]=r;seen.add(r.loginEventId||u+'|'+r.deviceId+'|'+r.loginAt);});
+ Object.entries(loginCurrentSessions).forEach(([u,devices])=>Object.entries(devices||{}).forEach(([d,r])=>{
+  for(const history of Object.values(grouped[u]||{}))if(history.deviceId===d){if(history.loginEventId?history.loginEventId===r.loginEventId:history.loginAt===r.loginAt)Object.assign(history,{active:r.active,lastSeen:r.lastSeen,lastActiveTime:r.lastActiveTime});else history.active=false;}
+  if(!seen.has(r.loginEventId||u+'|'+d+'|'+r.loginAt)){if(!grouped[u])grouped[u]={};grouped[u][d]=r;}
+ }));
+ renderAdminLoginInfo(grouped);
+}
+async function getKycPhoto(id){
+ if(kycPhotoCache.has(id))return kycPhotoCache.get(id);
+ if(kycPhotoRequests.has(id))return kycPhotoRequests.get(id);
+ const generation=appSessionGeneration;
+ const task=firebaseRestReadFresh('new_uddokta_kyc_photos/'+id).then(photo=>{
+ if(photo&&generation===appSessionGeneration){kycPhotoCache.set(id,photo);if(kycPhotoCache.size>30)kycPhotoCache.delete(kycPhotoCache.keys().next().value);}return photo;
+ }).finally(()=>{if(kycPhotoRequests.get(id)===task)kycPhotoRequests.delete(id);});kycPhotoRequests.set(id,task);return task;
+}
+
+
+let appSessionGeneration=0;
+function resolveDssName(value){
+ const name=String(value||'').trim().toUpperCase().replace(/\s+/g,' ');
+ const aliases={SOHAG:'MOHOSIN HOSSAIN SOHAG',ALAMIN:'MD. ALAMIN',IMRAN:'MD. IMRAN HOSSAIN',RUBEL:'RUBEL',SHOFIQ:'MD. SHOFIQ'};return aliases[name]||name;
+}
+function rescopeExcelReports(){
+ if(!currentUser)return;
+ if(fullMorningReport)applyMorningReportData(fullMorningReport,'latest data');
+ if(fullAfternoonReport)applyAfternoonReportData(fullAfternoonReport,'latest data');
+}
+function resetSessionFilters(){
+ for(const prefix of ['kyc','login']){
+  const date=document.getElementById(prefix+'-filter-date');if(date){date.value='';delete date.dataset.owner;}
+  for(const suffix of ['month','dss','dso','dm','status','search']){const input=document.getElementById(prefix+'-filter-'+suffix);if(input)input.value='';}
+ }
+ for(const id of ['filter-dss','filter-dso','filter-search','morning-report-dss','morning-report-dso','morning-report-search','afternoon-report-dss','afternoon-report-dso','afternoon-report-search']){const input=document.getElementById(id);if(input)input.value='';}
+ kycStatusPage=1;kycFilterSignature='';
+}
+</script>
 </body>
 </html>
