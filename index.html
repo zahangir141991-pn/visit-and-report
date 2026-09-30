@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-30-review-fixes-v83">
+    <meta name="dms-app-version" content="2026-09-30-compact-ui-v84">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -725,6 +725,92 @@ img,video,canvas,svg{max-width:100%;height:auto}
 
 
 <style>.kyc-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px;margin:12px 0}.kyc-summary .card{padding:10px;margin:0;text-align:left}.kyc-summary b{display:block;font-size:1.35rem;color:var(--primary)}.kyc-summary span{font-size:.78rem;color:#64748b}</style>
+
+<style id="dms-compact-ui-v84">
+/* Compact filters and summary cards, scoped to report and dashboard controls. */
+#main-app .compact-filter-panel{
+ padding:10px 12px!important;margin-bottom:10px!important;border:1px solid #e2e8f0;
+ border-radius:13px;background:linear-gradient(135deg,#fff,#f8fafc);box-shadow:0 2px 7px rgba(15,23,42,.035);
+}
+#main-app :is(.filter-grid,.compact-filter-panel .morning-actions){
+ display:grid!important;grid-template-columns:repeat(auto-fit,minmax(135px,1fr))!important;
+ gap:8px 10px!important;align-items:end;margin-bottom:0!important;
+}
+#main-app :is(.filter-grid,.compact-filter-panel .morning-actions)>div{min-width:0;flex:initial!important}
+#main-app :is(.filter-grid,.compact-filter-panel .morning-actions,.chart-filter-grid) label{
+ display:block;font-size:10px!important;font-weight:700!important;line-height:1.25;
+ color:#64748b;letter-spacing:.025em;margin:0 0 4px!important;
+}
+#main-app :is(.filter-grid,.compact-filter-panel .morning-actions,.chart-filter-grid) :is(input,select){
+ width:100%;height:34px!important;min-height:34px!important;max-width:100%;min-width:0;
+ padding:5px 9px!important;border:1px solid #dbe3ed!important;border-radius:8px!important;
+ background-color:#fff;color:#24344e;font-size:12px!important;font-weight:500;line-height:1.3;
+ box-shadow:0 1px 2px rgba(15,23,42,.025);text-overflow:ellipsis;outline:none;
+ transition:border-color .15s,box-shadow .15s;
+}
+#main-app :is(.filter-grid,.compact-filter-panel .morning-actions,.chart-filter-grid) :is(input,select):focus{
+ border-color:#60a5fa!important;box-shadow:0 0 0 3px rgba(59,130,246,.11);
+}
+#main-app :is(.filter-grid,.compact-filter-panel .morning-actions,.chart-filter-grid) :is(input,select):disabled{background:#f1f5f9;color:#64748b}
+#main-app :is(.filter-grid,.chart-filter-grid) .btn{
+ height:34px!important;min-height:34px!important;padding:5px 10px!important;font-size:11px;border-radius:8px;
+}
+#main-app .chart-filter-grid{gap:8px;margin-bottom:10px;grid-template-columns:1fr 1fr auto!important}
+#main-app #login-history-note{display:block;margin-top:6px;font-size:11px}
+#main-app #login-history-note:empty{display:none}
+#main-app :is(.quick-grid,.cards-grid,.morning-summary,.report-summary-cards,.chart-kpi-grid,.kyc-summary){
+ gap:7px!important;margin-top:8px!important;margin-bottom:11px!important;
+}
+#main-app .kyc-summary{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+#main-app :is(.quick-grid,.cards-grid,.morning-summary,.kyc-summary)>.card,
+#main-app :is(.report-kpi,.chart-kpi){
+ --kpi-color:#2563eb;--kpi-tint:#eff6ff;
+ position:relative;min-width:0;min-height:58px!important;padding:9px 11px!important;margin:0!important;
+ border:1px solid #e2e8f0!important;border-radius:11px!important;text-align:left!important;
+ background:linear-gradient(120deg,#fff,var(--kpi-tint))!important;box-shadow:0 2px 5px rgba(15,23,42,.03)!important;
+ overflow:hidden;
+}
+#main-app :is(.quick-grid,.cards-grid,.morning-summary,.kyc-summary)>.card::before,
+#main-app :is(.report-kpi,.chart-kpi)::before{
+ content:'';position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0;background:var(--kpi-color);
+}
+#main-app :is(.quick-grid,.cards-grid,.morning-summary,.kyc-summary)>:nth-child(2),
+#main-app :is(.report-kpi,.chart-kpi):nth-child(2){--kpi-color:#059669;--kpi-tint:#ecfdf5}
+#main-app :is(.quick-grid,.cards-grid,.morning-summary,.kyc-summary)>:nth-child(3),
+#main-app :is(.report-kpi,.chart-kpi):nth-child(3){--kpi-color:#7c3aed;--kpi-tint:#f5f3ff}
+#main-app :is(.quick-grid,.cards-grid,.morning-summary,.kyc-summary)>:nth-child(4){--kpi-color:#d97706;--kpi-tint:#fffbeb}
+#main-app :is(.quick-grid,.cards-grid,.morning-summary,.kyc-summary)>:nth-child(5){--kpi-color:#0891b2;--kpi-tint:#ecfeff}
+#main-app :is(.quick-grid,.cards-grid,.morning-summary,.kyc-summary) :is(.card-lbl,span),
+#main-app :is(.report-kpi,.chart-kpi)>span{
+ display:block;font-size:10px!important;font-weight:650!important;line-height:1.3!important;
+ color:#64748b!important;letter-spacing:.02em;text-transform:none!important;overflow-wrap:anywhere;
+}
+#main-app :is(.quick-grid,.cards-grid,.morning-summary,.kyc-summary) :is(.card-val,b),
+#main-app :is(.report-kpi,.chart-kpi)>b{
+ display:block;font-size:19px!important;font-weight:800!important;line-height:1.2!important;
+ margin-top:5px!important;color:var(--kpi-color)!important;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
+}
+#main-app #today-date-card{font-size:13px!important;line-height:1.5!important}
+#main-app #kyc-page-controls{gap:8px!important;margin:8px 0!important;flex-wrap:wrap;font-size:11px;color:#64748b}
+#main-app #kyc-page-controls .btn{min-height:30px!important;padding:5px 10px!important;font-size:11px;border-radius:8px}
+@media(max-width:767px){
+ #main-app .compact-filter-panel{padding:9px!important;border-radius:11px}
+ #main-app :is(.filter-grid,.compact-filter-panel .morning-actions){grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px 8px!important}
+ #main-app :is(.filter-grid,.compact-filter-panel .morning-actions,.chart-filter-grid) :is(input,select){height:38px!important;min-height:38px!important;font-size:16px!important;padding:5px 7px!important;letter-spacing:-.025em}
+ #main-app #view-kyc-status .filter-grid>div:last-child{grid-column:1/-1}
+ #main-app .chart-filter-grid{grid-template-columns:1fr 1fr!important}
+ #main-app .chart-filter-grid .chart-reset{grid-column:auto!important;min-height:32px!important;height:32px!important;justify-self:start}
+ #main-app .kyc-summary{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+ #main-app :is(.quick-grid,.cards-grid,.morning-summary,.report-summary-cards,.chart-kpi-grid){grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #main-app :is(.quick-grid,.cards-grid,.morning-summary,.kyc-summary)>.card,#main-app :is(.report-kpi,.chart-kpi){min-height:55px!important;padding:8px 10px!important;border-radius:10px!important}
+ #main-app .morning-summary b{font-size:16px!important}
+ #main-app .kyc-summary b{font-size:18px!important}
+}
+@media(max-width:310px){
+ #main-app :is(.filter-grid,.compact-filter-panel .morning-actions){grid-template-columns:1fr!important}
+ #main-app .kyc-summary{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+</style>
 </head>
 <body style="margin:0;background:#f8fafc;color:#0f172a;min-height:100vh;">
 <header id="app-header" style="display:block;background:#2563eb;color:#fff;padding:18px 20px;text-align:center;">
@@ -964,8 +1050,7 @@ body.app-logged-in #view-login{display:none!important}
                     <div class="report-kpi"><span id="report-card-1-label">DSS Total Visit</span><b id="report-total-visit-count">0</b></div>
                     <div class="report-kpi"><span id="report-card-2-label">DSS Today Visit</span><b id="report-unique-visit">0</b></div>
                 </div>
-                <div class="card" style="text-align:left;margin-bottom:14px">
-                    <div class="filter-grid">
+                <div class="card compact-filter-panel" style="text-align:left;margin-bottom:14px"><div class="filter-grid">
                         <div id="filter-date-wrap"><label>Date</label><input type="date" id="filter-date" onchange="renderReports()"></div>
                         <div id="filter-month-wrap" class="hidden"><label>Month</label><input type="month" id="filter-month" onchange="renderReports()"></div>
                         <div id="report-type-wrap" class="hidden"><label>Report Type</label><select id="filter-report-type" onchange="renderReports()"><option value="all">All Visit Reports</option><option value="dm">DM Visit Report</option><option value="dss">DSS Visit Report</option></select></div>
@@ -1046,7 +1131,7 @@ body.app-logged-in #view-login{display:none!important}
             <!-- Admin-only Login Information Page -->
             <div id="view-login-info" class="page">
                 <div class="section-head"><div><h2>User Login Information</h2><small style="color:#64748b">শুধু Admin দেখতে পারবেন · IMEI-এর পরিবর্তে নিরাপদ Device ID</small></div><button type="button" class="btn btn-sm btn-sec" onclick="loadAdminLoginInfo()">↻ Refresh</button></div>
-                <div class="card" style="text-align:left;margin-bottom:12px"><div class="filter-grid"><div><label>Date</label><input type="date" id="login-filter-date" onchange="loadAdminLoginInfo()"></div><div><label>DSS</label><select id="login-filter-dss" onchange="renderAdminLoginInfo(loginSessionsData)"></select></div><div><label>DSO</label><select id="login-filter-dso" onchange="renderAdminLoginInfo(loginSessionsData)"></select></div></div><small id="login-history-note" style="color:#64748b"></small></div>
+                <div class="card compact-filter-panel" style="text-align:left;margin-bottom:12px"><div class="filter-grid"><div><label>Date</label><input type="date" id="login-filter-date" onchange="loadAdminLoginInfo()"></div><div><label>DSS</label><select id="login-filter-dss" onchange="renderAdminLoginInfo(loginSessionsData)"></select></div><div><label>DSO</label><select id="login-filter-dso" onchange="renderAdminLoginInfo(loginSessionsData)"></select></div></div><small id="login-history-note" style="color:#64748b"></small></div>
                 <div id="admin-multi-device-alert" class="alert alert-error" style="display:none;margin-bottom:12px"></div>
                 <div class="card" style="text-align:left">
                     <div class="table-responsive"><table class="reports-table" style="min-width:920px"><thead><tr><th>User ID</th><th>Login Time</th><th>Last Active</th><th>Device ID</th><th>Device / Browser</th><th>Status</th></tr></thead><tbody id="admin-login-info-body"><tr><td colspan="6">Login information loading...</td></tr></tbody></table></div>
@@ -1077,7 +1162,7 @@ body.app-logged-in #view-login{display:none!important}
             <!-- Morning Report -->
             <div id="view-morning-report" class="page">
                 <div class="section-head"><div><h2>Morning Report</h2><small style="color:#64748b">DSO-wise Morning Report</small></div></div>
-                <div id="morning-filter-card" class="card" style="text-align:left;margin-bottom:14px">
+                <div id="morning-filter-card" class="card compact-filter-panel" style="text-align:left;margin-bottom:14px">
                     <div class="morning-actions">
                         <div><label>DSS</label><select id="morning-report-dss" onchange="populateMorningDsoFilter();renderMorningReport()"><option value="">All DSS</option></select></div>
                         <div><label>DSO</label><select id="morning-report-dso" onchange="renderMorningReport()"><option value="">All DSO</option></select></div>
@@ -1129,7 +1214,7 @@ body.app-logged-in #view-login{display:none!important}
             <!-- Afternoon / Evening Report -->
             <div id="view-afternoon-report" class="page">
                 <div class="section-head"><div><h2>Afternoon/Evening Report</h2><small style="color:#64748b">DSO-wise Afternoon/Evening Report</small></div></div>
-                <div id="afternoon-filter-card" class="card" style="text-align:left;margin-bottom:14px">
+                <div id="afternoon-filter-card" class="card compact-filter-panel" style="text-align:left;margin-bottom:14px">
                     <div class="morning-actions">
                         <div><label>DSS</label><select id="afternoon-report-dss" onchange="populateAfternoonDsoFilter();renderAfternoonReport()"><option value="">All DSS</option></select></div>
                         <div><label>DSO</label><select id="afternoon-report-dso" onchange="renderAfternoonReport()"><option value="">All DSO</option></select></div>
@@ -1175,7 +1260,7 @@ body.app-logged-in #view-login{display:none!important}
             <!-- New Uddokta KYC Status -->
             <div id="view-kyc-status" class="page">
                 <div class="section-head"><div><h2>KYC Status</h2><small style="color:#64748b">Track submitted KYC applications in real time</small></div><button type="button" class="btn btn-sm btn-sec" onclick="refreshVisiblePageDataFast().catch(e=>showLiveUpdateToast(e.message))">↻ Refresh</button></div>
-                <div class="card" style="text-align:left;margin-bottom:14px"><div class="filter-grid"><div><label>Date</label><input type="date" id="kyc-filter-date" onchange="document.getElementById('kyc-filter-month').value='';renderKycStatus()"></div><div><label>Month</label><input type="month" id="kyc-filter-month" onchange="document.getElementById('kyc-filter-date').value='';renderKycStatus()"></div><div><label>DSS</label><select id="kyc-filter-dss" onchange="kycStatusPage=1;renderKycStatus()"></select></div><div><label>DM</label><select id="kyc-filter-dm" onchange="kycStatusPage=1;renderKycStatus()"><option value="">All DM</option><option value="zahangir">Zahangir Kabir</option></select></div><div><label>DSO</label><select id="kyc-filter-dso" onchange="kycStatusPage=1;renderKycStatus()"></select></div><div><label>Status</label><select id="kyc-filter-status" onchange="renderKycStatus()"><option value="">All Status</option><option value="Collected">Collected</option><option value="Admin Receive">Admin Receive</option><option value="Mail Send">Mail Send</option><option value="In Portal">In Portal</option><option value="Active">Active</option><option value="Rejection">Rejection</option></select></div><div><label>Search</label><input type="search" id="kyc-filter-search" placeholder="Shop / owner / mobile / thana / bazar" oninput="renderKycStatus()"></div></div></div>
+                <div class="card compact-filter-panel" style="text-align:left;margin-bottom:14px"><div class="filter-grid"><div><label>Date</label><input type="date" id="kyc-filter-date" onchange="document.getElementById('kyc-filter-month').value='';renderKycStatus()"></div><div><label>Month</label><input type="month" id="kyc-filter-month" onchange="document.getElementById('kyc-filter-date').value='';renderKycStatus()"></div><div><label>DSS</label><select id="kyc-filter-dss" onchange="kycStatusPage=1;renderKycStatus()"></select></div><div><label>DM</label><select id="kyc-filter-dm" onchange="kycStatusPage=1;renderKycStatus()"><option value="">All DM</option><option value="zahangir">Zahangir Kabir</option></select></div><div><label>DSO</label><select id="kyc-filter-dso" onchange="kycStatusPage=1;renderKycStatus()"></select></div><div><label>Status</label><select id="kyc-filter-status" onchange="renderKycStatus()"><option value="">All Status</option><option value="Collected">Collected</option><option value="Admin Receive">Admin Receive</option><option value="Mail Send">Mail Send</option><option value="In Portal">In Portal</option><option value="Active">Active</option><option value="Rejection">Rejection</option></select></div><div><label>Search</label><input type="search" id="kyc-filter-search" placeholder="Shop / owner / mobile / thana / bazar" oninput="renderKycStatus()"></div></div></div>
                 <div id="kyc-summary" class="kyc-summary"></div><div id="kyc-page-controls" style="display:flex;gap:12px;align-items:center;margin:10px 0"></div>
                 <div class="table-responsive"><table class="reports-table kyc-table"><thead><tr><th>Collection Date</th><th>DSO Wallet</th><th>Uddokta Number</th><th>Shop Name</th><th>Owner Name</th><th>Contact Number</th><th>Thana</th><th>Bazar Name</th><th>Picture</th><th>Location</th><th>Submitted By</th><th>Current Status</th><th>Status Date</th><th>Status History</th><th>Rejection Reason</th></tr></thead><tbody id="kyc-status-body"><tr><td colspan="15">Loading KYC data...</td></tr></tbody></table></div>
             </div>
@@ -1405,8 +1490,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-30-review-fixes-v83';
-        const APP_RELEASED_AT = 1790764500000;
+        const APP_CACHE_VERSION = '2026-09-30-compact-ui-v84';
+        const APP_RELEASED_AT = 1790767920000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
