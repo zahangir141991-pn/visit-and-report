@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-09-30-compact-ui-v84">
+    <meta name="dms-app-version" content="2026-10-01-kyc-assignment-v85">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1260,7 +1260,7 @@ body.app-logged-in #view-login{display:none!important}
             <!-- New Uddokta KYC Status -->
             <div id="view-kyc-status" class="page">
                 <div class="section-head"><div><h2>KYC Status</h2><small style="color:#64748b">Track submitted KYC applications in real time</small></div><button type="button" class="btn btn-sm btn-sec" onclick="refreshVisiblePageDataFast().catch(e=>showLiveUpdateToast(e.message))">↻ Refresh</button></div>
-                <div class="card compact-filter-panel" style="text-align:left;margin-bottom:14px"><div class="filter-grid"><div><label>Date</label><input type="date" id="kyc-filter-date" onchange="document.getElementById('kyc-filter-month').value='';renderKycStatus()"></div><div><label>Month</label><input type="month" id="kyc-filter-month" onchange="document.getElementById('kyc-filter-date').value='';renderKycStatus()"></div><div><label>DSS</label><select id="kyc-filter-dss" onchange="kycStatusPage=1;renderKycStatus()"></select></div><div><label>DM</label><select id="kyc-filter-dm" onchange="kycStatusPage=1;renderKycStatus()"><option value="">All DM</option><option value="zahangir">Zahangir Kabir</option></select></div><div><label>DSO</label><select id="kyc-filter-dso" onchange="kycStatusPage=1;renderKycStatus()"></select></div><div><label>Status</label><select id="kyc-filter-status" onchange="renderKycStatus()"><option value="">All Status</option><option value="Collected">Collected</option><option value="Admin Receive">Admin Receive</option><option value="Mail Send">Mail Send</option><option value="In Portal">In Portal</option><option value="Active">Active</option><option value="Rejection">Rejection</option></select></div><div><label>Search</label><input type="search" id="kyc-filter-search" placeholder="Shop / owner / mobile / thana / bazar" oninput="renderKycStatus()"></div></div></div>
+                <div class="card compact-filter-panel" style="text-align:left;margin-bottom:14px"><div class="filter-grid"><div><label>Date</label><input type="date" id="kyc-filter-date" onchange="document.getElementById('kyc-filter-month').value='';renderKycStatus()"></div><div><label>Month</label><input type="month" id="kyc-filter-month" onchange="document.getElementById('kyc-filter-date').value='';renderKycStatus()"></div><div><label>DSS</label><select id="kyc-filter-dss" onchange="kycStatusPage=1;renderKycStatus()"></select></div><div><label>DM</label><select id="kyc-filter-dm" onchange="kycStatusPage=1;renderKycStatus()"><option value="">All DM</option><option value="zahangir">Zahangir Kabir</option></select></div><div><label>DSO</label><select id="kyc-filter-dso" onchange="kycStatusPage=1;renderKycStatus()"></select></div><div><label>Status</label><select id="kyc-filter-status" onchange="renderKycStatus()"><option value="">All Status</option><option value="Collected">Collected</option><option value="Admin Receive">Admin Receive</option><option value="Mail Send">Mail Send</option><option value="In Portal">In Portal</option><option value="Active">Active</option><option value="Rejection">Rejection</option></select></div><div><label>Search</label><input type="search" id="kyc-filter-search" placeholder="Search all assigned data · shop / mobile / bazar" oninput="renderKycStatus()"></div></div></div>
                 <div id="kyc-summary" class="kyc-summary"></div><div id="kyc-page-controls" style="display:flex;gap:12px;align-items:center;margin:10px 0"></div>
                 <div class="table-responsive"><table class="reports-table kyc-table"><thead><tr><th>Collection Date</th><th>DSO Wallet</th><th>Uddokta Number</th><th>Shop Name</th><th>Owner Name</th><th>Contact Number</th><th>Thana</th><th>Bazar Name</th><th>Picture</th><th>Location</th><th>Submitted By</th><th>Current Status</th><th>Status Date</th><th>Status History</th><th>Rejection Reason</th></tr></thead><tbody id="kyc-status-body"><tr><td colspan="15">Loading KYC data...</td></tr></tbody></table></div>
             </div>
@@ -1490,8 +1490,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-09-30-compact-ui-v84';
-        const APP_RELEASED_AT = 1790767920000;
+        const APP_CACHE_VERSION = '2026-10-01-kyc-assignment-v85';
+        const APP_RELEASED_AT = 1790869320000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -5787,11 +5787,13 @@ async function submitKyc(event){
     finally{kycSubmitBusy=false;if(btn){btn.disabled=false;btn.textContent='Submit KYC';}}
 }
 function canSeeKycRecord(r){
-    const role=getRoleInfo(),me=String(currentUser||'').trim().toLowerCase(),submitter=String(r.submittedBy||'').trim().toLowerCase(),wallet=normalizeScopeWallet(r.dsoWallet||r.submittedBy||'');
-    if(role.role==='Admin'||role.role==='DM')return true;
-    if(role.role==='DSS')return (getAssignedDsoWalletsForDss(role.dssName).has(wallet)||(!commonDssDsoAssignmentsLoaded&&namesMatch(r.dssName,role.dssName))||submitter===me);
-    if(role.role==='DSO')return wallet===normalizeScopeWallet(role.dsoWallet)||submitter===me;
-    return submitter===me;
+    if(!currentUser||!r)return false;
+    const role=getRoleInfo(),wallet=normalizeScopeWallet(r.dsoWallet||'');
+    if(role.role==='Admin')return true;
+    if(role.role==='DM')return String(r.dmId||'zahangir').trim().toLowerCase()===String(currentUser).trim().toLowerCase();
+    if(role.role==='DSS')return getAssignedDsoWalletsForDss(role.dssName).has(wallet);
+    if(role.role==='DSO')return !!wallet&&wallet===normalizeScopeWallet(role.dsoWallet);
+    return false;
 }
 let kycPaintTimer=null;
 function startKycRealtime(){
@@ -5842,15 +5844,15 @@ function renderKycStatus(){
     const body=document.getElementById('kyc-status-body');if(!body)return;setupReportFilters('kyc');
     const date=String((document.getElementById('kyc-filter-date')||{}).value||''),month=String((document.getElementById('kyc-filter-month')||{}).value||''),status=String((document.getElementById('kyc-filter-status')||{}).value||''),q=String((document.getElementById('kyc-filter-search')||{}).value||'').trim().toLowerCase();
     const dss=document.getElementById('kyc-filter-dss').value,dso=document.getElementById('kyc-filter-dso').value,dm=document.getElementById('kyc-filter-dm').value;
-    let rows=kycRecords.filter(canSeeKycRecord).filter(r=>(!dss||kycDss(r)===dss)&&(!dso||normalizeScopeWallet(r.dsoWallet)===dso)&&(!dm||String(r.dmId||'zahangir').toLowerCase()===dm));if(date)rows=rows.filter(r=>String(r.collectionDate||'')===date);if(month)rows=rows.filter(r=>String(r.collectionDate||'').slice(0,7)===month);if(q)rows=rows.filter(r=>[r.dsoWallet,r.uddoktaNumber,r.shopName,r.ownerName,r.ownerContact,r.thana,r.bazarName,r.locationName,r.submittedBy].some(v=>String(v||'').toLowerCase().includes(q)));
+    let rows=kycRecords.filter(canSeeKycRecord).filter(r=>(!dss||kycDss(r)===dss)&&(!dso||normalizeScopeWallet(r.dsoWallet)===dso)&&(!dm||String(r.dmId||'zahangir').toLowerCase()===dm));if(!q&&date)rows=rows.filter(r=>String(r.collectionDate||'')===date);if(!q&&month)rows=rows.filter(r=>String(r.collectionDate||'').slice(0,7)===month);if(q)rows=rows.filter(r=>[r.dsoWallet,r.uddoktaNumber,r.shopName,r.ownerName,r.ownerContact,r.thana,r.bazarName,r.locationName,r.submittedBy].some(v=>String(v||'').toLowerCase().includes(q)));
     const states=rows.map(r=>normalizeKycStatus(r.status));
     const cards=[['Total Collection',rows.length],['Admin Received',states.filter(x=>x==='Admin Receive').length],['Mail Send',states.filter(x=>x==='Mail Send').length],['Active',states.filter(x=>x==='Active').length],['Active Pending',states.filter(x=>!['Active','Rejection'].includes(x)).length]];
     document.getElementById('kyc-summary').innerHTML=cards.map(([label,count])=>'<div class="card"><span>'+label+'</span><b>'+count+'</b></div>').join('');
     if(status)rows=rows.filter(r=>normalizeKycStatus(r.status)===status);
-    const signature=[date,month,status,q,dss,dso,dm].join('|');if(signature!==kycFilterSignature){kycStatusPage=1;kycFilterSignature=signature;}
-    const pages=Math.max(1,Math.ceil(rows.length/100));kycStatusPage=Math.min(kycStatusPage,pages);
-    document.getElementById('kyc-page-controls').innerHTML='<button type="button" class="btn btn-sm btn-sec" '+(kycStatusPage===1?'disabled':'')+' onclick="kycStatusPage--;renderKycStatus()">Previous</button><span>'+kycStatusPage+' / '+pages+' · '+rows.length+' records</span><button type="button" class="btn btn-sm btn-sec" '+(kycStatusPage===pages?'disabled':'')+' onclick="kycStatusPage++;renderKycStatus()">Next</button>';
-    rows=rows.slice((kycStatusPage-1)*100,kycStatusPage*100);
+    const signature=[date,month,status,q,dss,dso,dm,kycStatusPageSize].join('|');if(signature!==kycFilterSignature){kycStatusPage=1;kycFilterSignature=signature;}
+    const pages=Math.max(1,Math.ceil(rows.length/kycStatusPageSize));kycStatusPage=Math.min(kycStatusPage,pages);
+    document.getElementById('kyc-page-controls').innerHTML='<label>Rows <select aria-label="KYC rows per page" onchange="kycStatusPageSize=Number(this.value);kycStatusPage=1;renderKycStatus()">'+[25,50,100].map(n=>'<option value="'+n+'"'+(n===kycStatusPageSize?' selected':'')+'>'+n+'</option>').join('')+'</select></label><button type="button" class="btn btn-sm btn-sec" '+(kycStatusPage===1?'disabled':'')+' onclick="kycStatusPage--;renderKycStatus()">Previous</button><span>'+kycStatusPage+' / '+pages+' · '+rows.length+' records</span><button type="button" class="btn btn-sm btn-sec" '+(kycStatusPage===pages?'disabled':'')+' onclick="kycStatusPage++;renderKycStatus()">Next</button>';
+    rows=rows.slice((kycStatusPage-1)*kycStatusPageSize,kycStatusPage*kycStatusPageSize);
     body.innerHTML=rows.length?rows.map(r=>'<tr><td data-label="Collection Date">'+escapeMorningHtml(r.collectionDate||'')+'</td><td data-label="DSO Wallet">'+escapeMorningHtml(r.dsoWallet?String(r.dsoWallet).slice(-3):'')+'</td><td data-label="Uddokta Number">'+escapeMorningHtml(r.uddoktaNumber||'')+'</td><td data-label="Shop Name">'+kycTruncated(r.shopName)+'</td><td data-label="Owner Name">'+escapeMorningHtml(r.ownerName||'')+'</td><td data-label="Contact Number">'+escapeMorningHtml(r.ownerContact||'')+'</td><td data-label="Thana">'+kycTruncated(r.thana)+'</td><td data-label="Bazar Name">'+kycTruncated(r.bazarName)+'</td><td data-label="Picture">'+(r.hasPhoto?'<button type="button" class="btn btn-sm btn-sec" onclick="showKycPicture(\''+escapeMorningHtml(r.id)+'\')">View</button>':'—')+'</td><td data-label="Location">'+kycTruncated(r.locationName||r.gps)+'</td><td data-label="Submitted By">'+escapeMorningHtml(r.submittedBy||'')+'</td><td data-label="Current Status">'+kycStatusControl(r)+'</td><td data-label="Status Date">'+escapeMorningHtml(kycStatusDate(r))+'</td><td data-label="Status History" class="kyc-status-history">'+kycStatusHistoryHtml(r)+'</td><td data-label="Rejection Reason" class="kyc-reason">'+escapeMorningHtml(r.rejectionReason||'—')+'</td></tr>').join(''):'<tr><td colspan="15" class="empty-state">No KYC record found.</td></tr>';
 }
 function submitKycStatusUpdate(id,selectId,button){const select=document.getElementById(selectId);if(!select){kycAlert('Status selection পাওয়া যায়নি। আবার চেষ্টা করুন।','error');return;}updateKycStatus(id,select.value,button,select);}
@@ -6061,7 +6063,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 
     
 let loginSessionsData={},loginCurrentSessions={},loginHistoryData={},loginHistoryRef=null,loginLoadGeneration=0;
-let kycStatusPage=1,kycFilterSignature='',kycPhotoViewToken=0;
+let kycStatusPage=1,kycStatusPageSize=25,kycFilterSignature='',kycPhotoViewToken=0;
 const kycPhotoCache=new Map(),kycPhotoRequests=new Map();
 function dhakaDateOf(ts){return ts?new Date(Number(ts)).toLocaleDateString('en-CA',{timeZone:'Asia/Dhaka'}):'';}
 function loginDss(userId){
@@ -6075,6 +6077,7 @@ function setupReportFilters(prefix){
  let names=[...new Set([...Object.values(DSS_LOGIN_IDS).map(x=>x.toUpperCase()),...dssDsoAssignmentIndex.keys()])];
  let wallets=Array.from({length:45},(_,i)=>String(801+i));
  if(prefix==='kyc'){
+  if(!['Admin','DM','DSS','DSO'].includes(role.role)){names=[];wallets=[];}
   if(role.role==='DSS'){names=[String(role.dssName).toUpperCase()];wallets=[...getAssignedDsoWalletsForDss(role.dssName)];}
   if(role.role==='DSO'){wallets=[normalizeScopeWallet(role.dsoWallet)];names=names.filter(n=>getAssignedDsoWalletsForDss(n).has(wallets[0]));}
  }
@@ -6082,7 +6085,17 @@ function setupReportFilters(prefix){
   const el=document.getElementById(prefix+'-filter-'+kind);if(!el)continue;
   const old=el.value,opts='<option value="">All '+kind.toUpperCase()+'</option>'+values.sort().map(v=>'<option value="'+escapeMorningHtml(v)+'">'+escapeMorningHtml(v)+'</option>').join('');
   if(el.innerHTML!==opts){el.innerHTML=opts;if(values.includes(old))el.value=old;}
+  if(prefix==='kyc'){
+   const locked=(role.role==='DSO')||(role.role==='DSS'&&kind==='dss');
+   el.disabled=locked;
+   if(locked)el.value=values[0]||'';
+  }
  }
+ if(prefix==='kyc'){
+  const dm=document.getElementById('kyc-filter-dm');
+  if(dm){dm.disabled=role.role!=='Admin';dm.value=role.role==='Admin'?dm.value:'zahangir';}
+ }
+
 }
 function renderLoginDay(){
  if(String(currentUser)!=='admin')return;
@@ -6120,7 +6133,7 @@ function resetSessionFilters(){
   for(const suffix of ['month','dss','dso','dm','status','search']){const input=document.getElementById(prefix+'-filter-'+suffix);if(input)input.value='';}
  }
  for(const id of ['filter-dss','filter-dso','filter-search','morning-report-dss','morning-report-dso','morning-report-search','afternoon-report-dss','afternoon-report-dso','afternoon-report-search']){const input=document.getElementById(id);if(input)input.value='';}
- kycStatusPage=1;kycFilterSignature='';
+ kycStatusPage=1;kycStatusPageSize=25;kycFilterSignature='';
 }
 </script>
 </body>
