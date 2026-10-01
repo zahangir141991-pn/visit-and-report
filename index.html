@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-10-01-kyc-assignment-v85">
+    <meta name="dms-app-version" content="2026-10-01-kyc-no-default-date-v86">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1490,8 +1490,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-10-01-kyc-assignment-v85';
-        const APP_RELEASED_AT = 1790869320000;
+        const APP_CACHE_VERSION = '2026-10-01-kyc-no-default-date-v86';
+        const APP_RELEASED_AT = 1790870040000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -6073,7 +6073,7 @@ function loginDss(userId){
 function kycDss(r){return resolveDssName(getDssNameForWallet(r.dsoWallet)||r.dssName||loginDss(r.submittedBy));}
 function setupReportFilters(prefix){
  const role=getRoleInfo(),date=document.getElementById(prefix+'-filter-date');
- if(date&&date.dataset.owner!==String(currentUser)){date.value=getDhakaToday();date.dataset.owner=String(currentUser);}
+ if(date&&date.dataset.owner!==String(currentUser)){date.value=prefix==='kyc'?'':getDhakaToday();date.dataset.owner=String(currentUser);if(prefix==='kyc'){const month=document.getElementById('kyc-filter-month');if(month)month.value='';kycStatusPage=1;kycStatusPageSize=25;}}
  let names=[...new Set([...Object.values(DSS_LOGIN_IDS).map(x=>x.toUpperCase()),...dssDsoAssignmentIndex.keys()])];
  let wallets=Array.from({length:45},(_,i)=>String(801+i));
  if(prefix==='kyc'){
