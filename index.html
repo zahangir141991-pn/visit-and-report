@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-10-01-kyc-no-default-date-v86">
+    <meta name="dms-app-version" content="2026-10-01-compact-footer-v88">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -811,6 +811,19 @@ img,video,canvas,svg{max-width:100%;height:auto}
  #main-app .kyc-summary{grid-template-columns:repeat(2,minmax(0,1fr))!important}
 }
 </style>
+
+<style id="kyc-full-table-layout">
+#view-kyc-status .table-responsive{height:auto!important;max-height:none!important;min-height:0!important;overflow-x:auto!important;overflow-y:visible!important;margin-bottom:0!important;overscroll-behavior:auto!important}
+#view-kyc-status{padding-bottom:0!important;margin-bottom:0!important}
+#main-app:has(#view-kyc-status.active){padding-bottom:8px!important}
+body:has(#view-kyc-status.active) .app-author-footer{padding:12px 12px calc(12px + env(safe-area-inset-bottom))!important;margin-top:0!important}
+body:has(#view-kyc-status.active){padding-bottom:0!important}
+</style>
+<style id="compact-copyright-footer">
+#app-copyright,.app-author-footer{display:block!important;width:fit-content!important;max-width:calc(100% - 12px)!important;height:auto!important;min-height:0!important;margin:0 auto!important;padding:3px 6px!important;line-height:1.35!important;background:transparent!important;border:0!important}
+body:has(#view-kyc-status.active) #app-copyright,body:has(#view-kyc-status.active) .app-author-footer{padding:3px 6px!important;margin:0 auto!important}
+#main-app:has(#view-kyc-status.active){padding-bottom:3px!important}
+</style>
 </head>
 <body style="margin:0;background:#f8fafc;color:#0f172a;min-height:100vh;">
 <header id="app-header" style="display:block;background:#2563eb;color:#fff;padding:18px 20px;text-align:center;">
@@ -1490,8 +1503,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-10-01-kyc-no-default-date-v86';
-        const APP_RELEASED_AT = 1790870040000;
+        const APP_CACHE_VERSION = '2026-10-01-compact-footer-v88';
+        const APP_RELEASED_AT = 1790870880000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
