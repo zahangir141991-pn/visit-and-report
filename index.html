@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-10-04-upload-clock-minimal-v94">
+    <meta name="dms-app-version" content="2026-10-04-reporting-time-reviewed-v95">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -866,6 +866,10 @@ body:has(#view-kyc-status.active) #app-copyright,body:has(#view-kyc-status.activ
 @media(max-width:600px){#main-app .report-upload-meta{gap:5px!important;padding:3px 0!important;margin-bottom:6px!important}#main-app .report-upload-meta .upload-meta-heading{display:none!important}#main-app .report-upload-meta .upload-meta-stamp{font-size:10px!important}#main-app .report-upload-meta .upload-meta-age strong{font-size:13px!important}}
 @media(max-width:340px){#main-app .report-upload-meta .upload-meta-icon{display:none!important}#main-app .report-upload-meta .upload-meta-stamp{font-size:9px!important}#main-app .report-upload-meta .upload-meta-age strong{font-size:12px!important}}
 </style>
+<style id="reporting-time-label-v95">
+#main-app .report-upload-meta .upload-meta-heading{display:flex!important;letter-spacing:0!important;font-size:9px!important;text-transform:none!important;white-space:nowrap;color:#64748b}
+@media(max-width:600px){#main-app .report-upload-meta .upload-meta-content{gap:3px 6px!important}#main-app .report-upload-meta .upload-meta-heading{font-size:8px!important}}
+</style>
 </head>
 <body style="margin:0;background:#f8fafc;color:#0f172a;min-height:100vh;">
 <header id="app-header" style="display:block;background:#2563eb;color:#fff;padding:18px 20px;text-align:center;">
@@ -1566,8 +1570,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-10-04-upload-clock-minimal-v94';
-        const APP_RELEASED_AT = 1791105060000;
+        const APP_CACHE_VERSION = '2026-10-04-reporting-time-reviewed-v95';
+        const APP_RELEASED_AT = 1791106041000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -1950,7 +1954,15 @@ body.app-logged-in #view-login{display:none!important}
         // privacy-safe multi-device login detection.
         const DEVICE_ID_KEY = 'dms_private_device_id_v1';
         let loginHeartbeatTimer = null, adminLoginSessionsRef = null, adminLoginAlertRef = null, registeredLoginUser = '';
-        function getDeviceId(){try{let id=localStorage.getItem(DEVICE_ID_KEY);if(!id){id=(self.crypto&&crypto.randomUUID)?crypto.randomUUID():'dev-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12);localStorage.setItem(DEVICE_ID_KEY,id);}return id;}catch(_){return 'session-'+Math.random().toString(36).slice(2,14);}}
+        let memoryDeviceId='';
+        function getDeviceId(){
+            if(memoryDeviceId)return memoryDeviceId;
+            try{const stored=localStorage.getItem(DEVICE_ID_KEY);if(stored){memoryDeviceId=stored;return stored;}}catch(_){}
+            memoryDeviceId=(self.crypto&&crypto.randomUUID)?crypto.randomUUID():'dev-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12);
+            try{localStorage.setItem(DEVICE_ID_KEY,memoryDeviceId);}catch(_){}
+            return memoryDeviceId;
+        }
+
         function getDeviceLabel(){const ua=String(navigator.userAgent||''),p=/Android/i.test(ua)?'Android':(/iPhone|iPad|iPod/i.test(ua)?'iPhone/iPad':(/Windows/i.test(ua)?'Windows':(/Macintosh|Mac OS/i.test(ua)?'Mac':(/Linux/i.test(ua)?'Linux':'Other')))),b=/Edg\//i.test(ua)?'Edge':(/OPR\//i.test(ua)?'Opera':(/Firefox\//i.test(ua)?'Firefox':(/CriOS|Chrome\//i.test(ua)?'Chrome':(/Safari\//i.test(ua)?'Safari':'Browser'))));return p+' · '+b;}
         function loginTimeText(ts=Date.now()){return new Date(Number(ts)||Date.now()).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true});}
         function stopLoginHeartbeat(){if(loginHeartbeatTimer)clearInterval(loginHeartbeatTimer);loginHeartbeatTimer=null;}
@@ -2143,7 +2155,7 @@ body.app-logged-in #view-login{display:none!important}
                 const raw = await firebaseValueOnce('morning_report_current');
                 const data = await resolveChunkedReport('morning', raw);
                 if (data?.headers && data?.rows) {
-                    try { localStorage.setItem('morning_report_current', JSON.stringify(data)); } catch (_) {}
+                    try { if(!isOlderUploadedReport(data,fullMorningReport))localStorage.setItem('morning_report_current', JSON.stringify(data)); } catch (_) {}
                     applyMorningReportData(data, 'latest server');
                 }
                 return true;
@@ -2155,13 +2167,13 @@ body.app-logged-in #view-login{display:none!important}
                 const loads = [];
                 loads.push(resolveChunkedReport('afternoon', afternoonRaw).then(data => {
                     if (data?.headers && data?.rows) {
-                        try { localStorage.setItem('afternoon_report_current', JSON.stringify(data)); } catch (_) {}
+                        try { if(!isOlderUploadedReport(data,fullAfternoonReport))localStorage.setItem('afternoon_report_current', JSON.stringify(data)); } catch (_) {}
                         applyAfternoonReportData(data, 'latest server');
                     }
                 }));
                 loads.push(resolveChunkedReport('morning', morningRaw).then(data => {
                     if (data?.headers && data?.rows) {
-                        try { localStorage.setItem('morning_report_current', JSON.stringify(data)); } catch (_) {}
+                        try { if(!isOlderUploadedReport(data,fullMorningReport))localStorage.setItem('morning_report_current', JSON.stringify(data)); } catch (_) {}
                         applyMorningReportData(data, 'latest server');
                     }
                 }));
@@ -2245,13 +2257,13 @@ body.app-logged-in #view-login{display:none!important}
 
             const morningTask = firebaseRestReadFresh('morning_report_current').then(raw => resolveChunkedReport('morning', raw)).then(data => {
                 if (data?.headers && data?.rows) {
-                    try { localStorage.setItem('morning_report_current', JSON.stringify(data)); } catch (_) {}
+                    try { if(!isOlderUploadedReport(data,fullMorningReport))localStorage.setItem('morning_report_current', JSON.stringify(data)); } catch (_) {}
                     applyMorningReportData(data, 'login server sync');
                 }
             });
             const afternoonTask = firebaseRestReadFresh('afternoon_report_current').then(raw => resolveChunkedReport('afternoon', raw)).then(data => {
                 if (data?.headers && data?.rows) {
-                    try { localStorage.setItem('afternoon_report_current', JSON.stringify(data)); } catch (_) {}
+                    try { if(!isOlderUploadedReport(data,fullAfternoonReport))localStorage.setItem('afternoon_report_current', JSON.stringify(data)); } catch (_) {}
                     applyAfternoonReportData(data, 'login server sync');
                 }
             });
@@ -2527,7 +2539,7 @@ body.app-logged-in #view-login{display:none!important}
             const newPass = newInput ? newInput.value.trim() : '';
             const confirmPass = confirmInput ? confirmInput.value.trim() : '';
             let oldPasswordOk=false;
-            try{const auth=await readCloudAuth(currentUser);oldPasswordOk=auth&&auth.passwordHash?(await hashPassword(oldPass,currentUser))===String(auth.passwordHash):String(userPasswords[currentUser]||'')===String(oldPass);}catch(_){oldPasswordOk=String(userPasswords[currentUser]||'')===String(oldPass);}
+            try{const auth=await readCloudAuth(currentUser);oldPasswordOk=auth&&auth.passwordHash?(await hashPassword(oldPass,currentUser))===String(auth.passwordHash):String(userPasswords[currentUser]||'')===String(oldPass);}catch(_){alert('Old Password যাচাই করা যায়নি। Internet ঠিক করে আবার চেষ্টা করুন।');return;}
             if (!currentUser || !oldPasswordOk) {
                 alert('Old Password সঠিক নয়।');
                 if (oldInput) { oldInput.focus(); oldInput.select(); }
@@ -4115,7 +4127,7 @@ body.app-logged-in #view-login{display:none!important}
             if (page) {
                 page.classList.remove('hidden');
                 page.classList.add('active');
-                page.setAttribute('aria-hidden', 'false');
+                page.setAttribute('aria-hidden', 'false');syncReportUploadClock();
             }
 
             const navId = tab === 'change-pass' ? 'nav-settings' : ((tab === 'daily' || tab === 'form') ? 'nav-visit' : ((tab === 'morning-upload' || tab === 'morning-report' || tab === 'afternoon-upload' || tab === 'afternoon-report' || tab === 'assignment-upload') ? 'nav-reports' : ((tab === 'kyc-collection' || tab === 'kyc-status') ? 'nav-kyc' : 'nav-' + tab)));
@@ -5257,7 +5269,7 @@ async function saveMorningExcel(){
     
     try{
         const saved=await saveReportInParallelChunks('morning',payload);try{localStorage.setItem('morning_report_current',JSON.stringify(saved));}catch(_){}applyMorningReportData(saved,'saved cloud');
-        setMorningStatus('morning-upload-preview',`Upload successful. ${pendingMorningExcel.rows.length} rows saved. Previous Morning Excel has been replaced.`,'ok');
+        setMorningStatus('morning-upload-preview',`Upload successful. ${payload.rows.length} rows saved. Previous Morning Excel has been replaced.`,'ok');
         completeUploadProgress('Morning Report uploaded successfully');
     }catch(err){
         failUploadProgress('Morning Report upload failed');
@@ -5273,7 +5285,9 @@ function canSeeMorningRow(row, headers){
 }
 function applyMorningReportData(data,source){
     if(!data||!Array.isArray(data.headers)||!Array.isArray(data.rows))return false;
+    if(isOlderUploadedReport(data,fullMorningReport))return false;
     fullMorningReport=data;
+    try{localStorage.setItem('morning_report_current',JSON.stringify(data));}catch(_){}
     const scoped=data.rows.filter(row=>Array.isArray(row)&&canSeeMorningRow(row,data.headers));
     currentMorningReport={headers:data.headers,rows:scoped,fileName:data.fileName||'',uploadedBy:data.uploadedBy||'',uploadedAt:data.uploadedAt||0};
     populateMorningFilters();
@@ -5293,14 +5307,14 @@ function startMorningReportRealtime(){
         resolveChunkedReport('morning',raw).then(data=>{
             if(token!==morningRealtimeToken)return;
             if(data&&Array.isArray(data.headers)&&Array.isArray(data.rows)){
-                try{localStorage.setItem('morning_report_current',JSON.stringify(data));}catch(e){}
+                try{if(!isOlderUploadedReport(data,fullMorningReport))localStorage.setItem('morning_report_current',JSON.stringify(data));}catch(e){}
                 applyMorningReportData(data,'live cloud');
             }else{
                 fullMorningReport=null;currentMorningReport={headers:[],rows:[]};try{localStorage.removeItem('morning_report_current');}catch(_){}populateMorningFilters();renderMorningReport();
                 setMorningStatus('morning-report-status','No Morning Excel file was found.','error');
             }
         }).catch(e=>setMorningStatus('morning-report-status','Morning data load failed: '+e.message,'error'));
-    },e=>setMorningStatus('morning-report-status','Live Morning Report connection failed: '+e.message,'error'));
+    },e=>{ref.off();if(morningReportRealtimeRef===ref)morningReportRealtimeRef=null;setMorningStatus('morning-report-status','Live Morning Report connection failed: '+e.message,'error');});
     return true;
 }
 async function loadMorningReport(){
@@ -5593,7 +5607,7 @@ async function saveAfternoonExcel(){
     
     try{
         const saved=await saveReportInParallelChunks('afternoon',payload);try{localStorage.setItem('afternoon_report_current',JSON.stringify(saved));}catch(_){}applyAfternoonReportData(saved,'saved cloud');
-        setMorningStatus('afternoon-upload-preview',`Upload successful. ${pendingAfternoonExcel.rows.length} rows saved. Previous file was replaced.`,'ok');
+        setMorningStatus('afternoon-upload-preview',`Upload successful. ${payload.rows.length} rows saved. Previous file was replaced.`,'ok');
         completeUploadProgress('Afternoon/Evening Report uploaded successfully');
     }catch(err){failUploadProgress('Afternoon/Evening upload failed');setMorningStatus('afternoon-upload-preview','Upload failed: '+err.message,'error');}
     finally{if(btn)btn.disabled=false;}
@@ -5607,7 +5621,9 @@ function canSeeAfternoonRow(row,headers){
 }
 function applyAfternoonReportData(data,source){
     if(!data||!Array.isArray(data.headers)||!Array.isArray(data.rows))return false;
+    if(isOlderUploadedReport(data,fullAfternoonReport))return false;
     fullAfternoonReport=data;
+    try{localStorage.setItem('afternoon_report_current',JSON.stringify(data));}catch(_){}
     // Rows come only from Afternoon/Evening upload; AGENT TYPE is joined live from Morning by AGENT number.
     const scoped=data.rows.filter(row=>Array.isArray(row)&&canSeeAfternoonRow(row,data.headers));
     currentAfternoonReport={headers:data.headers,rows:scoped,fileName:data.fileName||'',uploadedAt:data.uploadedAt||0};
@@ -5624,14 +5640,14 @@ function startAfternoonReportRealtime(){
         resolveChunkedReport('afternoon',raw).then(data=>{
             if(token!==afternoonRealtimeToken)return;
             if(data&&Array.isArray(data.headers)&&Array.isArray(data.rows)){
-                try{localStorage.setItem('afternoon_report_current',JSON.stringify(data));}catch(e){}
+                try{if(!isOlderUploadedReport(data,fullAfternoonReport))localStorage.setItem('afternoon_report_current',JSON.stringify(data));}catch(e){}
                 applyAfternoonReportData(data,'live cloud');
             }else{
                 fullAfternoonReport=null;currentAfternoonReport={headers:[],rows:[]};try{localStorage.removeItem('afternoon_report_current');}catch(_){}populateAfternoonFilters();renderAfternoonReport();
                 setMorningStatus('afternoon-report-status','No Afternoon/Evening Excel file was found.','error');
             }
         }).catch(e=>setMorningStatus('afternoon-report-status','Afternoon/Evening data load failed: '+e.message,'error'));
-    },e=>setMorningStatus('afternoon-report-status','Live Afternoon/Evening connection failed: '+e.message,'error'));
+    },e=>{ref.off();if(afternoonReportRealtimeRef===ref)afternoonReportRealtimeRef=null;setMorningStatus('afternoon-report-status','Live Afternoon/Evening connection failed: '+e.message,'error');});
     return true;
 }
 async function loadAfternoonReport(){
@@ -6282,11 +6298,17 @@ function paintReportUploadClock(){
  });
 }
 function syncReportUploadClock(){
- if(document.hidden||!currentUser){if(reportUploadClockTimer)clearInterval(reportUploadClockTimer);reportUploadClockTimer=null;return;}
+ const hasVisiblePanel=Array.from(document.querySelectorAll('[data-report-upload-meta]')).some(panel=>!panel.classList.contains('hidden')&&panel.closest('.page')?.classList.contains('active'));
+ if(document.hidden||!currentUser||!hasVisiblePanel){if(reportUploadClockTimer)clearInterval(reportUploadClockTimer);reportUploadClockTimer=null;return;}
  paintReportUploadClock();if(!reportUploadClockTimer)reportUploadClockTimer=setInterval(paintReportUploadClock,1000);
 }
 document.addEventListener('visibilitychange',syncReportUploadClock);
 window.addEventListener('focus',syncReportUploadClock);
+
+function isOlderUploadedReport(candidate,current){
+ const previous=Number(current&&current.uploadedAt),incoming=Number(candidate&&candidate.uploadedAt);
+ return Number.isFinite(previous)&&previous>0&&(!Number.isFinite(incoming)||incoming<=0||incoming<previous);
+}
 </script>
 
 </body>
