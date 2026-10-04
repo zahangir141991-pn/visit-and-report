@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-10-01-kyc-rejection-card-v91">
+    <meta name="dms-app-version" content="2026-10-04-upload-clock-v92">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -825,6 +825,26 @@ body:has(#view-kyc-status.active) #app-copyright,body:has(#view-kyc-status.activ
 #main-app:has(#view-kyc-status.active){padding-bottom:3px!important}
 </style>
 <style>#main-app .kyc-summary>.card:nth-child(6){--kpi-color:#dc2626;--kpi-tint:#fef2f2}</style>
+
+<style id="report-upload-clock-style">
+#main-app .report-upload-meta{--upload-accent:#2563eb;display:flex;align-items:center;gap:13px;padding:13px 16px;margin:0 0 13px;border:1px solid #dce7f9;border-radius:16px;background:linear-gradient(115deg,#eff6ff 0%,#fff 56%,#f5f3ff 100%);box-shadow:0 4px 15px rgba(37,99,235,.045);min-width:0;text-align:left}
+#main-app .report-upload-meta[data-report-upload-meta="afternoon"]{--upload-accent:#7c3aed;border-color:#e9e2fb;background:linear-gradient(115deg,#f5f3ff 0%,#fff 56%,#eff6ff 100%)}
+#main-app .report-upload-meta.hidden{display:none!important}
+.upload-meta-icon{width:42px;height:42px;flex:0 0 42px;display:grid;place-items:center;border:1px solid #dbeafe;border-radius:13px;background:#fff;color:var(--upload-accent);box-shadow:0 2px 6px rgba(15,23,42,.025)}
+.upload-meta-icon svg{width:25px;height:25px}
+.upload-meta-content{flex:1;min-width:0}
+.upload-meta-heading{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:5px;color:#64748b;font-size:9px;font-weight:750;letter-spacing:.09em}
+.upload-meta-live{display:inline-flex;align-items:center;gap:5px;padding:3px 6px;border:1px solid #bbf7d0;border-radius:20px;background:#f0fdf4;color:#15803d;font-size:8px;letter-spacing:.05em}
+.upload-meta-live i{width:5px;height:5px;border-radius:50%;background:#22c55e}
+.upload-meta-stamp{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;font-size:13px;line-height:1.4;font-weight:750;color:#24344e;font-variant-numeric:tabular-nums}
+.upload-meta-zone{font-size:8px;letter-spacing:.05em;font-weight:650;color:#94a3b8}
+.upload-meta-file{margin-top:4px;font-size:10px;color:#64748b;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.upload-meta-age{flex:0 0 auto;min-width:142px;padding:0 0 0 16px;border-left:1px solid #dce5f2;text-align:right}
+.upload-meta-age>span{display:block;color:#64748b;font-size:10px;font-weight:600;line-height:1.4}
+.upload-meta-age strong{display:block;margin:3px 0 1px;color:var(--upload-accent);font-size:24px;font-weight:800;line-height:1.2;font-variant-numeric:tabular-nums;letter-spacing:.035em}
+.upload-meta-age small{display:block;color:#94a3b8;font-size:8px}
+@media(max-width:600px){#main-app .report-upload-meta{padding:11px 12px;gap:10px;flex-wrap:wrap;border-radius:13px}.upload-meta-icon{width:35px;height:35px;flex-basis:35px;border-radius:11px}.upload-meta-icon svg{width:22px;height:22px}.upload-meta-stamp{font-size:12px}.upload-meta-age{width:100%;min-width:0;display:grid;grid-template-columns:1fr auto;border-left:0;border-top:1px solid #e2e8f0;padding:9px 0 0;margin-top:1px;text-align:left;align-items:center;gap:0 8px}.upload-meta-age strong{grid-column:2;grid-row:1/3;margin:0;font-size:22px}.upload-meta-age small{grid-column:1}.upload-meta-heading{gap:6px;font-size:8px}}
+</style>
 </head>
 <body style="margin:0;background:#f8fafc;color:#0f172a;min-height:100vh;">
 <header id="app-header" style="display:block;background:#2563eb;color:#fff;padding:18px 20px;text-align:center;">
@@ -1161,6 +1181,11 @@ body.app-logged-in #view-login{display:none!important}
             <!-- Morning Excel Upload -->
             <div id="view-morning-upload" class="page">
                 <div class="section-head"><div><h2>Morning Excel File Upload</h2><small style="color:#64748b">Admin uploads the latest Morning Report data</small></div></div>
+                <section class="report-upload-meta hidden" data-report-upload-meta="morning" aria-label="Report upload date and elapsed time">
+                    <div class="upload-meta-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                    <div class="upload-meta-content"><div class="upload-meta-heading"><span>LAST UPLOAD</span><span class="upload-meta-live"><i></i> LIVE TIMER</span></div><div class="upload-meta-stamp"><time data-upload-stamp></time><span class="upload-meta-zone">BD TIME</span></div><div class="upload-meta-file" data-upload-file></div></div>
+                    <div class="upload-meta-age"><span>Upload-এর পর কেটেছে</span><strong data-upload-age role="timer" aria-live="off">00:00:00</strong><small data-upload-age-note>ঘণ্টা : মিনিট : সেকেন্ড</small></div>
+                </section>
                 <div class="card" style="text-align:left;max-width:760px;margin:0 auto 16px">
                     <div class="morning-actions">
                         <div><label>Excel File (.xlsx / .xls / .csv)</label><input type="file" id="morning-excel-file" accept=".xlsx,.xls,.csv" onchange="previewMorningExcel(this)"></div>
@@ -1176,6 +1201,11 @@ body.app-logged-in #view-login{display:none!important}
             <!-- Morning Report -->
             <div id="view-morning-report" class="page">
                 <div class="section-head"><div><h2>Morning Report</h2><small style="color:#64748b">DSO-wise Morning Report</small></div></div>
+                <section class="report-upload-meta hidden" data-report-upload-meta="morning" aria-label="Report upload date and elapsed time">
+                    <div class="upload-meta-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                    <div class="upload-meta-content"><div class="upload-meta-heading"><span>LAST UPLOAD</span><span class="upload-meta-live"><i></i> LIVE TIMER</span></div><div class="upload-meta-stamp"><time data-upload-stamp></time><span class="upload-meta-zone">BD TIME</span></div><div class="upload-meta-file" data-upload-file></div></div>
+                    <div class="upload-meta-age"><span>Upload-এর পর কেটেছে</span><strong data-upload-age role="timer" aria-live="off">00:00:00</strong><small data-upload-age-note>ঘণ্টা : মিনিট : সেকেন্ড</small></div>
+                </section>
                 <div id="morning-filter-card" class="card compact-filter-panel" style="text-align:left;margin-bottom:14px">
                     <div class="morning-actions">
                         <div><label>DSS</label><select id="morning-report-dss" onchange="populateMorningDsoFilter();renderMorningReport()"><option value="">All DSS</option></select></div>
@@ -1200,6 +1230,11 @@ body.app-logged-in #view-login{display:none!important}
             <!-- Afternoon / Evening Excel Upload -->
             <div id="view-afternoon-upload" class="page">
                 <div class="section-head"><div><h2>Afternoon/Evening Excel Upload</h2><small style="color:#64748b">Admin uploads the latest Afternoon/Evening Report data</small></div></div>
+                <section class="report-upload-meta hidden" data-report-upload-meta="afternoon" aria-label="Report upload date and elapsed time">
+                    <div class="upload-meta-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                    <div class="upload-meta-content"><div class="upload-meta-heading"><span>LAST UPLOAD</span><span class="upload-meta-live"><i></i> LIVE TIMER</span></div><div class="upload-meta-stamp"><time data-upload-stamp></time><span class="upload-meta-zone">BD TIME</span></div><div class="upload-meta-file" data-upload-file></div></div>
+                    <div class="upload-meta-age"><span>Upload-এর পর কেটেছে</span><strong data-upload-age role="timer" aria-live="off">00:00:00</strong><small data-upload-age-note>ঘণ্টা : মিনিট : সেকেন্ড</small></div>
+                </section>
                 <div class="card" style="text-align:left;max-width:760px;margin:0 auto 16px">
                     <div class="morning-actions">
                         <div><label>Excel File (.xlsx / .xls / .csv)</label><input type="file" id="afternoon-excel-file" accept=".xlsx,.xls,.csv" onchange="previewAfternoonExcel(this)"></div>
@@ -1228,6 +1263,11 @@ body.app-logged-in #view-login{display:none!important}
             <!-- Afternoon / Evening Report -->
             <div id="view-afternoon-report" class="page">
                 <div class="section-head"><div><h2>Afternoon/Evening Report</h2><small style="color:#64748b">DSO-wise Afternoon/Evening Report</small></div></div>
+                <section class="report-upload-meta hidden" data-report-upload-meta="afternoon" aria-label="Report upload date and elapsed time">
+                    <div class="upload-meta-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                    <div class="upload-meta-content"><div class="upload-meta-heading"><span>LAST UPLOAD</span><span class="upload-meta-live"><i></i> LIVE TIMER</span></div><div class="upload-meta-stamp"><time data-upload-stamp></time><span class="upload-meta-zone">BD TIME</span></div><div class="upload-meta-file" data-upload-file></div></div>
+                    <div class="upload-meta-age"><span>Upload-এর পর কেটেছে</span><strong data-upload-age role="timer" aria-live="off">00:00:00</strong><small data-upload-age-note>ঘণ্টা : মিনিট : সেকেন্ড</small></div>
+                </section>
                 <div id="afternoon-filter-card" class="card compact-filter-panel" style="text-align:left;margin-bottom:14px">
                     <div class="morning-actions">
                         <div><label>DSS</label><select id="afternoon-report-dss" onchange="populateAfternoonDsoFilter();renderAfternoonReport()"><option value="">All DSS</option></select></div>
@@ -1505,8 +1545,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-10-01-kyc-rejection-card-v91';
-        const APP_RELEASED_AT = 1790872860000;
+        const APP_CACHE_VERSION = '2026-10-04-upload-clock-v92';
+        const APP_RELEASED_AT = 1791104160000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -2285,7 +2325,7 @@ body.app-logged-in #view-login{display:none!important}
 
             // Login itself must never depend on Firebase/network/table loading.
             // Enter the app first, then initialize optional data services safely.
-            appSessionGeneration++;currentUser = user;
+            appSessionGeneration++;currentUser = user;syncReportUploadClock();
             mustChangeDefaultPassword = cloudAuth&&typeof cloudAuth.forceChange==='boolean'?cloudAuth.forceChange:(pass==='1234');
             clearRuntimeDataCaches();
             document.body.classList.add('app-logged-in');
@@ -2422,7 +2462,7 @@ body.app-logged-in #view-login{display:none!important}
             stopServerUpdatePolling();
             markCurrentLoginOffline();
             lastServerUpdateSignature = '';
-            currentUser = null;
+            currentUser = null;syncReportUploadClock();
             mustChangeDefaultPassword = false;
             initializedLoginUser = '';
             document.body.classList.remove('app-logged-in');
@@ -5004,10 +5044,12 @@ async function saveReportInParallelChunks(reportType,payload){
     await Promise.all(parts.map(part=>firebaseRestWrite(part.path,part.body,'PUT',(loaded,total)=>{part.loaded=total?Math.min(loaded,total):loaded;updateActual();})));
     const meta=Object.assign({},payload,{rows:[],chunked:true,chunkRoot,chunkCount:chunks.length,rowCount:rows.length,schemaVersion:3});
     paintUploadProgress(97,'Final data confirmation...');
-    await firebaseRestWrite(reportType+'_report_current',JSON.stringify(meta),'PUT');
+    const savedResponse=await firebaseRestWrite(reportType+'_report_current',JSON.stringify(meta),'PUT');
+    let savedMeta=meta;try{const parsed=JSON.parse(savedResponse);if(parsed&&Number.isFinite(Number(parsed.uploadedAt))&&Number(parsed.uploadedAt)>0)savedMeta=parsed;}catch(_){}
+    if(!Number.isFinite(Number(savedMeta.uploadedAt))||Number(savedMeta.uploadedAt)<=0)savedMeta=Object.assign({},savedMeta,{uploadedAt:Date.now()});
     await firebaseRestWrite('dms_live_update_signal',JSON.stringify({type:reportType,revision:Date.now(),uploadId}),'PUT',null,8000).catch(e=>console.warn('Report saved; update signal unavailable:',e));
     paintUploadProgress(99,'Final data confirmation...');
-    return Object.assign({},meta,{rows});
+    return Object.assign({},savedMeta,{rows});
 }
 
 function firebaseRestWrite(path,body,method='PUT',onProgress,timeoutMs=45000){
@@ -5193,7 +5235,7 @@ async function saveMorningExcel(){
     // open Morning Report immediately even while Firebase is syncing.
     
     try{
-        const saved=await saveReportInParallelChunks('morning',payload);try{localStorage.setItem('morning_report_current',JSON.stringify({...saved,uploadedAt:Date.now()}));}catch(_){}applyMorningReportData({...saved,uploadedAt:Date.now()},'saved cloud');
+        const saved=await saveReportInParallelChunks('morning',payload);try{localStorage.setItem('morning_report_current',JSON.stringify(saved));}catch(_){}applyMorningReportData(saved,'saved cloud');
         setMorningStatus('morning-upload-preview',`Upload successful. ${pendingMorningExcel.rows.length} rows saved. Previous Morning Excel has been replaced.`,'ok');
         completeUploadProgress('Morning Report uploaded successfully');
     }catch(err){
@@ -5339,6 +5381,7 @@ function morningDsoWallet(row,map){
     return morningDsoWallet.index.get(agent)||'';
 }
 function renderMorningReport(){
+    updateReportUploadMeta('morning',currentMorningReport);
     const headers=currentMorningReport.headers||[], rows=currentMorningReport.rows||[];
     const map=morningColumnMap(headers);
     const dssValue=String((document.getElementById('morning-report-dss')||{}).value||'').trim().toUpperCase();
@@ -5528,7 +5571,7 @@ async function saveAfternoonExcel(){
     const payload={headers:pendingAfternoonExcel.headers,rows:pendingAfternoonExcel.rows,fileName:pendingAfternoonExcel.fileName,sheetName:pendingAfternoonExcel.sheetName,uploadedBy:String(currentUser||''),uploadedAt:firebase.database.ServerValue.TIMESTAMP,rowCount:pendingAfternoonExcel.rows.length,schemaVersion:1};
     
     try{
-        const saved=await saveReportInParallelChunks('afternoon',payload);try{localStorage.setItem('afternoon_report_current',JSON.stringify({...saved,uploadedAt:Date.now()}));}catch(_){}applyAfternoonReportData({...saved,uploadedAt:Date.now()},'saved cloud');
+        const saved=await saveReportInParallelChunks('afternoon',payload);try{localStorage.setItem('afternoon_report_current',JSON.stringify(saved));}catch(_){}applyAfternoonReportData(saved,'saved cloud');
         setMorningStatus('afternoon-upload-preview',`Upload successful. ${pendingAfternoonExcel.rows.length} rows saved. Previous file was replaced.`,'ok');
         completeUploadProgress('Afternoon/Evening Report uploaded successfully');
     }catch(err){failUploadProgress('Afternoon/Evening upload failed');setMorningStatus('afternoon-upload-preview','Upload failed: '+err.message,'error');}
@@ -5597,6 +5640,7 @@ function populateAfternoonDsoFilter(){
     if(role.role==='DSO'){const own=normalizeScopeWallet(role.dsoWallet);select.innerHTML='<option value="'+escapeMorningHtml(own)+'">'+escapeMorningHtml(own)+'</option>';select.value=own;select.disabled=true;}else{select.disabled=false;if(values.includes(current))select.value=current;}
 }
 function renderAfternoonReport(){
+    updateReportUploadMeta('afternoon',currentAfternoonReport);
     const headers=currentAfternoonReport.headers||[],rows=currentAfternoonReport.rows||[],map=afternoonColumnMap(headers);
     const role=getRoleInfo(),dss=String((document.getElementById('afternoon-report-dss')||{}).value||'').trim().toUpperCase(),dso=normalizeScopeWallet((document.getElementById('afternoon-report-dso')||{}).value||'');
     const type=String((document.getElementById('afternoon-report-agent-type')||{}).value||'all');
@@ -6184,6 +6228,44 @@ function closeDmsAttendance(){if(attendanceRequestController){attendanceRequestC
 function openDmsAttendance(){if(!currentUser||!['Admin','DM'].includes(getRoleInfo().role)){alert('Attendance পরিচালনার জন্য Admin বা DM দিয়ে লগইন করুন।');return}if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return}if(location.protocol==='file:'){alert('DMS ও attendance.html একই GitHub/Firebase Hosting-এ আপলোড করে খুলুন।');return}document.getElementById('dms-attendance-shell').classList.add('open');document.getElementById('dms-attendance-frame').src='attendance.html';}
 window.addEventListener('message',async event=>{const frame=document.getElementById('dms-attendance-frame');if(event.origin!==location.origin||event.source!==frame.contentWindow)return;const msg=event.data||{};if(msg.type==='DMS_ATTENDANCE_CLOSE'){closeDmsAttendance();return}if(msg.type!=='DMS_ATTENDANCE_READY')return;const generation=appSessionGeneration;const user=currentUser;const reply=data=>{if(frame.contentWindow&&generation===appSessionGeneration&&user===currentUser)frame.contentWindow.postMessage(data,location.origin)};
 try{if(!user||mustChangeDefaultPassword||!['Admin','DM'].includes(getRoleInfo().role))throw Error('DMS-এর Admin/DM লগইন প্রয়োজন।');const config=await fetch('attendance-connection.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('attendance-connection.json পাওয়া যায়নি');return r.json()});if(!config.tokenEndpoint||!config.tokenEndpoint.startsWith('https://'))throw Error('Attendance সার্ভারের URL attendance-connection.json-এ বসান। সেটআপের ধাপ README_BN.md-তে আছে।');attendanceRequestController=new AbortController();const timer=setTimeout(()=>attendanceRequestController?.abort(),15000);let response;try{response=await fetch(config.tokenEndpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:user,password:String(userPasswords[user]||'')}),signal:attendanceRequestController.signal})}finally{clearTimeout(timer)}const data=await response.json();if(!response.ok||!data.token)throw Error(data.error||'Attendance অনুমতি যাচাই হয়নি।');reply({type:'DMS_ATTENDANCE_TOKEN',token:data.token,identity:{userId:user,role:getRoleInfo().role}})}catch(error){reply({type:'DMS_ATTENDANCE_ERROR',message:error.name==='AbortError'?'Attendance সার্ভার সময়মতো উত্তর দেয়নি। আবার খুলুন।':error.message})}});
+
+/* Upload timestamps use the saved server time. A single local ticker makes
+   elapsed time advance without reloading reports or requesting the database. */
+const reportUploadMetaState={morning:{stamp:0,key:''},afternoon:{stamp:0,key:''}};
+let reportUploadClockTimer=null;
+function formatUploadElapsed(uploadedAt,now=Date.now()){
+ const total=Math.max(0,Math.floor((now-uploadedAt)/1000)),days=Math.floor(total/86400);
+ const h=String(Math.floor(total%86400/3600)).padStart(2,'0'),m=String(Math.floor(total%3600/60)).padStart(2,'0'),sec=String(total%60).padStart(2,'0');
+ return (days?days+' দিন · ':'')+h+':'+m+':'+sec;
+}
+function updateReportUploadMeta(report,data){
+ const state=reportUploadMetaState[report];if(!state)return;
+ const stamp=Number(data&&data.uploadedAt),valid=Number.isFinite(stamp)&&stamp>0&&Number.isFinite(new Date(stamp).getTime());
+ const panels=document.querySelectorAll('[data-report-upload-meta="'+report+'"]');
+ if(!valid){state.stamp=0;state.key='';panels.forEach(panel=>panel.classList.add('hidden'));return;}
+ state.stamp=stamp;
+ const filename=String(data.fileName||''),key=stamp+'|'+filename;
+ if(state.key!==key){
+  state.key=key;
+  const date=new Date(stamp),dateText=date.toLocaleDateString('en-GB',{timeZone:'Asia/Dhaka',day:'2-digit',month:'short',year:'numeric'}),timeText=date.toLocaleTimeString('en-GB',{timeZone:'Asia/Dhaka',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});
+  panels.forEach(panel=>{const time=panel.querySelector('[data-upload-stamp]');time.textContent=dateText+' · '+timeText.toUpperCase();time.dateTime=date.toISOString();const file=panel.querySelector('[data-upload-file]');file.textContent=filename;file.title=filename;file.hidden=!filename;});
+ }
+ panels.forEach(panel=>panel.classList.remove('hidden'));paintReportUploadClock();syncReportUploadClock();
+}
+function paintReportUploadClock(){
+ if(document.hidden||!currentUser)return;
+ const now=Date.now();document.querySelectorAll('[data-report-upload-meta]').forEach(panel=>{
+  if(panel.classList.contains('hidden')||!panel.closest('.page')?.classList.contains('active'))return;
+  const stamp=reportUploadMetaState[panel.dataset.reportUploadMeta]?.stamp;if(!stamp)return;
+  const elapsed=panel.querySelector('[data-upload-age]'),text=formatUploadElapsed(stamp,now);if(elapsed.textContent!==text)elapsed.textContent=text;
+ });
+}
+function syncReportUploadClock(){
+ if(document.hidden||!currentUser){if(reportUploadClockTimer)clearInterval(reportUploadClockTimer);reportUploadClockTimer=null;return;}
+ paintReportUploadClock();if(!reportUploadClockTimer)reportUploadClockTimer=setInterval(paintReportUploadClock,1000);
+}
+document.addEventListener('visibilitychange',syncReportUploadClock);
+window.addEventListener('focus',syncReportUploadClock);
 </script>
 
 </body>
