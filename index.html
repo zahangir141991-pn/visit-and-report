@@ -3604,25 +3604,43 @@ body.app-logged-in #view-login{display:none!important}
             return found;
         }
 
-        async function reserveDailyVisit(date, uddoktaNumber, token) {
-            // The unique-lock path was added after the original Firebase database was created.
-            // Some existing Firebase rules do not permit writes there. A rules error must NEVER
-            // block the actual Visit Report submit, so the lock is best-effort only.
-            const normalized = normalizeUddoktaNumber(uddoktaNumber);
-            const safeKey = normalized.replace(/[^0-9A-Za-z_-]/g, '_');
-            const ref = db.ref(`visit_daily_unique/${date}/${safeKey}`);
-            try {
-                const result = await ref.transaction(current => {
-                    if (current) return;
-                    return { token, user: currentUser, uddoktaNumber: normalized, reservedAt: firebase.database.ServerValue.TIMESTAMP };
-                }, undefined, false);
-                return { committed: !!result.committed, ref, supported:true };
-            } catch (err) {
-                console.warn('Daily unique lock unavailable; continuing with report duplicate check:', err);
-                return { committed:true, ref:null, supported:false };
+        async function visitRestRequest(path,method,body,headers={},timeout=15000){
+            let token='';
+            try { if(typeof firebase.auth==='function'&&firebase.auth().currentUser) token=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Auth timeout')),8000);firebase.auth().currentUser.getIdToken().then(v=>{clearTimeout(timer);resolve(v);},e=>{clearTimeout(timer);reject(e);});}); } catch(e){throw new Error('লগইন token যাচাই হয়নি। আবার লগইন করুন।');}
+            return new Promise((resolve,reject)=>{
+                const xhr=new XMLHttpRequest(),base=String(firebaseConfig.databaseURL||'').replace(/\/$/,'');
+                const clean=String(path||'').split('/').filter(Boolean).map(encodeURIComponent).join('/');
+                xhr.open(method,base+'/'+clean+'.json'+(token?'?auth='+encodeURIComponent(token):''),true);
+                xhr.timeout=timeout;xhr.setRequestHeader('Content-Type','application/json');
+                Object.entries(headers).forEach(([k,v])=>xhr.setRequestHeader(k,v));
+                xhr.onload=()=>{let data=null;try{data=JSON.parse(xhr.responseText||'null');}catch(_){}
+                    if(xhr.status>=200&&xhr.status<300||xhr.status===412)resolve({status:xhr.status,data});
+                    else {const e=new Error(xhr.status===401||xhr.status===403?'Firebase permission নেই। Database Rules পরীক্ষা করুন।':'সার্ভার save ব্যর্থ ('+xhr.status+'): '+String(data?.error||''));e.status=xhr.status;reject(e);}};
+                xhr.onerror=()=>reject(new Error('ইন্টারনেট সংযোগে সমস্যা। একই Visit আবার Submit করুন।'));
+                xhr.ontimeout=()=>reject(new Error('সার্ভারের উত্তর সময়মতো আসেনি। একই Visit আবার Submit করুন; নতুন duplicate তৈরি হবে না।'));
+                xhr.send(body==null?null:JSON.stringify(body));
+            });
+        }
+        const visitAttemptsInMemory=new Map();
+        function getVisitAttempt(date,number){
+            const key='dms-visit-attempt:'+currentUser+':'+date+':'+normalizeUddoktaNumber(number);
+            let attempt=visitAttemptsInMemory.get(key)||null;try{attempt=attempt||JSON.parse(sessionStorage.getItem(key)||'null');}catch(_){}
+            if(!attempt||!attempt.reportId||!attempt.token)attempt={reportId:Date.now()+'_'+Math.random().toString(36).slice(2,8),token:Date.now()+'_'+Math.random().toString(36).slice(2,10)};
+            visitAttemptsInMemory.set(key,attempt);
+            try{sessionStorage.setItem(key,JSON.stringify(attempt));}catch(_){}
+            return Object.assign({key},attempt);
+        }
+        async function reserveDailyVisit(date,uddoktaNumber,token,reportId){
+            const normalized=normalizeUddoktaNumber(uddoktaNumber),safeKey=normalized.replace(/[^0-9A-Za-z_-]/g,'_');
+            const path='visit_daily_unique/'+date+'/'+safeKey;
+            try{
+                const result=await visitRestRequest(path,'PUT',{token,reportId,user:currentUser,uddoktaNumber:normalized,reservedAt:firebase.database.ServerValue.TIMESTAMP},{'if-match':'null_etag'},12000);
+                return {committed:result.status!==412||result.data?.token===token,ref:null,supported:true};
+            }catch(e){
+                if(e.status===401||e.status===403){console.warn('Legacy rules do not allow the duplicate lock:',e);return {committed:true,ref:null,supported:false};}
+                throw e;
             }
         }
-
 
         function showSubmitSuccessPopup() {
             const popup = document.getElementById('submit-success-popup');
@@ -3720,7 +3738,8 @@ body.app-logged-in #view-login{display:none!important}
             btnSubmit.innerText = 'Submitting...';
 
             let dailyReservation = null;
-            const reservationToken = `${Date.now()}_${Math.random().toString(36).slice(2,10)}`;
+            const visitAttempt = getVisitAttempt(visitDateValue,visitUddoktaNumber);
+            const reservationToken = visitAttempt.token;
             try {
                 // Fast duplicate check: use already-loaded local reports first, then one atomic Firebase transaction.
                 // This removes the previous extra full-day Firebase query that made Submit slow.
@@ -3733,17 +3752,13 @@ body.app-logged-in #view-login{display:none!important}
                     showAlert('এই Uddokta-কে আজ ইতোমধ্যে Visit করা হয়েছে। একই দিনে একই Uddokta একবারের বেশি Visit করা যাবে না।', 'error');
                     return;
                 }
-                dailyReservation = await reserveDailyVisit(visitDateValue, visitUddoktaNumber, reservationToken);
+                dailyReservation = await reserveDailyVisit(visitDateValue, visitUddoktaNumber, reservationToken, visitAttempt.reportId);
                 if (!dailyReservation.committed) {
                     showAlert('এই Uddokta-কে আজ ইতোমধ্যে Visit করা হয়েছে। একই দিনে একই Uddokta একবারের বেশি Visit করা যাবে না।', 'error');
                     return;
                 }
             } catch (duplicateCheckError) {
-                // Duplicate protection is secondary to saving the report. If an old Firebase
-                // ruleset blocks the optional lock, continue and let the main database write
-                // return the real save result instead of making Submit appear broken.
-                console.warn('Optional duplicate lock skipped:', duplicateCheckError);
-                dailyReservation = { committed:true, ref:null, supported:false };
+                throw duplicateCheckError;
             } finally {
                 if (!dailyReservation || !dailyReservation.committed) {
                     btnSubmit.disabled = false;
@@ -3752,7 +3767,7 @@ body.app-logged-in #view-login{display:none!important}
                 }
             }
 
-            const reportId = `${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+            const reportId = visitAttempt.reportId;
             const newReport = {
                 id: reportId,
                 user: currentUser,
@@ -3790,7 +3805,10 @@ body.app-logged-in #view-login{display:none!important}
                 if (photoForDb) multi['visit_report_photos/' + reportId] = photoForDb;
                 if ([newReport.festoonStatus,newReport.bannerStatus,newReport.fileStatus].includes('Not OK')) multi['visit_notices/' + reportId] = buildReviewNotice(reportId,newReport);
                 multi['dms_live_update_signal'] = {type:'visit',revision:Date.now(),reportId};
-                await db.ref().update(multi);
+                await visitRestRequest('', 'PATCH', multi, {}, 25000);
+                visitAttemptsInMemory.delete(visitAttempt.key);
+                try{sessionStorage.removeItem(visitAttempt.key);}catch(_){}
+                if(!reportsData.some(r=>String(r.id||r.reportId)===reportId)) reportsData.push(newReport);
                 newReport.hasPhoto = !!photoForDb;
                 const anyNotOk = [newReport.festoonStatus,newReport.bannerStatus,newReport.fileStatus].includes('Not OK');
                 // Show success immediately after the report itself is saved. Secondary notice write runs in background.
@@ -3802,13 +3820,8 @@ body.app-logged-in #view-login{display:none!important}
                     try { if (lastGpsCoords) fetchGPS(false); } catch (gpsError) { console.warn('Auto location refresh after submit failed:', gpsError); }
                 }, 250);
             } catch (err) {
-                try {
-                    if (dailyReservation && dailyReservation.ref) {
-                        const lockSnap = await dailyReservation.ref.once('value');
-                        const lock = lockSnap.val();
-                        if (lock && lock.token === reservationToken) await dailyReservation.ref.remove();
-                    }
-                } catch (cleanupError) { console.warn('Daily visit reservation cleanup failed:', cleanupError); }
+                // Preserve the reservation and report ID: a lost response may already be saved.
+                // Retrying writes the same report atomically instead of creating a second visit.
                 showAlert('Error saving data to Firebase: ' + err.message, 'error');
             } finally {
                 btnSubmit.disabled = false;
