@@ -529,9 +529,9 @@ body:has(#view-morning-report.active) #app-copyright,body:has(#view-afternoon-re
 .report-floating-head th{height:auto;background:#dbeafe!important;text-align:center;border-right:1px solid #cfdbed;border-bottom:2px solid #93b4e4;color:#15346b;white-space:normal;font-size:.76rem;vertical-align:middle}
 .report-floating-head button{pointer-events:auto}
 
-#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card{padding:9px 11px!important;border-radius:12px!important;min-height:62px;box-shadow:0 2px 7px rgba(15,23,42,.04)!important}
+#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card{padding:8px 10px!important;border-radius:11px!important;min-height:56px;box-shadow:0 2px 7px rgba(15,23,42,.04)!important}
 #main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card span{display:block;font-size:10px!important;line-height:1.35!important;letter-spacing:.02em!important;font-weight:600!important;color:#64748b!important;text-transform:none!important}
-#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card b{font-size:19px!important;line-height:1.15!important;margin-top:5px!important;font-weight:750!important}
+#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card b{font-size:16px!important;line-height:1.2!important;margin-top:4px!important;font-weight:700!important}
 #main-app #view-morning-report .morning-summary .zero-b2b-kpi{background:#fffaf0!important;--kpi-color:#b7791f;--kpi-tint:#fffaf0}
 @media(max-width:600px){#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary{gap:6px!important}#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card{padding:8px 10px!important}}
 </style>
@@ -5238,27 +5238,17 @@ async function previewMorningExcel(input){
             const sheetName=wb.SheetNames[0]; if(!sheetName)throw new Error('No worksheet found.');
             const matrix=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:'',raw:false,blankrows:false});
             if(matrix.length<2)throw new Error('The worksheet has no data rows.');
-            const headers=matrix[0].map((v,i)=>String(v||'').trim()||('Column '+(i+1)));
+            const sourceWidth=matrix.reduce((width,row)=>Math.max(width,row.length),0);
+            const headers=Array.from({length:sourceWidth},(_,i)=>String(matrix[0][i]??'').trim()||('Column '+(i+1)));
             const width=headers.length;
-            const rows=matrix.slice(1).map(r=>headers.map((_,i)=>String((r||[])[i]??'').trim())).filter(r=>r.some(Boolean));
+            const rows=matrix.slice(1).map(r=>headers.map((_,i)=>String((r||[])[i]??''))).filter(r=>r.some(Boolean));
             if(!rows.length)throw new Error('No valid data rows found.');
             const map=morningColumnMap(headers);
             const required=['dso','agent','agentName','mtdTxn','mtdCashIn','mtdCashOut','islamicCico','lastDayTxn','balance'];
             const missing=required.filter(k=>map[k]<0).map(k=>({dso:'DSO',agent:'AGENT',agentName:'AGENTNAME',mtdTxn:'MTD_TXN',mtdCashIn:'MTD_CASH_IN',mtdCashOut:'MTD_CASH_OUT',islamicCico:'MTD ISLAMIC CICO',lastDayTxn:'LAST_DAY_TXN',balance:'BALANCE'}[k]));
             if(missing.length)throw new Error('Required column missing: '+missing.join(', '));
-            // Keep only report/access columns. Large source sheets often contain many unused
-            // columns; compacting here makes both Firebase upload and every report load faster.
-            const compactSpec=[
-                ['DSO',map.dso],['DSS',map.dss],['AGENT',map.agent],['AGENTNAME',map.agentName],
-                ['MTD_TXN',map.mtdTxn],['MTD_CASH_IN',map.mtdCashIn],['MTD_CASH_OUT',map.mtdCashOut],
-                ['MTD ISLAMIC CICO',map.islamicCico],['LAST_DAY_TXN',map.lastDayTxn],['BALANCE',map.balance],
-                ['LAST_DAY_B2BS',map.lastDayB2bs],['LAST_DAY_B2BR',map.lastDayB2br],['MTD_B2BS',map.mtdB2bs],['MTD_B2BR',map.mtdB2br]
-            ].filter(item=>item[1]>=0);
-            const compactHeaders=compactSpec.map(item=>item[0]);
-            const numericHeaders=new Set(['LAST_DAY_B2BS','LAST_DAY_B2BR','MTD_B2BS','MTD_B2BR','MTD_TXN','MTD_CASH_IN','MTD_CASH_OUT','MTD ISLAMIC CICO','LAST_DAY_TXN','BALANCE']);
-            const compactRows=rows.map(row=>compactSpec.map(item=>numericHeaders.has(item[0])?(['LAST_DAY_B2BS','LAST_DAY_B2BR','MTD_B2BS','MTD_B2BR'].includes(item[0])?parseMorningNumber(row[item[1]]):Math.round(parseMorningNumber(row[item[1]]))):row[item[1]]));
-            pendingMorningExcel={headers:compactHeaders,rows:compactRows,fileName:file.name,sheetName};
-            setMorningStatus('morning-upload-preview',`Ready: ${file.name} • ${rows.length} rows • optimized ${width} → ${compactHeaders.length} columns`,'ok');
+            pendingMorningExcel={headers,rows,fileName:file.name,sheetName};
+            setMorningStatus('morning-upload-preview',`Ready: ${file.name} • ${rows.length} rows • all ${headers.length} columns preserved`,'ok');
             if(btn)btn.disabled=false;
         }catch(err){setMorningStatus('morning-upload-preview','Could not read Excel: '+err.message,'error');}
     };
@@ -5277,8 +5267,7 @@ async function saveMorningExcel(){
     setMorningStatus('morning-upload-preview','Uploading morning data...');
     beginUploadProgress('Morning Report Upload');
     const payload={headers:pendingMorningExcel.headers,rows:pendingMorningExcel.rows,fileName:pendingMorningExcel.fileName,sheetName:pendingMorningExcel.sheetName,uploadedBy:String(currentUser||''),uploadedAt:firebase.database.ServerValue.TIMESTAMP,rowCount:pendingMorningExcel.rows.length,schemaVersion:2};
-    // Save the compact report locally before the network round-trip, so this device can
-    // open Morning Report immediately even while Firebase is syncing.
+    // Publish the complete source report only after every data chunk has been saved.
     
     try{
         const saved=await saveReportInParallelChunks('morning',payload);try{localStorage.setItem('morning_report_current',JSON.stringify(saved));}catch(_){}applyMorningReportData(saved,'saved cloud');
@@ -5606,16 +5595,15 @@ async function previewAfternoonExcel(input){
         const sheetName=wb.SheetNames[0];if(!sheetName)throw new Error('No worksheet found.');
         const matrix=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:'',raw:false,blankrows:false});
         if(matrix.length<2)throw new Error('The worksheet has no data rows.');
-        const headers=matrix[0].map((v,i)=>String(v||'').trim()||('Column '+(i+1)));
-        const rows=matrix.slice(1).map(r=>headers.map((_,i)=>String((r||[])[i]??'').trim())).filter(r=>r.some(Boolean));
+        const sourceWidth=matrix.reduce((width,row)=>Math.max(width,row.length),0);
+            const headers=Array.from({length:sourceWidth},(_,i)=>String(matrix[0][i]??'').trim()||('Column '+(i+1)));
+        const rows=matrix.slice(1).map(r=>headers.map((_,i)=>String((r||[])[i]??''))).filter(r=>r.some(Boolean));
         const map=afternoonColumnMap(headers);
         const required=['dso','agent','agentName','balance','cashIn','cashOut','totalTxn','b2bs','b2br'];
         const labels={dso:'DSO',agent:'AGENT',agentName:'AGENTNAME',balance:'BALANCE',cashIn:'CASH_IN',cashOut:'CASH_OUT',totalTxn:'TOTAL_TXN',b2bs:'B2BS_AMT',b2br:'B2BR_AMT'};
         const missing=required.filter(k=>map[k]<0).map(k=>labels[k]);if(missing.length)throw new Error('Required column missing: '+missing.join(', '));
-        const spec=required.map(k=>[labels[k],map[k]]),numeric=new Set(['BALANCE','CASH_IN','CASH_OUT','TOTAL_TXN','B2BS_AMT','B2BR_AMT']);
-        const compactRows=rows.map(row=>spec.map(item=>numeric.has(item[0])?Math.round(parseMorningNumber(row[item[1]])):String(row[item[1]]??'').trim()));
-        pendingAfternoonExcel={headers:spec.map(x=>x[0]),rows:compactRows,fileName:file.name,sheetName};
-        setMorningStatus('afternoon-upload-preview',`Ready: ${file.name} • ${compactRows.length} rows • 9 required columns verified`,'ok');
+        pendingAfternoonExcel={headers,rows,fileName:file.name,sheetName};
+        setMorningStatus('afternoon-upload-preview',`Ready: ${file.name} • ${rows.length} rows • all ${headers.length} columns preserved`,'ok');
         if(btn)btn.disabled=false;
     }catch(err){setMorningStatus('afternoon-upload-preview','Could not read Excel: '+err.message,'error');}};
     reader.onerror=()=>setMorningStatus('afternoon-upload-preview','Could not read the selected file.','error');
