@@ -1235,7 +1235,7 @@ body.app-logged-in #view-login{display:none!important}
                     <div class="morning-actions">
                         <div><label>DSS</label><select id="morning-report-dss" onchange="populateMorningDsoFilter();renderMorningReport()"><option value="">All DSS</option></select></div>
                         <div><label>DSO</label><select id="morning-report-dso" onchange="renderMorningReport()"><option value="">All DSO</option></select></div>
-                        <div><label>Uddokta Type</label><select id="morning-report-agent-type" onchange="renderMorningReport()"><option value="all">All Uddokta</option><option value="zero-b2b">ZERO B2B</option><option value="cash-in">Cash In Uddokta</option><option value="cash-out">Cash Out Uddokta</option></select></div>
+                        <div><label>Uddokta Type</label><select id="morning-report-agent-type" onchange="renderMorningReport()"><option value="all">All Uddokta</option><option value="zero-b2b">Last Day ZERO B2B</option><option value="zero-b2b-mtd">MTD ZERO B2B</option><option value="cash-in">Cash In Uddokta</option><option value="cash-out">Cash Out Uddokta</option></select></div>
                         <div><label>Uddokta Search</label><input type="search" id="morning-report-search" placeholder="Name / number search" oninput="scheduleReportRender('morning')"></div>
                         <button type="button" class="btn btn-sec hidden" id="btn-download-morning" onclick="downloadMorningReport()" disabled>📥 Download Excel</button>
                     </div>
@@ -1244,6 +1244,7 @@ body.app-logged-in #view-login{display:none!important}
                 <div class="morning-summary">
                     <div class="card"><span>AGENT COUNT</span><b id="morning-kpi-agent-count">0</b></div>
                     <div class="card"><span>TOTAL MTD_TXN</span><b id="morning-kpi-mtd">0</b></div>
+                    <div class="card"><span>Last Day ZERO B2B Count</span><b id="morning-kpi-zero-last-day">0</b></div><div class="card"><span>MTD ZERO B2B Count</span><b id="morning-kpi-zero-mtd">0</b></div>
                     <div class="card"><span>LAST_DAY_TXN</span><b id="morning-kpi-last-day-card">0</b></div>
                     <div class="card"><span>CASH OUT %</span><b id="morning-kpi-cash-out-percent">0%</b></div>
                     <div class="card"><span>CASH IN %</span><b id="morning-kpi-cash-in-percent">0%</b></div>
@@ -5050,6 +5051,10 @@ function morningColumnMap(headers){
         islamicCico: morningHeaderIndex(headers,['MTD Islamic CICO','Islamic CICO','MTD Islamic Cico','Islamic Cash In Cash Out']),
         ltdTxn: morningHeaderIndex(headers,['LTD_TXN','LTD Txn','LTD Transaction','LTD TXN Count','LTD Transaction Count']),
         lastDayTxn: morningHeaderIndex(headers,['LAST_DAY_TXN','Last Day Txn','Last Day Transaction']),
+        lastDayB2bs: morningHeaderIndex(headers,['LAST_DAY_B2BS','LAST_DAY_B2BS_AMT']),
+        lastDayB2br: morningHeaderIndex(headers,['LAST_DAY_B2BR','LAST_DAY_B2BR_AMT']),
+        mtdB2bs: morningHeaderIndex(headers,['MTD_B2BS','MTD_B2BS_AMT']),
+        mtdB2br: morningHeaderIndex(headers,['MTD_B2BR','MTD_B2BR_AMT']),
         balance: morningHeaderIndex(headers,['BALANCE','Balance','Opening Balance','Morning Balance','E-Money Balance','E Money Balance','ব্যালেন্স'])
     };
 }
@@ -5354,11 +5359,11 @@ function clearReportTableFilters(report){
     const state=reportTableUi[report];if(!state)return;state.sortKey='';state.sortDir=1;
     report==='morning'?renderMorningReport():renderAfternoonReport();
 }
-function applyReportTableUi(report,rows,cols,isZeroRow){
+function applyReportTableUi(report,rows,cols,isZeroRow,zeroTxn){
     const state=reportTableUi[report]||{sortKey:'',sortDir:1};let output=rows.slice();
     const sortCol=cols.find(c=>c.key===state.sortKey);if(sortCol)output.sort((a,b)=>{const av=sortCol.value(a),bv=sortCol.value(b),an=parseMorningNumber(av),bn=parseMorningNumber(bv),numeric=sortCol.number===true;const cmp=numeric?(an-bn):String(av).localeCompare(String(bv),undefined,{numeric:true,sensitivity:'base'});return cmp*state.sortDir;});
     // Keep ZERO B2B first even after a user sorts another column. Stable sort preserves order inside each group.
-    if(isZeroRow)output.sort((a,b)=>Number(!!isZeroRow(b))-Number(!!isZeroRow(a)));
+    if(isZeroRow)output.sort((a,b)=>{const az=!!isZeroRow(a),bz=!!isZeroRow(b);return Number(bz)-Number(az)||(az&&bz&&zeroTxn?zeroTxn(b)-zeroTxn(a):0);});
     return output;
 }
 function reportHeaderHtml(report,cols){
@@ -5369,6 +5374,13 @@ function reportCellHtml(col,row){
     const value=String(col.value(row)??''),cls=col.key==='agent'?'agent-col':(col.key==='agentName'?'agent-name-col':(col.key==='dso'?'dso-col':''));
     if(col.key==='agentName'){const short=value.length>20?value.slice(0,17).trimEnd()+'...':value;return '<td class="'+cls+'" title="'+escapeMorningHtml(value)+'"><span class="agent-name-text">'+escapeMorningHtml(short)+'</span></td>'; }
     return '<td class="'+cls+'" title="'+escapeMorningHtml(value)+'">'+escapeMorningHtml(value)+'</td>';
+}
+function isZeroB2B(row,txn,sent,received){
+    if(txn<0||sent<0||received<0)return false;
+    return parseMorningNumber(row[txn])>0 && parseMorningNumber(row[sent])+parseMorningNumber(row[received])<5000;
+}
+function morningZeroB2B(row,map,period='last-day'){
+    return period==='mtd'?isZeroB2B(row,map.mtdTxn,map.mtdB2bs,map.mtdB2br):isZeroB2B(row,map.lastDayTxn,map.lastDayB2bs,map.lastDayB2br);
 }
 function morningRatioInfo(row,map){
     const txn=map.mtdTxn>=0?parseMorningNumber(row[map.mtdTxn]):0;
@@ -5428,9 +5440,9 @@ function renderMorningReport(){
     if(dsoValue&&map.dso>=0)filtered=filtered.filter(r=>normalizeScopeWallet(r[map.dso])===dsoValue);
     if(typeValue==='cash-in')filtered=filtered.filter(r=>!morningRatioInfo(r,map).isCashOut);
     if(typeValue==='cash-out')filtered=filtered.filter(r=>morningRatioInfo(r,map).isCashOut);
-    const zeroKeys=afternoonZeroB2BAgentKeys();
-    const isMorningZero=r=>map.agent>=0&&zeroKeys.has(reportAgentKey(r[map.agent]));
-    if(typeValue==='zero-b2b')filtered=filtered.filter(isMorningZero);
+    const zeroPeriod=typeValue==='zero-b2b-mtd'?'mtd':'last-day';
+    const isMorningZero=r=>morningZeroB2B(r,map,zeroPeriod);
+    if(typeValue==='zero-b2b'||typeValue==='zero-b2b-mtd')filtered=filtered.filter(isMorningZero);
     if(q)filtered=filtered.filter(r=>[map.agent>=0?r[map.agent]:'',map.agentName>=0?r[map.agentName]:''].some(v=>String(v).toLowerCase().includes(q)));
     // Cash Out dominant agents stay at the top; within that group, higher ratio comes first.
     filtered.sort((a,b)=>{
@@ -5453,6 +5465,9 @@ function renderMorningReport(){
     const totalCashInPercent=mtd>0?(totalCashIn/mtd)*100:0;
     const formatPercent=n=>Number(n.toFixed(2)).toLocaleString('en-US',{maximumFractionDigits:2})+'%';
     set('morning-kpi-agent-count',formatMorningNumber(agents.size));
+    const zeroCount=period=>new Set(filtered.filter(r=>morningZeroB2B(r,map,period)).map((r,i)=>map.agent>=0?reportAgentKey(r[map.agent])||('__row_'+i):('__row_'+i))).size;
+    set('morning-kpi-zero-last-day',formatMorningNumber(zeroCount('last-day')));
+    set('morning-kpi-zero-mtd',formatMorningNumber(zeroCount('mtd')));
     set('morning-kpi-mtd',formatMorningNumber(mtd));
     set('morning-kpi-last-day-card',formatMorningNumber(lastDay));
     set('morning-kpi-cash-out-percent',formatPercent(totalCashOutPercent));
@@ -5471,7 +5486,7 @@ function renderMorningReport(){
         {title:'MTD ISLAMIC CICO',key:'islamicCico',number:true,value:r=>map.islamicCico>=0?formatMorningNumber(parseMorningNumber(r[map.islamicCico])):''},
         {title:'LAST_DAY_TXN',key:'lastDayTxn',number:true,value:r=>map.lastDayTxn>=0?formatMorningNumber(parseMorningNumber(r[map.lastDayTxn])):''}
     ];
-    filtered=applyReportTableUi('morning',filtered,reportCols,isMorningZero);
+    filtered=applyReportTableUi('morning',filtered,reportCols,isMorningZero,r=>parseMorningNumber(r[zeroPeriod==='mtd'?map.mtdTxn:map.lastDayTxn]));
     const table=document.getElementById('morning-report-table');if(table){table.style.setProperty('--agent-left',showWallet?'var(--dso-width)':'0px');table.style.setProperty('--name-left',showWallet?'calc(var(--dso-width) + var(--agent-width))':'var(--agent-width)');}
     if(head)head.innerHTML=reportHeaderHtml('morning',reportCols);
     if(body)body.innerHTML=filtered.length?filtered.map(r=>'<tr class="'+(isMorningZero(r)?'zero-b2b-row':'')+'">'+reportCols.map(c=>reportCellHtml(c,r)).join('')+'</tr>').join(''):'<tr><td colspan="'+reportCols.length+'">No matching data found.</td></tr>';
@@ -5541,7 +5556,7 @@ function afternoonZeroB2BAgentKeys(){
         const total=map.totalTxn>=0?parseMorningNumber(row[map.totalTxn]):0;
         const sent=map.b2bs>=0?parseMorningNumber(row[map.b2bs]):0;
         const received=map.b2br>=0?parseMorningNumber(row[map.b2br]):0;
-        if(total>0&&sent===0&&received===0){const key=reportAgentKey(row[map.agent]);if(key)keys.add(key);}
+        if(isZeroB2B(row,map.totalTxn,map.b2bs,map.b2br)){const key=reportAgentKey(row[map.agent]);if(key)keys.add(key);}
     });
     return keys;
 }
@@ -5683,7 +5698,7 @@ function renderAfternoonReport(){
     const type=String((document.getElementById('afternoon-report-agent-type')||{}).value||'all');
     const q=String((document.getElementById('afternoon-report-search')||{}).value||'').trim().toLowerCase();
     const typeIndex=morningAgentTypeIndex();
-    const isZeroB2BRow=r=>(map.totalTxn>=0?parseMorningNumber(r[map.totalTxn]):0)>0 && (map.b2bs>=0?parseMorningNumber(r[map.b2bs]):0)===0 && (map.b2br>=0?parseMorningNumber(r[map.b2br]):0)===0;
+    const isZeroB2BRow=r=>isZeroB2B(r,map.totalTxn,map.b2bs,map.b2br);
     const getType=r=>typeIndex.get(reportAgentKey(map.agent>=0?r[map.agent]:''))||{key:'unknown',label:'Not found in Morning'};
     let filtered=rows.filter(r=>canSeeAfternoonRow(r,headers));if(dss&&map.dso>=0){const allowed=getAssignedDsoWalletsForDss(dss);filtered=filtered.filter(r=>allowed.has(normalizeScopeWallet(r[map.dso])));}if(dso&&map.dso>=0)filtered=filtered.filter(r=>normalizeScopeWallet(r[map.dso])===dso);
     if(type==='zero-b2b')filtered=filtered.filter(isZeroB2BRow);
@@ -5705,7 +5720,7 @@ function renderAfternoonReport(){
         {title:'TOTAL_TXN',key:'totalTxn',number:true},{title:'B2BS_AMT',key:'b2bs',number:true},{title:'B2BR_AMT',key:'b2br',number:true}
     ].map(c=>({title:c.title,key:c.key,number:c.number===true,value:r=>c.custom?c.custom(r):(map[c.key]>=0?(c.key==='dso'?normalizeScopeWallet(r[map[c.key]]):(c.number?formatMorningNumber(parseMorningNumber(r[map[c.key]])):(r[map[c.key]]??''))):'')}));
     const head=document.getElementById('afternoon-report-head'),body=document.getElementById('afternoon-report-body');
-    filtered=applyReportTableUi('afternoon',filtered,cols,isZeroB2BRow);
+    filtered=applyReportTableUi('afternoon',filtered,cols,isZeroB2BRow,r=>parseMorningNumber(r[map.totalTxn]));
     const table=document.getElementById('afternoon-report-table');if(table){table.style.setProperty('--agent-left',role.role==='DSO'?'0px':'var(--dso-width)');table.style.setProperty('--name-left',role.role==='DSO'?'var(--agent-width)':'calc(var(--dso-width) + var(--agent-width))');}
     if(head)head.innerHTML=reportHeaderHtml('afternoon',cols);
     if(body)body.innerHTML=filtered.length?filtered.map(r=>'<tr class="'+(isZeroB2BRow(r)?'zero-b2b-row':'')+'">'+cols.map(c=>reportCellHtml(c,r)).join('')+'</tr>').join(''):'<tr><td colspan="'+cols.length+'">No matching data found.</td></tr>';
