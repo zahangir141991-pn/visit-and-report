@@ -530,8 +530,8 @@ body:has(#view-morning-report.active) #app-copyright,body:has(#view-afternoon-re
 .report-floating-head button{pointer-events:auto}
 
 #main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card{padding:7px 9px!important;border-radius:10px!important;min-height:48px;box-shadow:0 2px 7px rgba(15,23,42,.04)!important}
-#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card span{display:block;font-size:9px!important;line-height:1.35!important;letter-spacing:0!important;font-weight:600!important;color:#64748b!important;text-transform:none!important}
-#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card b{font-size:12px!important;line-height:1.2!important;margin-top:3px!important;font-weight:650!important}
+#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card span{display:block;font-size:9px!important;line-height:1.35!important;letter-spacing:0!important;font-weight:700!important;color:#475569!important;text-transform:none!important}
+#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card b{font-size:12px!important;line-height:1.2!important;margin-top:3px!important;font-weight:750!important}
 
 #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table :is(th,td){font-size:11px!important;line-height:1.35!important}
 #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table th :is(button,span){font-size:inherit!important}
@@ -1028,7 +1028,7 @@ body.app-logged-in #view-login{display:none!important}
                 </div>
                 <div id="alert-box" class="alert"></div>
 
-                <form id="visit-form">
+                <form id="visit-form" novalidate>
                     <div class="form-group">
                         <label>Visit Date</label>
                         <input type="date" id="visit-date" required readonly>
@@ -1209,7 +1209,7 @@ body.app-logged-in #view-login{display:none!important}
 
             <!-- Notices Page -->
             <div id="view-notices" class="page">
-                <div class="section-head"><div><h2>Notice</h2><small style="color:#64748b">DSS review notices and your report update notifications appear here in realtime</small></div><button class="btn btn-sm btn-sec" onclick="renderNotices()">↻ Refresh</button></div>
+                <div class="section-head"><div><h2>Notice</h2><small style="color:#64748b">Not OK বিষয় ও DSO-এর তারিখসহ OK reply এখানে দেখা যাবে</small></div><button class="btn btn-sm btn-sec" onclick="renderNotices()">↻ Refresh</button></div>
                 <div id="notice-list"></div>
             </div>
 
@@ -2423,7 +2423,7 @@ body.app-logged-in #view-login{display:none!important}
                 const loginInfoNav = document.getElementById('nav-login-info');
                 if (loginInfoNav) loginInfoNav.classList.toggle('hidden', user !== 'admin');
                 const noticeNav = document.getElementById('nav-notices');
-                if (noticeNav) noticeNav.classList.toggle('hidden', !(roleInfo.role === 'DSS' || roleInfo.role === 'DSO'));
+                if (noticeNav) noticeNav.classList.toggle('hidden', !['Admin','DM','DSS','DSO'].includes(roleInfo.role));
                 updateVisitMenuForRole();
                 updateMorningMenuAccess();
 
@@ -3168,11 +3168,12 @@ body.app-logged-in #view-login{display:none!important}
         }
 
         let visitSubmitValidationAttempted = false;
+        let visitSubmitInFlight = false;
 
         function getVisitFieldValidity() {
             const checks = [
-                ['visit-date'], ['search-input'], ['dso-number'], ['uddokta-number'],
-                ['uddokta-name'], ['dss-name'], ['feedback'], ['festoon-status'],
+                ['visit-date'], ['dso-number'], ['uddokta-number'],
+                ['uddokta-name'], ['feedback'], ['festoon-status'],
                 ['banner-status'], ['file-status'], ['gps-location-name']
             ];
             const invalid = [];
@@ -3213,11 +3214,11 @@ body.app-logged-in #view-login{display:none!important}
                 btn.style.setProperty('width','100%','important');
                 btn.style.setProperty('min-height','52px','important');
                 // Keep Submit clickable so it can identify and take the user to the first missing field.
-                btn.disabled = false;
-                btn.style.opacity = '1';
+                btn.disabled = visitSubmitInFlight;
+                btn.style.opacity = visitSubmitInFlight ? '0.7' : '1';
                 btn.style.cursor = 'pointer';
                 btn.title = 'Submit';
-                btn.setAttribute('aria-disabled', 'false');
+                btn.setAttribute('aria-disabled', String(visitSubmitInFlight));
             }
             return state;
         }
@@ -3647,6 +3648,12 @@ body.app-logged-in #view-login{display:none!important}
         // ----------------------------------------------------
         document.getElementById('visit-form').addEventListener('submit', async function(e) {
             e.preventDefault();
+            if (visitSubmitInFlight) return;
+            if (!currentUser) { showAlert('লগইন যাচাই হয়নি। আবার লগইন করুন।', 'error'); return; }
+            if (navigator.onLine === false) { showAlert('ইন্টারনেট সংযোগ নেই। সংযোগ চালু করে আবার Submit করুন।', 'error'); return; }
+            visitSubmitInFlight = true;
+            updateVisitSubmitState();
+            try {
 
             // Location is mandatory. If it is missing, ask the browser for permission
             // directly from this Submit click and try to obtain the current GPS position.
@@ -3670,7 +3677,10 @@ body.app-logged-in #view-login{display:none!important}
             if (!isVisitFormComplete()) {
                 visitSubmitValidationAttempted = true;
                 const invalidState = updateVisitSubmitState();
-                showAlert('যে field পূরণ হয়নি সেটি লাল করে দেখানো হয়েছে।', 'error');
+                const labels = {'visit-date':'Visit Date','dso-number':'DSO Number','uddokta-number':'Uddokta নির্বাচন','uddokta-name':'Uddokta Name','feedback':'Visit Feedback','festoon-status':'Festoon','banner-status':'Banner','file-status':'File','gps-location-name':'GPS Location'};
+                const missing = invalidState.invalidFields.map(id=>labels[id]||id);
+                if (invalidState.selfieMissing) missing.push('Selfie');
+                showAlert('পূরণ করুন: ' + missing.join(', '), 'error');
                 focusFirstInvalidVisitField(invalidState);
                 return;
             }
@@ -3778,15 +3788,13 @@ body.app-logged-in #view-login{display:none!important}
                 multi['visit_reports/' + reportId] = reportForDb;
                 multi['visit_reports_index/' + reportId] = reportForDb;
                 if (photoForDb) multi['visit_report_photos/' + reportId] = photoForDb;
+                if ([newReport.festoonStatus,newReport.bannerStatus,newReport.fileStatus].includes('Not OK')) multi['visit_notices/' + reportId] = buildReviewNotice(reportId,newReport);
                 multi['dms_live_update_signal'] = {type:'visit',revision:Date.now(),reportId};
                 await db.ref().update(multi);
                 newReport.hasPhoto = !!photoForDb;
                 const anyNotOk = [newReport.festoonStatus,newReport.bannerStatus,newReport.fileStatus].includes('Not OK');
                 // Show success immediately after the report itself is saved. Secondary notice write runs in background.
                 showSubmitSuccessPopup();
-                if (String(newReport.user||'').toLowerCase()==='zahangir' && anyNotOk) {
-                    createReviewNotice(reportId, newReport).catch(err => console.warn('Review notice save failed:', err));
-                }
                 // A successful submit always starts a completely fresh Visit form.
                 clearVisitFormForNewVisit();
                 // Automatically prepare a fresh GPS location for the next visit after every successful submit.
@@ -3805,6 +3813,15 @@ body.app-logged-in #view-login{display:none!important}
             } finally {
                 btnSubmit.disabled = false;
                 btnSubmit.innerText = 'Submit';
+                updateVisitSubmitState();
+            }
+            } catch (unexpectedError) {
+                console.error('Visit submit failed:', unexpectedError);
+                showAlert('Visit জমা দেওয়া যায়নি: ' + (unexpectedError.message || 'আবার চেষ্টা করুন।'), 'error');
+            } finally {
+                visitSubmitInFlight = false;
+                const submitButton = document.getElementById('btn-submit');
+                if (submitButton) submitButton.innerText = 'Submit';
                 updateVisitSubmitState();
             }
         });
@@ -4390,7 +4407,7 @@ body.app-logged-in #view-login{display:none!important}
                 const tr=document.createElement('tr');
                 const idx=reportsData.indexOf(r);
                 const reportKey = String(r.reportId || r.id || '');
-                const isDss = role.role === 'DSS';
+                const isDss = false;
                 const reviewHtml = isDss && reportKey && (r.festoonStatus==='Not OK'||r.bannerStatus==='Not OK'||r.fileStatus==='Not OK') ? `<div class="review-grid">${r.festoonStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${reportKey}','OK','festoonStatus')">✓ Festoon OK</button>`:''}${r.bannerStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${reportKey}','OK','bannerStatus')">✓ Banner OK</button>`:''}${r.fileStatus==='Not OK'?`<button class="btn btn-sm" onclick="updateVisitCheck('${reportKey}','OK','fileStatus')">✓ File OK</button>`:''}</div>` : `<span>${escapeMorningHtml(r.reviewStatus||'Pending')}</span>`;
                 const updatedText = r.reviewUpdatedAt ? `<div class="review-update">Updated: ${escapeMorningHtml(r.reviewUpdatedAt)}${r.reviewUpdatedBy?' · '+escapeMorningHtml(r.reviewUpdatedBy):''}</div>` : '';
                 tr.innerHTML=`<td data-label="Visit Time">${r.visitTime||(r.timestamp?new Date(r.timestamp).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}):'')}</td><td data-label="DSO">${escapeMorningHtml(r.dsoWallet||r.dsoNumber||'')}</td><td data-label="Uddokta Name">${escapeMorningHtml(r.uddoktaName||'')}</td><td data-label="Uddokta Number">${escapeMorningHtml(r.uddoktaNumber||'')}</td><td data-label="Festoon">${escapeMorningHtml(r.festoonStatus||'Pending')}</td><td data-label="Banner">${escapeMorningHtml(r.bannerStatus||'Pending')}</td><td data-label="File">${escapeMorningHtml(r.fileStatus||'Pending')}</td><td data-label="Review" data-wide="1">${reviewHtml}${updatedText}</td><td data-label="Location" data-wide="1"><small>${escapeMorningHtml(r.locationName||r.gps||'')}</small></td><td data-label="Photo">${(r.photo||r.hasPhoto)?`<button class="mobile-photo-btn" onclick="showVisitDetails(${idx})">Photo</button>`:'—'}</td><td data-label="Details"><button class="detail-btn" onclick="showVisitDetails(${idx})">View</button></td>`;
@@ -4399,23 +4416,26 @@ body.app-logged-in #view-login{display:none!important}
             tableBody.replaceChildren(reportFragment);
         }
 
-        async function createReviewNotice(reportId, report) {
-            const notice = {
-                id: String(reportId), reportId: reportId, type: 'DM_VISIT_NOT_OK',
-                title: 'DM Visit Report: Not OK',
-                message: `DM visit for ${report.uddoktaName||''} (${report.uddoktaNumber||''}) has Not OK item(s). DSS can see exactly which items are Not OK and update them to OK.`,
-                dssName: report.dssName || '', dsoWallet: report.dsoWallet || report.dsoNumber || '',
-                date: report.date || '', createdAt: firebase.database.ServerValue.TIMESTAMP,
-                resolved: false, resolvedAt: '', resolvedBy: ''
-            };
-            await db.ref('visit_notices/' + reportId).set(notice);
+        const visitCheckLabels = {festoonStatus:'Festoon',bannerStatus:'Banner',fileStatus:'File'};
+        function buildReviewNotice(reportId,report){
+            const items=Object.keys(visitCheckLabels).filter(k=>report[k]==='Not OK');
+            const wallet=report.dsoWallet||report.dsoNumber||'';
+            return {id:String(reportId),reportId:String(reportId),type:'VISIT_NOT_OK',title:'Visit Report: Not OK',
+                message:items.map(k=>visitCheckLabels[k]+': Not OK').join(' · '),items,
+                uddoktaName:report.uddoktaName||'',uddoktaNumber:report.uddoktaNumber||'',
+                dssName:resolveDssName(getDssNameForWallet(wallet)||report.dssName||''),dsoWallet:wallet,
+                date:report.date||'',createdAt:firebase.database.ServerValue.TIMESTAMP,resolved:false,
+                resolvedAt:'',resolvedBy:'',itemReplies:{}};
         }
-
-        function canHandleNotice(n) {
-            // DSS receives only notices assigned to that DSS.
-            const role = getRoleInfo();
-            if (role.role !== 'DSS') return false;
-            return String(n.dssName||'').trim().toUpperCase() === String(role.dssName||'').trim().toUpperCase();
+        async function createReviewNotice(reportId,report){
+            await db.ref('visit_notices/'+reportId).set(buildReviewNotice(reportId,report));
+        }
+        function canHandleNotice(n){
+            const role=getRoleInfo();
+            if(['Admin','DM'].includes(role.role))return true;
+            if(role.role==='DSO')return normalizeScopeWallet(n.dsoWallet||'')===normalizeScopeWallet(role.dsoWallet);
+            if(role.role==='DSS')return String(resolveDssName(getDssNameForWallet(n.dsoWallet)||n.dssName||'')).trim().toUpperCase()===String(role.dssName||'').trim().toUpperCase();
+            return false;
         }
 
         function canHandleUserUpdate(n) {
@@ -4429,6 +4449,10 @@ body.app-logged-in #view-login{display:none!important}
             if (!db) return;
             db.ref('visit_notices').on('value', snap => {
                 window.visitNotices = snap.val() || {};
+                const signature=Object.values(window.visitNotices).filter(canHandleNotice).map(n=>n.id+':'+JSON.stringify(n.itemReplies||{})).sort().join('|');
+                const owner=String(currentUser||'');
+                if(window.__visitNoticeOwner===owner && window.__visitNoticeSignature!==undefined && window.__visitNoticeSignature!==signature) showAlert('Visit notification এসেছে। Notice খুলে Not OK বিষয় বা DSO reply দেখুন।','success');
+                window.__visitNoticeOwner=owner;window.__visitNoticeSignature=signature;
                 renderNotices();
             }, err => console.warn('Visit notice sync error:', err));
         }
@@ -4461,60 +4485,55 @@ body.app-logged-in #view-login{display:none!important}
             }, err => console.warn('User update sync error:', err));
         }
 
-        function updateNoticeNavBadge() {
-            const badge = document.getElementById('notice-badge');
-            if (!badge) return;
-            const role = getRoleInfo();
-            let count = 0;
-            if (role.role === 'DSO') {
-                count = Object.values(window.userUpdateNotices || {}).filter(n => !n.read).length;
-            } else if (role.role === 'DSS') {
-                count = Object.values(window.visitNotices || {}).filter(canHandleNotice).filter(n => !n.resolved).length;
-            }
-            badge.innerText = String(count);
-            badge.classList.toggle('hidden', count < 1);
+        function updateNoticeNavBadge(){
+            const badge=document.getElementById('notice-badge');if(!badge)return;
+            const role=getRoleInfo();
+            let count=Object.values(window.visitNotices||{}).filter(canHandleNotice).filter(n=>!n.resolved||Object.values(n.itemReplies||{}).some(r=>!((r.readBy||{})[currentUser]))).length;
+            if(role.role==='DSO')count+=Object.values(window.userUpdateNotices||{}).filter(canHandleUserUpdate).filter(n=>!n.read).length;
+            badge.innerText=String(count);badge.classList.toggle('hidden',count<1);
         }
-
-        function renderNotices() {
-            const box = document.getElementById('notice-list'); if (!box) return;
-            const role = getRoleInfo();
-            let html = '';
-
-            if (role.role === 'DSO') {
-                const updates = Object.values(window.userUpdateNotices || {})
-                    .filter(canHandleUserUpdate)
-                    .sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));
-                if (!updates.length) {
-                    box.innerHTML='<div class="card empty-state">No update found.</div>';
-                    updateNoticeNavBadge();
-                    return;
-                }
-                html = updates.map(n => {
-                    const changes = Array.isArray(n.changedFields) ? n.changedFields.join(', ') : (n.changedFields || 'Report information');
-                    const when = n.updatedAt || n.createdAtText || '—';
-                    const by = n.updatedBy || 'Admin/DSS';
-                    return '<div class="notice-item '+(n.read?'':'unread')+'"><b>🔔 Visit Report Updated</b>'+
-                        '<div style="margin-top:5px;color:#475569;font-size:.84rem">'+(n.message||'Your Visit Report has been updated.')+'</div>'+
-                        '<div class="review-update">Date: '+(n.date||'—')+' · DSO: '+(n.dsoWallet||'—')+' · Updated: '+when+' · By: '+by+'</div>'+
-                        '<div class="review-update">Changed: '+changes+'</div>'+ 
-                        '<button class="btn btn-sm" style="margin-top:9px" onclick="markUserUpdateRead(\''+String(n.id||'')+'\')">✓ Mark as read</button></div>';
+        function renderNotices(){
+            const box=document.getElementById('notice-list');if(!box)return;
+            const role=getRoleInfo(),esc=escapeMorningHtml;
+            const notices=Object.values(window.visitNotices||{}).filter(canHandleNotice).sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));
+            let html=notices.map(n=>{
+                const items=Array.isArray(n.items)?n.items:Object.keys(visitCheckLabels);
+                const rows=items.map(field=>{
+                    if(!visitCheckLabels[field])return '';
+                    const reply=(n.itemReplies||{})[field];
+                    const action=role.role==='DSO'&&!reply&&!n.resolved?`<div style="display:flex;gap:6px;align-items:center;margin-top:6px"><input type="date" id="notice-date-${esc(n.id)}-${field}" value="${getDhakaToday()}" max="${getDhakaToday()}" style="width:145px;min-height:34px;font-size:12px"><button class="btn btn-sm" onclick="replyVisitNotice('${esc(n.id)}','${field}',this)">✓ ${visitCheckLabels[field]} OK</button></div>`:'';
+                    return `<div class="review-update"><b>${visitCheckLabels[field]}: ${reply?'OK':'Not OK'}</b>${reply?` · ঠিক করার তারিখ: ${esc(reply.completedDate)} · DSO: ${esc(reply.by)} · Reply: ${esc(reply.repliedAt)}`:''}${action}</div>`;
                 }).join('');
-                box.innerHTML = html;
-                updateNoticeNavBadge();
-                return;
-            }
-
-            const all = Object.values(window.visitNotices || {}).filter(canHandleNotice).sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));
-            if (!all.length) { box.innerHTML='<div class="card empty-state">No notice found.</div>'; updateNoticeNavBadge(); return; }
-            html = all.map(n => {
-                const report = reportsData.find(r => String(r.reportId || r.id)===String(n.reportId));
-                const canResolve = role.role==='DSS' && !n.resolved && report;
-                const updateInfo = n.resolved ? ' · Updated: ' + (n.resolvedAt||'—') + ' · By: ' + (n.resolvedBy||'—') : '';
-                const action = canResolve ? '<button class="btn btn-sm" style="margin-top:9px" onclick="resolveVisitNotice(\''+n.id+'\')">✓ DSS OK & Update</button>' : '<span class="notice-badge" style="margin-top:8px">'+(n.resolved?'Updated':'Action Required')+'</span>';
-                return '<div class="notice-item '+(n.resolved?'':'unread')+'"><b>'+(n.title||'Visit Notice')+'</b><div style="margin-top:5px;color:#475569;font-size:.84rem">'+(n.message||'')+'</div><div class="review-update">Date: '+(n.date||'—')+' · DSO: '+(n.dsoWallet||'—')+updateInfo+'</div>'+action+'</div>';
+                const unread=Object.values(n.itemReplies||{}).some(r=>!((r.readBy||{})[currentUser]));
+                return `<div class="notice-item ${!n.resolved||unread?'unread':''}"><b>🔔 ${esc(n.title||'Visit Report: Not OK')}</b><div class="review-update">${esc(n.uddoktaName||'')} (${esc(n.uddoktaNumber||'')}) · Visit: ${esc(n.date||'')} · DSO: ${esc(n.dsoWallet||'')} · DSS: ${esc(n.dssName||'')}</div><div class="review-update">${esc(n.message||'')}</div>${rows}${n.resolved?'<div class="review-update">✓ সব বিষয় OK</div>':''}${unread&&role.role!=='DSO'?`<button class="btn btn-sm" onclick="markVisitReplyRead('${esc(n.id)}')">✓ Reply পড়েছি</button>`:''}</div>`;
             }).join('');
-            box.innerHTML = html;
-            updateNoticeNavBadge();
+            if(role.role==='DSO')html+=Object.values(window.userUpdateNotices||{}).filter(canHandleUserUpdate).sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0)).map(n=>`<div class="notice-item ${n.read?'':'unread'}"><b>Visit Report Updated</b><div class="review-update">${esc(n.message||'')} · ${esc(n.updatedAt||'')} · ${esc(n.updatedBy||'')}</div><button class="btn btn-sm" onclick="markUserUpdateRead('${esc(n.id)}')">✓ Mark as read</button></div>`).join('');
+            box.innerHTML=html||'<div class="card empty-state">কোনো notification নেই।</div>';updateNoticeNavBadge();
+        }
+        async function markVisitReplyRead(id){
+            const n=(window.visitNotices||{})[id];if(!db||!n||!canHandleNotice(n))return;
+            const updates={};Object.keys(n.itemReplies||{}).forEach(k=>updates['visit_notices/'+id+'/itemReplies/'+k+'/readBy/'+currentUser]=true);
+            if(Object.keys(updates).length)await db.ref().update(updates);
+        }
+        async function replyVisitNotice(id,field,button){
+            const n=(window.visitNotices||{})[id],role=getRoleInfo();
+            if(!db||!n||role.role!=='DSO'||!canHandleNotice(n)||!visitCheckLabels[field]||!Array.isArray(n.items)||!n.items.includes(field)||n.resolved||(n.itemReplies||{})[field])return;
+            const date=document.getElementById('notice-date-'+id+'-'+field)?.value||'';
+            if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date>getDhakaToday()||date<String(n.date||'')){showAlert('Visit-এর দিন থেকে আজকের মধ্যে ঠিক করার তারিখ দিন।','error');return;}
+            if(button)button.disabled=true;
+            const when=new Date().toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true});
+            const reply={completedDate:date,repliedAt:when,by:String(currentUser),dsoWallet:role.dsoWallet,readBy:{[currentUser]:true}};
+            const allDone=n.items.every(k=>k===field||(n.itemReplies||{})[k]);
+            const changes={[field]:'OK',reviewUpdatedAt:when,reviewUpdatedBy:String(currentUser),[field+'ResolvedDate']:date};
+            if(allDone)changes.reviewStatus='DSO OK';
+            const updates={};
+            for(const root of ['visit_reports','visit_reports_index'])for(const [key,value]of Object.entries(changes))updates[root+'/'+n.reportId+'/'+key]=value;
+            updates['visit_notices/'+id+'/itemReplies/'+field]=reply;
+            if(allDone)for(const [key,value]of Object.entries({resolved:true,resolvedAt:when,resolvedBy:String(currentUser)}))updates['visit_notices/'+id+'/'+key]=value;
+            updates.dms_live_update_signal={type:'visit-reply',revision:Date.now(),reportId:n.reportId};
+            try{await db.ref().update(updates);showAlert(visitCheckLabels[field]+' OK ও তারিখ save হয়েছে। DSS, DM ও Admin উত্তর পাবেন।','success');}
+            catch(e){showAlert('Reply save হয়নি: '+e.message,'error');}
+            finally{if(button)button.disabled=false;}
         }
 
         async function markUserUpdateRead(id) {
@@ -4553,52 +4572,9 @@ body.app-logged-in #view-login{display:none!important}
             });
         }
 
-        async function resolveVisitNotice(noticeId) {
-            const role = getRoleInfo(); if (role.role!=='DSS') return;
-            const n = (window.visitNotices||{})[noticeId]; if (!n) return;
-            const report = reportsData.find(r=>String(r.reportId || r.id)===String(n.reportId)); if (!report) return;
-            const now = new Date().toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true});
-            const updates = { reviewUpdatedAt: now, reviewUpdatedBy: role.dssName };
-            if (report.festoonStatus === 'Not OK') updates.festoonStatus = 'OK';
-            if (report.bannerStatus === 'Not OK') updates.bannerStatus = 'OK';
-            if (report.fileStatus === 'Not OK') updates.fileStatus = 'OK';
-            updates.reviewStatus = 'DSS OK';
-            try {
-                const indexUpdates = {};
-                indexUpdates['visit_reports/' + n.reportId] = updates;
-                indexUpdates['visit_reports_index/' + n.reportId] = updates;
-                indexUpdates['dms_live_update_signal'] = {type:'visit-review',revision:Date.now(),reportId:n.reportId};
-                await db.ref().update(indexUpdates);
-                await notifyReportOwner(n.reportId, Object.assign({}, report, updates), Object.keys(updates).filter(k=>k!=='reviewUpdatedAt' && k!=='reviewUpdatedBy'), role.dssName);
-                await db.ref('visit_notices/'+noticeId).update({resolved:true,resolvedAt:now,resolvedBy:role.dssName});
-                showAlert('Not OK itemগুলো OK করে Visit Report update করা হয়েছে.', 'success');
-            } catch(e) { showAlert('Update failed: '+e.message,'error'); }
-        }
+        function resolveVisitNotice(){ switchTab('notices'); }
+        function updateVisitCheck(){ switchTab('notices'); }
 
-        async function updateVisitCheck(reportId, value, field) {
-            const role = getRoleInfo();
-            if (role.role !== 'DSS' || value !== 'OK') return;
-            const r = reportsData.find(x=>String(x.reportId || x.id)===String(reportId)); if (!r) return;
-            if (r[field] !== 'Not OK') return;
-            const now = new Date().toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true});
-            const updated = { [field]: 'OK', reviewUpdatedAt: now, reviewUpdatedBy: role.dssName };
-            const next = Object.assign({}, r, updated);
-            if (next.festoonStatus==='OK' && next.bannerStatus==='OK' && next.fileStatus==='OK') updated.reviewStatus='DSS OK';
-            const indexUpdates = {};
-            indexUpdates['visit_reports/' + reportId] = updated;
-            indexUpdates['visit_reports_index/' + reportId] = updated;
-            indexUpdates['dms_live_update_signal'] = {type:'visit-review',revision:Date.now(),reportId};
-            await db.ref().update(indexUpdates);
-            await notifyReportOwner(reportId, Object.assign({}, r, updated), Object.keys(updated).filter(k=>k!=='reviewUpdatedAt' && k!=='reviewUpdatedBy'), role.dssName);
-            if (updated.reviewStatus==='DSS OK') {
-                const notices=window.visitNotices||{};
-                const n=Object.values(notices).find(x=>String(x.reportId)===String(reportId));
-                if(n) await db.ref('visit_notices/'+n.id).update({resolved:true,resolvedAt:now,resolvedBy:role.dssName});
-                showAlert('সব Not OK item OK হয়েছে এবং Update Date save হয়েছে.', 'success');
-            } else {
-                showAlert('Not OK itemটি OK করা হয়েছে। বাকি Not OK item update করুন.', 'success');
-            }
-        }
 
         const visitPhotoMemoryCache = new Map();
         function compressStoredVisitPhoto(dataUrl, maxW=480, maxH=640, quality=0.48) {
