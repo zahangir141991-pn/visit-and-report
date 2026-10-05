@@ -1103,7 +1103,7 @@ body.app-logged-in #view-login{display:none!important}
 </div>
 
                     <div id="submit-action-bar" style="position:sticky;bottom:8px;z-index:1000;background:rgba(255,255,255,.96);padding:8px;border-radius:12px;box-shadow:0 -4px 18px rgba(15,23,42,.08);display:block!important;visibility:visible!important;">
-                        <button type="submit" class="btn" id="btn-submit" style="display:block!important;visibility:visible!important;width:100%!important;min-height:52px!important;">Submit</button>
+                        <button type="submit" class="btn" id="btn-submit" disabled style="display:block!important;visibility:visible!important;width:100%!important;min-height:52px!important;">Submit</button>
                     </div>
                 </form>
             </div>
@@ -3174,13 +3174,13 @@ body.app-logged-in #view-login{display:none!important}
             const checks = [
                 ['visit-date'], ['dso-number'], ['uddokta-number'],
                 ['uddokta-name'], ['feedback'], ['festoon-status'],
-                ['banner-status'], ['file-status'], ['gps-location-name']
+                ['banner-status'], ['file-status'], ['gps-location-name'], ['gps-location']
             ];
             const invalid = [];
             checks.forEach(([id]) => {
                 const el = document.getElementById(id);
                 const value = el ? String(el.value || '').trim() : '';
-                if (!el || !value) invalid.push(id);
+                if (!el || !value || (id==='gps-location-name' && value==='Getting location...')) invalid.push(id);
             });
             // Location is mandatory for every visit.
             return { invalidFields:[...new Set(invalid)], selfieMissing:!capturedPhotoData };
@@ -3213,12 +3213,13 @@ body.app-logged-in #view-login{display:none!important}
                 btn.style.setProperty('visibility','visible','important');
                 btn.style.setProperty('width','100%','important');
                 btn.style.setProperty('min-height','52px','important');
-                // Keep Submit clickable so it can identify and take the user to the first missing field.
-                btn.disabled = visitSubmitInFlight;
-                btn.style.opacity = visitSubmitInFlight ? '0.7' : '1';
-                btn.style.cursor = 'pointer';
-                btn.title = 'Submit';
-                btn.setAttribute('aria-disabled', String(visitSubmitInFlight));
+                const complete = state.invalidFields.length === 0 && !state.selfieMissing;
+                btn.disabled = visitSubmitInFlight || !complete;
+                btn.innerText = visitSubmitInFlight ? 'Submitting...' : 'Submit';
+                btn.style.opacity = btn.disabled ? '0.55' : '1';
+                btn.style.cursor = btn.disabled ? 'not-allowed' : 'pointer';
+                btn.title = complete ? 'Submit' : 'সব প্রয়োজনীয় তথ্য, Selfie ও GPS পূরণ করুন';
+                btn.setAttribute('aria-disabled', String(btn.disabled));
             }
             return state;
         }
@@ -3246,6 +3247,10 @@ body.app-logged-in #view-login{display:none!important}
             if (!form) return;
             if (form.dataset.completionBound !== '1') {
                 form.dataset.completionBound = '1';
+                form.addEventListener('keydown', event => {
+                    // Enter in a field must not submit a partially completed visit.
+                    if (event.key === 'Enter' && event.target.tagName !== 'TEXTAREA' && event.target.id !== 'btn-submit') event.preventDefault();
+                });
                 form.addEventListener('input', updateVisitSubmitState);
                 form.addEventListener('change', updateVisitSubmitState);
                 // Uddokta/DSO fields are sometimes filled by JavaScript after selection.
@@ -3669,6 +3674,12 @@ body.app-logged-in #view-login{display:none!important}
             if (visitSubmitInFlight) return;
             if (!currentUser) { showAlert('লগইন যাচাই হয়নি। আবার লগইন করুন।', 'error'); return; }
             if (navigator.onLine === false) { showAlert('ইন্টারনেট সংযোগ নেই। সংযোগ চালু করে আবার Submit করুন।', 'error'); return; }
+            if (!isVisitFormComplete()) {
+                visitSubmitValidationAttempted = true;
+                focusFirstInvalidVisitField(updateVisitSubmitState());
+                showAlert('সব প্রয়োজনীয় তথ্য, Selfie ও GPS পূরণ করে Submit করুন।', 'error');
+                return;
+            }
             visitSubmitInFlight = true;
             updateVisitSubmitState();
             try {
