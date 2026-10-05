@@ -529,9 +529,9 @@ body:has(#view-morning-report.active) #app-copyright,body:has(#view-afternoon-re
 .report-floating-head th{height:auto;background:#dbeafe!important;text-align:center;border-right:1px solid #cfdbed;border-bottom:2px solid #93b4e4;color:#15346b;white-space:normal;font-size:.76rem;vertical-align:middle}
 .report-floating-head button{pointer-events:auto}
 
-#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card{padding:8px 10px!important;border-radius:11px!important;min-height:56px;box-shadow:0 2px 7px rgba(15,23,42,.04)!important}
-#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card span{display:block;font-size:10px!important;line-height:1.35!important;letter-spacing:.02em!important;font-weight:600!important;color:#64748b!important;text-transform:none!important}
-#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card b{font-size:16px!important;line-height:1.2!important;margin-top:4px!important;font-weight:700!important}
+#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card{padding:7px 9px!important;border-radius:10px!important;min-height:48px;box-shadow:0 2px 7px rgba(15,23,42,.04)!important}
+#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card span{display:block;font-size:9px!important;line-height:1.35!important;letter-spacing:.02em!important;font-weight:600!important;color:#64748b!important;text-transform:none!important}
+#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card b{font-size:14px!important;line-height:1.2!important;margin-top:3px!important;font-weight:700!important}
 #main-app #view-morning-report .morning-summary .zero-b2b-kpi{background:#fffaf0!important;--kpi-color:#b7791f;--kpi-tint:#fffaf0}
 @media(max-width:600px){#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary{gap:6px!important}#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card{padding:8px 10px!important}}
 </style>
@@ -1251,7 +1251,7 @@ body.app-logged-in #view-login{display:none!important}
                 <div class="morning-summary">
                     <div class="card"><span>AGENT COUNT</span><b id="morning-kpi-agent-count">0</b></div>
                     <div class="card"><span>TOTAL MTD_TXN</span><b id="morning-kpi-mtd">0</b></div>
-                    <div class="card zero-b2b-kpi"><span>Last Day · Zero B2B</span><b id="morning-kpi-zero-last-day">0</b></div><div class="card zero-b2b-kpi"><span>MTD · Zero B2B</span><b id="morning-kpi-zero-mtd">0</b></div>
+                    <div class="card zero-b2b-kpi"><span>Last Day ZERO B2B</span><b id="morning-kpi-zero-last-day">0</b></div><div class="card zero-b2b-kpi"><span>MTD ZERO B2B</span><b id="morning-kpi-zero-mtd">0</b></div>
                     <div class="card"><span>LAST_DAY_TXN</span><b id="morning-kpi-last-day-card">0</b></div>
                     <div class="card"><span>CASH OUT %</span><b id="morning-kpi-cash-out-percent">0%</b></div>
                     <div class="card"><span>CASH IN %</span><b id="morning-kpi-cash-in-percent">0%</b></div>
