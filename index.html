@@ -530,8 +530,8 @@ body:has(#view-morning-report.active) #app-copyright,body:has(#view-afternoon-re
 .report-floating-head button{pointer-events:auto}
 
 #main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card{padding:7px 9px!important;border-radius:10px!important;min-height:48px;box-shadow:0 2px 7px rgba(15,23,42,.04)!important}
-#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card span{display:block;font-size:9px!important;line-height:1.35!important;letter-spacing:.02em!important;font-weight:600!important;color:#64748b!important;text-transform:none!important}
-#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card b{font-size:14px!important;line-height:1.2!important;margin-top:3px!important;font-weight:700!important}
+#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card span{display:block;font-size:9px!important;line-height:1.35!important;letter-spacing:0!important;font-weight:400!important;color:#64748b!important;text-transform:none!important}
+#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card b{font-size:12px!important;line-height:1.2!important;margin-top:3px!important;font-weight:500!important}
 #main-app #view-morning-report .morning-summary .zero-b2b-kpi{background:#fffaf0!important;--kpi-color:#b7791f;--kpi-tint:#fffaf0}
 @media(max-width:600px){#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary{gap:6px!important}#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card{padding:8px 10px!important}}
 </style>
@@ -5435,6 +5435,8 @@ function renderMorningReport(){
     let filtered=rows.filter(r=>canSeeMorningRow(r,headers));
     if(dssValue&&map.dso>=0){const allowed=getAssignedDsoWalletsForDss(dssValue);filtered=filtered.filter(r=>allowed.has(normalizeScopeWallet(r[map.dso])));}
     if(dsoValue&&map.dso>=0)filtered=filtered.filter(r=>normalizeScopeWallet(r[map.dso])===dsoValue);
+    if(q)filtered=filtered.filter(r=>[map.agent>=0?r[map.agent]:'',map.agentName>=0?r[map.agentName]:''].some(v=>String(v).toLowerCase().includes(q)));
+    const zeroCardRows=filtered.slice();
     if(typeValue==='cash-in')filtered=filtered.filter(r=>!morningRatioInfo(r,map).isCashOut);
     if(typeValue==='cash-out')filtered=filtered.filter(r=>morningRatioInfo(r,map).isCashOut);
     const zeroPeriod=typeValue==='zero-b2b-mtd'?'mtd':'last-day';
@@ -5462,7 +5464,7 @@ function renderMorningReport(){
     const totalCashInPercent=mtd>0?(totalCashIn/mtd)*100:0;
     const formatPercent=n=>Number(n.toFixed(2)).toLocaleString('en-US',{maximumFractionDigits:2})+'%';
     set('morning-kpi-agent-count',formatMorningNumber(agents.size));
-    const zeroCount=period=>new Set(filtered.filter(r=>morningZeroB2B(r,map,period)).map((r,i)=>map.agent>=0?reportAgentKey(r[map.agent])||('__row_'+i):('__row_'+i))).size;
+    const zeroCount=period=>new Set(zeroCardRows.filter(r=>morningZeroB2B(r,map,period)).map((r,i)=>map.agent>=0?reportAgentKey(r[map.agent])||('__row_'+i):('__row_'+i))).size;
     set('morning-kpi-zero-last-day',map.lastDayB2bs>=0&&map.lastDayB2br>=0?formatMorningNumber(zeroCount('last-day')):'—');
     set('morning-kpi-zero-mtd',map.mtdB2bs>=0&&map.mtdB2br>=0?formatMorningNumber(zeroCount('mtd')):'—');
     const missingB2B=[['LAST_DAY_B2BS',map.lastDayB2bs],['LAST_DAY_B2BR',map.lastDayB2br],['MTD_B2BS',map.mtdB2bs],['MTD_B2BR',map.mtdB2br]].filter(x=>x[1]<0).map(x=>x[0]);
