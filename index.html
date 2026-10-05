@@ -528,6 +528,12 @@ body:has(#view-morning-report.active) #app-copyright,body:has(#view-afternoon-re
 .report-floating-head table{border-collapse:separate;border-spacing:0;table-layout:fixed;margin:0;min-width:0!important}
 .report-floating-head th{height:auto;background:#dbeafe!important;text-align:center;border-right:1px solid #cfdbed;border-bottom:2px solid #93b4e4;color:#15346b;white-space:normal;font-size:.76rem;vertical-align:middle}
 .report-floating-head button{pointer-events:auto}
+
+#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card{padding:9px 11px!important;border-radius:12px!important;min-height:62px;box-shadow:0 2px 7px rgba(15,23,42,.04)!important}
+#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card span{display:block;font-size:10px!important;line-height:1.35!important;letter-spacing:.02em!important;font-weight:600!important;color:#64748b!important;text-transform:none!important}
+#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card b{font-size:19px!important;line-height:1.15!important;margin-top:5px!important;font-weight:750!important}
+#main-app #view-morning-report .morning-summary .zero-b2b-kpi{background:#fffaf0!important;--kpi-color:#b7791f;--kpi-tint:#fffaf0}
+@media(max-width:600px){#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary{gap:6px!important}#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card{padding:8px 10px!important}}
 </style>
 
 <style id="mobile-navigation-and-assignment-ui">
@@ -1241,10 +1247,11 @@ body.app-logged-in #view-login{display:none!important}
                     </div>
                     <div id="morning-report-status" class="morning-status hidden" aria-hidden="true">Morning Report is loading...</div>
                 </div>
+                <p id="morning-zero-notice" hidden style="font-size:12px;color:#92400e;margin:6px 0"></p>
                 <div class="morning-summary">
                     <div class="card"><span>AGENT COUNT</span><b id="morning-kpi-agent-count">0</b></div>
                     <div class="card"><span>TOTAL MTD_TXN</span><b id="morning-kpi-mtd">0</b></div>
-                    <div class="card"><span>Last Day ZERO B2B Count</span><b id="morning-kpi-zero-last-day">0</b></div><div class="card"><span>MTD ZERO B2B Count</span><b id="morning-kpi-zero-mtd">0</b></div>
+                    <div class="card zero-b2b-kpi"><span>Last Day · Zero B2B</span><b id="morning-kpi-zero-last-day">0</b></div><div class="card zero-b2b-kpi"><span>MTD · Zero B2B</span><b id="morning-kpi-zero-mtd">0</b></div>
                     <div class="card"><span>LAST_DAY_TXN</span><b id="morning-kpi-last-day-card">0</b></div>
                     <div class="card"><span>CASH OUT %</span><b id="morning-kpi-cash-out-percent">0%</b></div>
                     <div class="card"><span>CASH IN %</span><b id="morning-kpi-cash-in-percent">0%</b></div>
@@ -5051,10 +5058,10 @@ function morningColumnMap(headers){
         islamicCico: morningHeaderIndex(headers,['MTD Islamic CICO','Islamic CICO','MTD Islamic Cico','Islamic Cash In Cash Out']),
         ltdTxn: morningHeaderIndex(headers,['LTD_TXN','LTD Txn','LTD Transaction','LTD TXN Count','LTD Transaction Count']),
         lastDayTxn: morningHeaderIndex(headers,['LAST_DAY_TXN','Last Day Txn','Last Day Transaction']),
-        lastDayB2bs: morningHeaderIndex(headers,['LAST_DAY_B2BS','LAST_DAY_B2BS_AMT']),
-        lastDayB2br: morningHeaderIndex(headers,['LAST_DAY_B2BR','LAST_DAY_B2BR_AMT']),
-        mtdB2bs: morningHeaderIndex(headers,['MTD_B2BS','MTD_B2BS_AMT']),
-        mtdB2br: morningHeaderIndex(headers,['MTD_B2BR','MTD_B2BR_AMT']),
+        lastDayB2bs: morningHeaderIndex(headers,['LAST_DAY_B2BS','LAST_DAY_B2BS_AMT','LAST_DAY_B2BS_AMOUNT','LAST_DAY_B2B_SEND']),
+        lastDayB2br: morningHeaderIndex(headers,['LAST_DAY_B2BR','LAST_DAY_B2BR_AMT','LAST_DAY_B2BR_AMOUNT','LAST_DAY_B2B_RECEIVE']),
+        mtdB2bs: morningHeaderIndex(headers,['MTD_B2BS','MTD_B2BS_AMT','MTD_B2BS_AMOUNT','MTD_B2B_SEND']),
+        mtdB2br: morningHeaderIndex(headers,['MTD_B2BR','MTD_B2BR_AMT','MTD_B2BR_AMOUNT','MTD_B2B_RECEIVE']),
         balance: morningHeaderIndex(headers,['BALANCE','Balance','Opening Balance','Morning Balance','E-Money Balance','E Money Balance','ব্যালেন্স'])
     };
 }
@@ -5244,11 +5251,12 @@ async function previewMorningExcel(input){
             const compactSpec=[
                 ['DSO',map.dso],['DSS',map.dss],['AGENT',map.agent],['AGENTNAME',map.agentName],
                 ['MTD_TXN',map.mtdTxn],['MTD_CASH_IN',map.mtdCashIn],['MTD_CASH_OUT',map.mtdCashOut],
-                ['MTD ISLAMIC CICO',map.islamicCico],['LAST_DAY_TXN',map.lastDayTxn],['BALANCE',map.balance]
+                ['MTD ISLAMIC CICO',map.islamicCico],['LAST_DAY_TXN',map.lastDayTxn],['BALANCE',map.balance],
+                ['LAST_DAY_B2BS',map.lastDayB2bs],['LAST_DAY_B2BR',map.lastDayB2br],['MTD_B2BS',map.mtdB2bs],['MTD_B2BR',map.mtdB2br]
             ].filter(item=>item[1]>=0);
             const compactHeaders=compactSpec.map(item=>item[0]);
-            const numericHeaders=new Set(['MTD_TXN','MTD_CASH_IN','MTD_CASH_OUT','MTD ISLAMIC CICO','LAST_DAY_TXN','BALANCE']);
-            const compactRows=rows.map(row=>compactSpec.map(item=>numericHeaders.has(item[0])?Math.round(parseMorningNumber(row[item[1]])):row[item[1]]));
+            const numericHeaders=new Set(['LAST_DAY_B2BS','LAST_DAY_B2BR','MTD_B2BS','MTD_B2BR','MTD_TXN','MTD_CASH_IN','MTD_CASH_OUT','MTD ISLAMIC CICO','LAST_DAY_TXN','BALANCE']);
+            const compactRows=rows.map(row=>compactSpec.map(item=>numericHeaders.has(item[0])?(['LAST_DAY_B2BS','LAST_DAY_B2BR','MTD_B2BS','MTD_B2BR'].includes(item[0])?parseMorningNumber(row[item[1]]):Math.round(parseMorningNumber(row[item[1]]))):row[item[1]]));
             pendingMorningExcel={headers:compactHeaders,rows:compactRows,fileName:file.name,sheetName};
             setMorningStatus('morning-upload-preview',`Ready: ${file.name} • ${rows.length} rows • optimized ${width} → ${compactHeaders.length} columns`,'ok');
             if(btn)btn.disabled=false;
@@ -5466,8 +5474,10 @@ function renderMorningReport(){
     const formatPercent=n=>Number(n.toFixed(2)).toLocaleString('en-US',{maximumFractionDigits:2})+'%';
     set('morning-kpi-agent-count',formatMorningNumber(agents.size));
     const zeroCount=period=>new Set(filtered.filter(r=>morningZeroB2B(r,map,period)).map((r,i)=>map.agent>=0?reportAgentKey(r[map.agent])||('__row_'+i):('__row_'+i))).size;
-    set('morning-kpi-zero-last-day',formatMorningNumber(zeroCount('last-day')));
-    set('morning-kpi-zero-mtd',formatMorningNumber(zeroCount('mtd')));
+    set('morning-kpi-zero-last-day',map.lastDayB2bs>=0&&map.lastDayB2br>=0?formatMorningNumber(zeroCount('last-day')):'—');
+    set('morning-kpi-zero-mtd',map.mtdB2bs>=0&&map.mtdB2br>=0?formatMorningNumber(zeroCount('mtd')):'—');
+    const missingB2B=[['LAST_DAY_B2BS',map.lastDayB2bs],['LAST_DAY_B2BR',map.lastDayB2br],['MTD_B2BS',map.mtdB2bs],['MTD_B2BR',map.mtdB2br]].filter(x=>x[1]<0).map(x=>x[0]);
+    const zeroNotice=document.getElementById('morning-zero-notice');if(zeroNotice){zeroNotice.hidden=!rows.length||!missingB2B.length;zeroNotice.textContent=missingB2B.length?'ZERO B2B হিসাবের কলাম নেই: '+missingB2B.join(', ')+'. Morning Excel আবার Upload করুন।':'';}
     set('morning-kpi-mtd',formatMorningNumber(mtd));
     set('morning-kpi-last-day-card',formatMorningNumber(lastDay));
     set('morning-kpi-cash-out-percent',formatPercent(totalCashOutPercent));
