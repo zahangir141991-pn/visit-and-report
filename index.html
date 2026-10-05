@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-10-04-reporting-time-reviewed-v95">
+    <meta name="dms-app-version" content="2026-10-05-visit-submit-fast-v96">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1582,7 +1582,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-10-04-reporting-time-reviewed-v95';
+        const APP_CACHE_VERSION = '2026-10-05-visit-submit-fast-v96';
         const APP_RELEASED_AT = 1791106041000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -3284,7 +3284,7 @@ body.app-logged-in #view-login{display:none!important}
             // IMPORTANT: never rotate the selfie according to phone/screen orientation.
             // Android already supplies the camera frame in its native display orientation.
             // Phone rotation must therefore NOT rotate the captured person/object.
-            const maxSide = 640;
+            const maxSide = 480;
             const scale = Math.min(1, maxSide/sourceW, maxSide/sourceH);
             canvas.width = Math.max(1, Math.round(sourceW*scale));
             canvas.height = Math.max(1, Math.round(sourceH*scale));
@@ -3295,9 +3295,9 @@ body.app-logged-in #view-login{display:none!important}
             ctx.imageSmoothingQuality = 'high';
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            let photoQuality = 0.50;
+            let photoQuality = 0.46;
             capturedPhotoData = canvas.toDataURL('image/jpeg', photoQuality);
-            while (capturedPhotoData.length > 135000 && photoQuality > 0.30) {
+            while (capturedPhotoData.length > 70000 && photoQuality > 0.30) {
                 photoQuality -= 0.06;
                 capturedPhotoData = canvas.toDataURL('image/jpeg', photoQuality);
             }
@@ -3615,8 +3615,14 @@ body.app-logged-in #view-login{display:none!important}
             return new Promise((resolve,reject)=>{
                 const xhr=new XMLHttpRequest(),base=String(firebaseConfig.databaseURL||'').replace(/\/$/,'');
                 const clean=String(path||'').split('/').filter(Boolean).map(encodeURIComponent).join('/');
-                xhr.open(method,base+'/'+clean+'.json'+(token?'?auth='+encodeURIComponent(token):''),true);
+                const query=[];if(token)query.push('auth='+encodeURIComponent(token));if(method==='PATCH')query.push('print=silent');
+                xhr.open(method,base+'/'+clean+'.json'+(query.length?'?'+query.join('&'):''),true);
                 xhr.timeout=timeout;xhr.setRequestHeader('Content-Type','application/json');
+                if(method==='PATCH' && path==='' && xhr.upload) xhr.upload.onprogress=event=>{
+                    if(!visitSubmitInFlight)return;
+                    const button=document.getElementById('btn-submit');
+                    if(button&&event.lengthComputable)button.innerText=event.loaded<event.total?'Submitting... '+Math.round(event.loaded/event.total*100)+'%':'Save যাচাই হচ্ছে...';
+                };
                 Object.entries(headers).forEach(([k,v])=>xhr.setRequestHeader(k,v));
                 xhr.onload=()=>{let data=null;try{data=JSON.parse(xhr.responseText||'null');}catch(_){}
                     if(xhr.status>=200&&xhr.status<300||xhr.status===412)resolve({status:xhr.status,data});
@@ -6166,11 +6172,11 @@ function compressNativeVisitPhoto(file){
         if(!file||!file.type.startsWith('image/'))return reject(new Error('Camera photo পাওয়া যায়নি।'));
         const url=URL.createObjectURL(file),img=new Image();
         img.onload=()=>{try{
-            const scale=Math.min(1,640/img.naturalWidth,640/img.naturalHeight);
+            const scale=Math.min(1,480/img.naturalWidth,480/img.naturalHeight);
             const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));
             canvas.getContext('2d',{alpha:false}).drawImage(img,0,0,canvas.width,canvas.height);
-            let quality=.55,data=canvas.toDataURL('image/jpeg',quality);
-            while(data.length>135000&&quality>.27){quality-=.06;data=canvas.toDataURL('image/jpeg',quality);}
+            let quality=.46,data=canvas.toDataURL('image/jpeg',quality);
+            while(data.length>70000&&quality>.27){quality-=.06;data=canvas.toDataURL('image/jpeg',quality);}
             URL.revokeObjectURL(url);resolve(data);
         }catch(err){URL.revokeObjectURL(url);reject(err);}};
         img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('Photo read করা যায়নি।'));};img.src=url;
