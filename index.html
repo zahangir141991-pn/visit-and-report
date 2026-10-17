@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-10-10-dms-brand-v97">
+    <meta name="dms-app-version" content="2026-10-17-login-attendance-v98">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -909,7 +909,7 @@ body:has(#view-kyc-status.active) #app-copyright,body:has(#view-kyc-status.activ
         <label for="login-pass">Password</label>
         <input type="password" id="login-pass" autocomplete="current-password" enterkeyhint="go" placeholder="Enter Password">
       </div>
-      <button type="button" class="btn" id="login-button" onclick="login()" style="touch-action:manipulation;">Login</button>
+      <button type="button" class="btn" id="login-button" onclick="login(true)" style="touch-action:manipulation;">Login</button>
     </div>
   </div>
 </div>
@@ -1585,8 +1585,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-10-10-dms-brand-v97';
-        const APP_RELEASED_AT = 1791602957000;
+        const APP_CACHE_VERSION = '2026-10-17-login-attendance-v98';
+        const APP_RELEASED_AT = 1792233322000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -2337,12 +2337,13 @@ body.app-logged-in #view-login{display:none!important}
             if (notice) notice.style.display = mustChangeDefaultPassword ? 'block' : 'none';
             if (cancel) cancel.style.display = mustChangeDefaultPassword ? 'none' : '';
         }
-        async function login() {
+        async function login(confirmed = false) {
+            if (confirmed !== true) return false;
             if (loginInProgress) return false;
             const userEl = document.getElementById('login-user');
             const passEl = document.getElementById('login-pass');
             const loginAlert = document.getElementById('login-alert');
-            const loginButton = document.getElementById('login-button') || document.querySelector('#view-login button[onclick="login()"]');
+            const loginButton = document.getElementById('login-button') || document.querySelector('#view-login button[onclick="login(true)"]');
 
             const rawUser = userEl ? userEl.value : '';
             const user = normalizeLoginUserId(rawUser);
@@ -4916,7 +4917,7 @@ let firebaseListenersStarted = false;
                     el.addEventListener('keydown', e => {
                         if (e.key === 'Enter') {
                             e.preventDefault();
-                            login();
+                            document.getElementById('login-button')?.focus();
                         }
                     });
                 }
@@ -6288,11 +6289,50 @@ function resetSessionFilters(){
 <style>#dms-attendance-shell{position:fixed;inset:0;z-index:20000;background:#f1f5f7;display:none}#dms-attendance-shell.open{display:block}#dms-attendance-frame{border:0;width:100%;height:100%;height:100dvh}#dms-attendance-close{position:absolute;right:12px;bottom:14px;padding:10px 16px;background:#102c38;color:white;border:0;border-radius:9px;z-index:1}</style>
 <section id="dms-attendance-shell" aria-label="Attendance"><iframe id="dms-attendance-frame" title="DMS Attendance" referrerpolicy="same-origin"></iframe><button id="dms-attendance-close" type="button" onclick="closeDmsAttendance()">DMS-এ ফিরুন</button></section>
 <script>
-let attendanceRequestController=null;
-function closeDmsAttendance(){if(attendanceRequestController){attendanceRequestController.abort();attendanceRequestController=null}const frame=document.getElementById('dms-attendance-frame');frame.contentWindow?.postMessage({type:'DMS_ATTENDANCE_CLOSED'},location.origin);frame.removeAttribute('src');document.getElementById('dms-attendance-shell').classList.remove('open');}
-function openDmsAttendance(){if(!currentUser||!['Admin','DM'].includes(getRoleInfo().role)){alert('Attendance পরিচালনার জন্য Admin বা DM দিয়ে লগইন করুন।');return}if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return}if(location.protocol==='file:'){alert('DMS ও attendance.html একই GitHub/Firebase Hosting-এ আপলোড করে খুলুন।');return}document.getElementById('dms-attendance-shell').classList.add('open');document.getElementById('dms-attendance-frame').src='attendance.html';}
-window.addEventListener('message',async event=>{const frame=document.getElementById('dms-attendance-frame');if(event.origin!==location.origin||event.source!==frame.contentWindow)return;const msg=event.data||{};if(msg.type==='DMS_ATTENDANCE_CLOSE'){closeDmsAttendance();return}if(msg.type!=='DMS_ATTENDANCE_READY')return;const generation=appSessionGeneration;const user=currentUser;const reply=data=>{if(frame.contentWindow&&generation===appSessionGeneration&&user===currentUser)frame.contentWindow.postMessage(data,location.origin)};
-try{if(!user||mustChangeDefaultPassword||!['Admin','DM'].includes(getRoleInfo().role))throw Error('DMS-এর Admin/DM লগইন প্রয়োজন।');const config=await fetch('attendance-connection.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('attendance-connection.json পাওয়া যায়নি');return r.json()});if(!config.tokenEndpoint||!config.tokenEndpoint.startsWith('https://'))throw Error('Attendance সার্ভারের URL attendance-connection.json-এ বসান। সেটআপের ধাপ README_BN.md-তে আছে।');attendanceRequestController=new AbortController();const timer=setTimeout(()=>attendanceRequestController?.abort(),15000);let response;try{response=await fetch(config.tokenEndpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:user,password:String(userPasswords[user]||'')}),signal:attendanceRequestController.signal})}finally{clearTimeout(timer)}const data=await response.json();if(!response.ok||!data.token)throw Error(data.error||'Attendance অনুমতি যাচাই হয়নি।');reply({type:'DMS_ATTENDANCE_TOKEN',token:data.token,identity:{userId:user,role:getRoleInfo().role}})}catch(error){reply({type:'DMS_ATTENDANCE_ERROR',message:error.name==='AbortError'?'Attendance সার্ভার সময়মতো উত্তর দেয়নি। আবার খুলুন।':error.message})}});
+let attendanceRequestController=null,attendanceOpenGeneration=0;
+function closeDmsAttendance(){
+ attendanceOpenGeneration++;
+ if(attendanceRequestController){attendanceRequestController.abort();attendanceRequestController=null;}
+ const frame=document.getElementById('dms-attendance-frame');
+ frame?.contentWindow?.postMessage({type:'DMS_ATTENDANCE_CLOSED'},location.origin);
+ frame?.removeAttribute('src');document.getElementById('dms-attendance-shell')?.classList.remove('open');
+}
+function openDmsAttendance(){
+ if(!currentUser||!['Admin','DM'].includes(getRoleInfo().role)){alert('Attendance পরিচালনার জন্য Admin বা DM দিয়ে লগইন করুন।');return;}
+ if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
+ if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
+ closeDmsAttendance();document.getElementById('dms-attendance-shell').classList.add('open');
+ document.getElementById('dms-attendance-frame').src='attendance.html';
+}
+window.addEventListener('message',async event=>{
+ const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
+ if(!frame||!shell?.classList.contains('open')||event.origin!==location.origin||event.source!==frame.contentWindow)return;
+ const msg=event.data||{};
+ if(msg.type==='DMS_ATTENDANCE_CLOSE'){closeDmsAttendance();return;}
+ if(msg.type!=='DMS_ATTENDANCE_READY')return;
+ const generation=appSessionGeneration,openGeneration=attendanceOpenGeneration,user=currentUser;
+ if(attendanceRequestController)attendanceRequestController.abort();
+ const controller=new AbortController();attendanceRequestController=controller;
+ const isCurrent=()=>!controller.signal.aborted&&attendanceRequestController===controller&&generation===appSessionGeneration&&openGeneration===attendanceOpenGeneration&&user===currentUser&&shell.classList.contains('open');
+ const reply=data=>{if(generation===appSessionGeneration&&openGeneration===attendanceOpenGeneration&&user===currentUser&&attendanceRequestController===controller&&shell.classList.contains('open'))frame.contentWindow?.postMessage(data,location.origin);};
+ const timer=setTimeout(()=>controller.abort(),15000);
+ try{
+  if(!user||mustChangeDefaultPassword||!['Admin','DM'].includes(getRoleInfo().role))throw Error('DMS-এর Admin/DM লগইন প্রয়োজন।');
+  const configResponse=await fetch('attendance-connection.json',{cache:'no-store',signal:controller.signal});
+  if(!configResponse.ok)throw Error('attendance-connection.json পাওয়া যায়নি।');
+  const config=await configResponse.json();
+  let endpoint;try{endpoint=new URL(config.tokenEndpoint);}catch(_){throw Error('Attendance token endpoint সঠিক নয়।');}
+  if(endpoint.protocol!=='https:')throw Error('Attendance token endpoint HTTPS হতে হবে।');
+  // Send login credentials only to the explicitly configured application server.
+  if(endpoint.origin!=='https://dms-attendance-login.zahangir-ithome.workers.dev')throw Error('Attendance সার্ভারের ঠিকানা অনুমোদিত নয়।');
+  if(!isCurrent())return;
+  const response=await fetch(endpoint.href,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:user,password:String(userPasswords[user]||'')}),signal:controller.signal});
+  let data;try{data=await response.json();}catch(_){throw Error('Attendance সার্ভার সঠিক উত্তর দেয়নি।');}
+  if(!response.ok||typeof data.token!=='string'||!data.token)throw Error(data.error||'Attendance অনুমতি যাচাই হয়নি।');
+  if(isCurrent())reply({type:'DMS_ATTENDANCE_TOKEN',token:data.token,identity:{userId:user,role:getRoleInfo().role}});
+ }catch(error){reply({type:'DMS_ATTENDANCE_ERROR',message:error.name==='AbortError'?'Attendance সার্ভার সময়মতো উত্তর দেয়নি। আবার খুলুন।':error.message});}
+ finally{clearTimeout(timer);if(attendanceRequestController===controller)attendanceRequestController=null;}
+});
 
 /* Upload timestamps use the saved server time. A single local ticker makes
    elapsed time advance without reloading reports or requesting the database. */
