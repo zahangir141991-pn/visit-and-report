@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-10-17-attendance-corporate-v101">
+    <meta name="dms-app-version" content="2026-10-17-kyc-unique-number-v102">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1585,8 +1585,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-10-17-attendance-corporate-v101';
-        const APP_RELEASED_AT = 1792257417000;
+        const APP_CACHE_VERSION = '2026-10-17-kyc-unique-number-v102';
+        const APP_RELEASED_AT = 1792265042000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -2506,7 +2506,7 @@ body.app-logged-in #view-login{display:none!important}
 
         function logout() {
             closeDmsAttendance();
-            appSessionGeneration++;kycPhotoViewToken++;visitPhotoMemoryCache.clear();kycPhotoRequests.clear();pendingKycSubmission=null;closeVisitDetails();stopKycShopCamera();clearKycForm();resetSessionFilters();
+            appSessionGeneration++;kycPhotoViewToken++;visitPhotoMemoryCache.clear();kycPhotoRequests.clear();kycAttemptTokens.clear();closeVisitDetails();stopKycShopCamera();clearKycForm();resetSessionFilters();
             closeMobileNav();
             stopServerUpdatePolling();
             markCurrentLoginOffline();
@@ -5854,66 +5854,35 @@ function clearKycForm(){
     document.getElementById('btn-kyc-camera-start')?.classList.remove('hidden');document.getElementById('btn-kyc-camera-capture')?.classList.add('hidden');document.getElementById('btn-kyc-camera-retake')?.classList.add('hidden');
     const n=document.getElementById('kyc-location-name'),v=document.getElementById('kyc-location');if(n){n.value='';n.dataset.fullName='';n.dataset.accuracy='';}if(v)v.value='';populateKycDsoWallets();
 }
-let pendingKycSubmission = null;
-let kycSubmitBusy = false;
-async function verifyKycSaved(id) {
-    try {
-        const saved = await firebaseRestReadFresh('new_uddokta_kyc/' + id, '?_=' + Date.now());
-        return !!(saved && saved.id === id && saved.hasPhoto);
-    } catch (error) { return false; }
-}
+const kycAttemptTokens=new Map();
+let kycSubmitBusy=false;
+function normalizeKycNumber(value){let number=normalizeUddoktaNumber(value);if(number.length===13&&number.startsWith('880'))number=number.slice(2);if(number.length===15&&number.startsWith('00880'))number=number.slice(4);return number;}
+function kycAttempt(number){const key='dms-kyc-attempt:'+String(currentUser||'')+':'+number;let token=kycAttemptTokens.get(key);try{token=token||localStorage.getItem(key)}catch(_){}if(!token){token=crypto.randomUUID();kycAttemptTokens.set(key,token);try{localStorage.setItem(key,token)}catch(_){}}return {key,token};}
+function clearKycAttempt(attempt){kycAttemptTokens.delete(attempt.key);try{localStorage.removeItem(attempt.key)}catch(_){}}
+function kycIsOwnAttempt(record,token,user){return !!record&&record.submissionToken===token&&String(record.submittedBy||'')===String(user);}
+function assertKycNumberAvailable(records,number,id,token,user){for(const [key,record] of Object.entries(records||{})){if(!record||typeof record!=='object')continue;if(normalizeKycNumber(record.uddoktaNumber)!==number)continue;if(key===id&&kycIsOwnAttempt(record,token,user))continue;throw Error('এই Uddokta Number-এর KYC আগে জমা হয়েছে বা জমা হচ্ছে। একই নম্বর আবার নেওয়া যাবে না।');}}
+async function readKycServer(path){const response=await visitRestRequest(path,'GET',null,{},12000);return response.data;}
+async function claimUniqueKyc(record,user){const id=record.id,number=record.uddoktaNumber,token=record.submissionToken;const all=await readKycServer('new_uddokta_kyc');assertKycNumberAvailable(all,number,id,token,user);const existing=all?.[id];if(existing){if(!kycIsOwnAttempt(existing,token,user))throw Error('এই Uddokta Number আগে জমা হয়েছে।');return existing;}const result=await visitRestRequest('new_uddokta_kyc/'+id,'PUT',{...record,hasPhoto:false,submissionState:'pending'},{'if-match':'null_etag'},12000);if(result.status===412){const current=result.data;if(kycIsOwnAttempt(current,token,user))return current;throw Error('এই Uddokta Number অন্য submission-এ গ্রহণ করা হয়েছে। Duplicate নেওয়া যাবে না।');}return {...record,hasPhoto:false,submissionState:'pending'};}
+async function verifyKycSaved(id,token,user){try{const saved=await readKycServer('new_uddokta_kyc/'+id);return !!(saved&&saved.id===id&&saved.hasPhoto&&saved.submissionState==='complete'&&kycIsOwnAttempt(saved,token,user));}catch(_){return false;}}
 async function submitKyc(event){
-    event.preventDefault();
-    if (kycSubmitBusy) return;
-    const form=document.getElementById('kyc-form');if(!form||!form.reportValidity())return;
-    if(!db){kycAlert('Database is not connected.','error');return;}
-    const contact=String(document.getElementById('kyc-owner-contact').value||'').replace(/\D/g,'');
-    const uddoktaNumber=String(document.getElementById('kyc-uddokta-number').value||'').replace(/\D/g,'');
-    const selectedDsoWallet=normalizeScopeWallet(document.getElementById('kyc-dso-wallet').value||'');
-    if(!selectedDsoWallet){kycAlert('DSO Wallet নির্বাচন করুন।','error');return;}
-    const accessRole=getRoleInfo();
-    if(accessRole.role==='DSO'&&selectedDsoWallet!==normalizeScopeWallet(accessRole.dsoWallet)){kycAlert('নিজের DSO Wallet ছাড়া submit করা যাবে না।','error');return;}
-    if(accessRole.role==='DSS'&&!getAssignedDsoWalletsForDss(accessRole.dssName).has(selectedDsoWallet)){kycAlert('শুধু assigned DSO Wallet নির্বাচন করা যাবে।','error');return;}
-    if(!/^01\d{9}$/.test(uddoktaNumber)){kycAlert('সঠিক ১১ সংখ্যার Uddokta Number দিন।','error');return;}
-    if(!/^01\d{9}$/.test(contact)){kycAlert('সঠিক ১১ সংখ্যার Owner Contact Number দিন।','error');return;}
-    if(!kycPictureData){kycAlert('Camera দিয়ে Shop Photo তুলুন।','error');return;}
-    const gps=document.getElementById('kyc-location').value.trim(),locationNameInput=document.getElementById('kyc-location-name'),locationName=(locationNameInput.dataset.fullName||locationNameInput.value).trim();
-    if(!gps||!locationName){kycAlert('Location নিতে হবে।','error');return;}
-    const submitGeneration=appSessionGeneration;const btn=document.getElementById('btn-kyc-submit');kycSubmitBusy=true;
-    if(btn){btn.disabled=true;btn.textContent='Saving KYC...';}
-    try{
-        const role=getRoleInfo(),dsoWallet=selectedDsoWallet;
-        const fingerprint=JSON.stringify([String(currentUser||''),dsoWallet,uddoktaNumber,contact,kycPictureData,gps,locationName,...['kyc-shop-name','kyc-owner-name','kyc-thana','kyc-bazar-name'].map(id=>document.getElementById(id).value.trim())]);
-        // A retry of this unchanged form keeps its original ID.
-        const retrying=!!(pendingKycSubmission && pendingKycSubmission.fingerprint===fingerprint);
-        if(!retrying){
-            const ref=db.ref('new_uddokta_kyc').push(),id=ref.key;
-            const collectedAt=new Date().toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true});
-            const dssName=role.role==='DSS'?String(role.dssName||'').trim().toUpperCase():getDssNameForWallet(dsoWallet);
-            const record={id,collectionDate:getDhakaToday(),dsoWallet,uddoktaNumber,shopName:document.getElementById('kyc-shop-name').value.trim(),ownerName:document.getElementById('kyc-owner-name').value.trim(),ownerContact:contact,thana:document.getElementById('kyc-thana').value.trim(),bazarName:document.getElementById('kyc-bazar-name').value.trim(),locationName,gps,submittedBy:String(currentUser||''),submitterRole:role.role,dmId:'zahangir',dssName,status:'Collected',collectedAt,submittedAt:collectedAt,rejectionReason:'',hasPhoto:true,createdAt:firebase.database.ServerValue.TIMESTAMP,updatedAt:firebase.database.ServerValue.TIMESTAMP};
-            const updates={};updates['new_uddokta_kyc/'+id]=record;updates['new_uddokta_kyc_photos/'+id]=kycPictureData;
-            pendingKycSubmission={id,fingerprint,updates};
-        }
-        const {id,updates}=pendingKycSubmission;
-        // Read first on retry: a timed-out write may already have reached Firebase.
-        let saved=retrying ? await verifyKycSaved(id) : false;
-        if(!saved){
-            try{await firebaseRestWrite('',JSON.stringify(updates),'PATCH',null,18000);saved=true;}
-            catch(writeError){
-                saved=await verifyKycSaved(id);
-                if(!saved)throw new Error('Server confirmation পাওয়া যায়নি। একই ফর্ম রেখে আবার Submit চাপুন।');
-            }
-        }
-        if(submitGeneration===appSessionGeneration)pendingKycSubmission=null;
-        db.ref('dms_live_update_signal').set({type:'kyc',revision:firebase.database.ServerValue.TIMESTAMP,recordId:id}).catch(()=>{});
-        if(submitGeneration!==appSessionGeneration)return;
-        clearKycForm();kycAlert('KYC successfully submitted. Current Status: Collected','success');
-        setTimeout(()=>{if(submitGeneration===appSessionGeneration)switchTab('kyc-status');},350);
-    }catch(e){if(submitGeneration===appSessionGeneration)kycAlert('KYC submit হয়নি: '+e.message,'error');}
-    finally{kycSubmitBusy=false;if(btn){btn.disabled=false;btn.textContent='Submit KYC';}}
+ event.preventDefault();if(kycSubmitBusy)return;const form=document.getElementById('kyc-form');if(!form||!form.reportValidity())return;if(!db){kycAlert('Database is not connected.','error');return;}
+ const contact=normalizeKycNumber(document.getElementById('kyc-owner-contact').value),uddoktaNumber=normalizeKycNumber(document.getElementById('kyc-uddokta-number').value),selectedDsoWallet=normalizeScopeWallet(document.getElementById('kyc-dso-wallet').value||'');
+ if(!selectedDsoWallet){kycAlert('DSO Wallet নির্বাচন করুন।','error');return;}const role=getRoleInfo();if(role.role==='DSO'&&selectedDsoWallet!==normalizeScopeWallet(role.dsoWallet)){kycAlert('নিজের DSO Wallet ছাড়া submit করা যাবে না।','error');return;}if(role.role==='DSS'&&!getAssignedDsoWalletsForDss(role.dssName).has(selectedDsoWallet)){kycAlert('শুধু assigned DSO Wallet নির্বাচন করা যাবে।','error');return;}
+ if(!/^01\d{9}$/.test(uddoktaNumber)){kycAlert('সঠিক ১১ সংখ্যার Uddokta Number দিন।','error');return;}if(!/^01\d{9}$/.test(contact)){kycAlert('সঠিক ১১ সংখ্যার Owner Contact Number দিন।','error');return;}if(!kycPictureData){kycAlert('Camera দিয়ে Shop Photo তুলুন।','error');return;}
+ const gps=document.getElementById('kyc-location').value.trim(),locationNameInput=document.getElementById('kyc-location-name'),locationName=(locationNameInput.dataset.fullName||locationNameInput.value).trim();if(!gps||!locationName){kycAlert('Location নিতে হবে।','error');return;}
+ const submitGeneration=appSessionGeneration,user=String(currentUser||''),btn=document.getElementById('btn-kyc-submit'),attempt=kycAttempt(uddoktaNumber),id='kyc_'+uddoktaNumber;kycSubmitBusy=true;if(btn){btn.disabled=true;btn.textContent='Duplicate যাচাই হচ্ছে…';}
+ try{
+  if(navigator.onLine===false)throw Error('Internet নেই। সংযোগ ফিরলে আবার Submit করুন।');
+  const collectedAt=new Date().toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}),dssName=role.role==='DSS'?String(role.dssName||'').trim().toUpperCase():getDssNameForWallet(selectedDsoWallet);
+  const record={id,collectionDate:getDhakaToday(),dsoWallet:selectedDsoWallet,uddoktaNumber,shopName:document.getElementById('kyc-shop-name').value.trim(),ownerName:document.getElementById('kyc-owner-name').value.trim(),ownerContact:contact,thana:document.getElementById('kyc-thana').value.trim(),bazarName:document.getElementById('kyc-bazar-name').value.trim(),locationName,gps,submittedBy:user,submitterRole:role.role,dmId:'zahangir',dssName,status:'Collected',collectedAt,submittedAt:collectedAt,rejectionReason:'',hasPhoto:true,submissionToken:attempt.token,submissionState:'complete',createdAt:firebase.database.ServerValue.TIMESTAMP,updatedAt:firebase.database.ServerValue.TIMESTAMP};
+  const claimed=await claimUniqueKyc(record,user);if(submitGeneration!==appSessionGeneration)return;
+  let saved=claimed.submissionState==='complete'&&claimed.hasPhoto===true;
+  if(!saved){if(btn)btn.textContent='Saving KYC…';const updates={};updates['new_uddokta_kyc/'+id]={...record,createdAt:claimed.createdAt||record.createdAt};updates['new_uddokta_kyc_photos/'+id]=kycPictureData;try{await visitRestRequest('','PATCH',updates,{},18000);saved=true;}catch(_){saved=await verifyKycSaved(id,attempt.token,user);if(!saved)throw Error('Server confirmation পাওয়া যায়নি। একই নম্বরের form রেখে আবার Submit করুন; duplicate হবে না।');}}
+  if(submitGeneration!==appSessionGeneration)return;clearKycAttempt(attempt);db.ref('dms_live_update_signal').set({type:'kyc',revision:firebase.database.ServerValue.TIMESTAMP,recordId:id}).catch(()=>{});clearKycForm();kycAlert('KYC successfully submitted. Current Status: Collected','success');setTimeout(()=>{if(submitGeneration===appSessionGeneration)switchTab('kyc-status');},350);
+ }catch(e){if(submitGeneration===appSessionGeneration)kycAlert('KYC submit হয়নি: '+e.message,'error');}finally{kycSubmitBusy=false;if(btn){btn.disabled=false;btn.textContent='Submit KYC';}}
 }
 function canSeeKycRecord(r){
-    if(!currentUser||!r)return false;
+    if(!currentUser||!r||r.submissionState==='pending')return false;
     const role=getRoleInfo(),wallet=normalizeScopeWallet(r.dsoWallet||'');
     if(role.role==='Admin')return true;
     if(role.role==='DM')return String(r.dmId||'zahangir').trim().toLowerCase()===String(currentUser).trim().toLowerCase();
@@ -6302,7 +6271,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-10-17-attendance-corporate-v101';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-10-17-kyc-unique-number-v102';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
