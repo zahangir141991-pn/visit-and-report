@@ -27,3 +27,22 @@ export function validateRules(input){const d={...DEFAULT_RULES,...input};for(con
 export const formatMinutes=n=>Math.floor(Number(n||0)/60)+'h '+String(Number(n||0)%60).padStart(2,'0')+'m';
 export const csvCell=v=>'"'+String(v??'').replace(/^([\s]*[=+@-])/,"'$1").replace(/"/g,'""')+'"';
 export const makeCsv=rows=>'\ufeff'+rows.map(row=>row.map(csvCell).join(',')).join('\r\n');
+
+export function deviceEmployeeImport(records,deviceId,join,branch){
+ if(!validDate(join))throw Error('Choose the actual joining date for this batch.');
+ const device=records.find(r=>r.kind==='device'&&r.id===deviceId);
+ if(!device)throw Error('Select a registered device.');
+ const existing=records.filter(r=>r.kind==='employee'),updates={},skipped=[];
+ const users=records.filter(r=>r.kind==='deviceUser'&&r.device===deviceId).sort((a,b)=>String(a.code).localeCompare(String(b.code),undefined,{numeric:true}));
+ if(!users.length)throw Error('No downloaded users found. Keep the connector running and read device users first.');
+ const candidates=[...existing];
+ for(const user of users){
+  const code=String(user.code??'').trim(),key='employee_device_'+code;
+  if(candidates.some(e=>String(e.code).trim()===code||String(e.employeeId||'').trim().toLowerCase()===code.toLowerCase())){skipped.push(code);continue;}
+  if(records.some(r=>r.id===key))throw Error('Employee record ID conflict for device user '+code+'.');
+  let employee;try{employee=validateEmployee({employeeId:code,code,name:user.name,branch,join,active:true},candidates);}catch(e){throw Error('Device user '+code+': '+e.message);}
+  updates[key]={...employee,kind:'employee',sourceDevice:deviceId,source:'Device import'};
+  candidates.push({...employee,id:key});
+ }
+ return {updates,skipped,total:users.length};
+}
