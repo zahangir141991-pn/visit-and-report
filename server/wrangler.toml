@@ -1,0 +1,10 @@
+# Replace the name with the EXISTING Attendance device receiver before deploying.
+name = "dms-attendance-receiver"
+main = "adms-receiver.mjs"
+compatibility_date = "2026-10-18"
+workers_dev = true
+
+[vars]
+FIREBASE_PROJECT_ID = "visit-report-ea224"
+FIREBASE_DATABASE_URL = "https://visit-report-ea224-default-rtdb.firebaseio.com"
+# Set FIREBASE_SERVICE_ACCOUNT using Wrangler secret or Cloudflare's encrypted Secrets UI.

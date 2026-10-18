@@ -1,0 +1,9 @@
+{
+  "rules": {
+    "attendance": {
+      "records": {
+        ".indexOn": ["kind", "device", "employee", "date"]
+      }
+    }
+  }
+}

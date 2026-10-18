@@ -1,0 +1,3 @@
+# Use a dedicated virtual environment. Dependencies are not vendored in this repository.
+firebase-admin>=6.5,<8
+pyzk>=0.9,<1
