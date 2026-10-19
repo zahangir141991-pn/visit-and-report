@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-10-18-workforce-v103">
+    <meta name="dms-app-version" content="2026-10-19-kyc-gps-v106">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1585,8 +1585,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-10-18-workforce-v103';
-        const APP_RELEASED_AT = 1792317360088;
+        const APP_CACHE_VERSION = '2026-10-19-kyc-gps-v106';
+        const APP_RELEASED_AT = 1792408802781;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -3391,30 +3391,31 @@ body.app-logged-in #view-login{display:none!important}
         }
         function getAccuratePosition(){
             return new Promise((resolve,reject)=>{
-                if(!navigator.geolocation)return reject(new Error('Geolocation is not supported'));
-                let best=null,watchId=null,done=false,lastError=null;
-                let timer=null,earlyTimer=null;
-                const finish=(error)=>{
-                    if(done)return;
-                    done=true;clearTimeout(timer);clearTimeout(earlyTimer);
+                if(!window.isSecureContext)return reject(new Error('Location পেতে HTTPS দিয়ে app খুলুন।'));
+                if(!navigator.geolocation)return reject(new Error('এই browser-এ Location সমর্থিত নয়। Chrome দিয়ে খুলুন।'));
+                let best=null,watchId=null,done=false,lastError=null,timer=null,earlyTimer=null;
+                const finish=error=>{
+                    if(done)return;done=true;clearTimeout(timer);clearTimeout(earlyTimer);
                     if(watchId!==null)navigator.geolocation.clearWatch(watchId);
-                    if(best)resolve(best);else reject(error||lastError||Object.assign(new Error('GPS location পাওয়া যায়নি।'),{code:3}));
+                    if(best)resolve(best);else reject(error||lastError||Object.assign(new Error('GPS পাওয়া যায়নি। Phone Location ON করে খোলা জায়গায় আবার Get Location চাপুন।'),{code:3}));
                 };
                 const accept=pos=>{
-                    if(done||!pos||!pos.coords)return;
+                    if(done||!pos?.coords)return;
                     const {latitude,longitude}=pos.coords,accuracy=Number(pos.coords.accuracy);
-                    if(!Number.isFinite(latitude)||!Number.isFinite(longitude)||Math.abs(latitude)>90||Math.abs(longitude)>180)return;
-                    if(!best||(!Number.isFinite(Number(best.coords.accuracy))||accuracy<Number(best.coords.accuracy)))best=pos;
-                    if(Number.isFinite(accuracy)&&accuracy<=80)finish();
+                    if(!Number.isFinite(latitude)||!Number.isFinite(longitude)||Math.abs(latitude)>90||Math.abs(longitude)>180||!Number.isFinite(accuracy)||accuracy<0)return;
+                    if(!best||accuracy<Number(best.coords.accuracy))best=pos;
+                    if(accuracy<=80){finish();return;}
+                    if(!earlyTimer)earlyTimer=setTimeout(()=>finish(),1800);
                 };
-                const fail=err=>{if(done)return;if(err&&err.code===1)finish(err);else lastError=err;};
-                // Coarse network positioning works indoors; high accuracy can refine it.
-                timer=setTimeout(()=>finish(),5500);
-                earlyTimer=setTimeout(()=>{if(best)finish();},900);
-                try{watchId=navigator.geolocation.watchPosition(accept,fail,{enableHighAccuracy:true,maximumAge:15000,timeout:5000});}
-                catch(err){lastError=err;}
-                try{navigator.geolocation.getCurrentPosition(accept,fail,{enableHighAccuracy:false,maximumAge:15000,timeout:4500});}
-                catch(err){lastError=err;}
+                const fail=err=>{
+                    if(done)return;
+                    if(err?.code===1){finish(Object.assign(new Error('Location permission বন্ধ আছে। Address bar-এর site settings → Location → Allow করুন এবং Phone/Windows Location ON করুন।'),{code:1}));return;}
+                    lastError=Object.assign(new Error(err?.code===2?'GPS signal পাওয়া যাচ্ছে না। Device Location ON করে আবার চেষ্টা করুন।':'GPS নিতে সময় শেষ হয়েছে। খোলা জায়গায় আবার Get Location চাপুন।'),{code:err?.code||3});
+                };
+                // Allow time for the permission prompt and first GPS fix; return a usable fix promptly.
+                timer=setTimeout(()=>finish(),35000);
+                try{watchId=navigator.geolocation.watchPosition(accept,fail,{enableHighAccuracy:true,maximumAge:0,timeout:25000});}catch(err){fail(err);}
+                if(!done)try{navigator.geolocation.getCurrentPosition(accept,fail,{enableHighAccuracy:false,maximumAge:10000,timeout:20000});}catch(err){fail(err);}
                 if(done&&watchId!==null)navigator.geolocation.clearWatch(watchId);
             });
         }
@@ -4202,7 +4203,7 @@ body.app-logged-in #view-login{display:none!important}
             // the report stuck on the static "No report generated" placeholder.
             if (tab === 'morning-report') setTimeout(() => { try { loadMorningReport(); } catch (e) { console.error('Morning report load error:', e); } }, 0);
             if (tab === 'afternoon-report') setTimeout(() => { try { loadAfternoonReport(); } catch (e) { console.error('Afternoon report load error:', e); } }, 0);
-            if (tab === 'kyc-collection') setTimeout(() => { try { populateKycDsoWallets(); fetchKycLocation(false); } catch (e) {} }, 0);
+            if (tab === 'kyc-collection') setTimeout(() => { try { populateKycDsoWallets(); if(document.getElementById('kyc-location')?.value)return; getLocationPermissionState().then(permission=>{if(permission==='granted')fetchKycLocation(false);}); } catch (e) {} }, 0);
             if (tab === 'kyc-status') { startKycRealtime(); renderKycStatus(); }
 
             // Camera must remain OFF unless the user explicitly starts selfie capture.
@@ -5826,7 +5827,7 @@ async function fetchKycLocation(showError=true){
     if(!name||!value)return;
     if(kycLocationInFlight)return kycLocationInFlight;
     kycLocationInFlight=(async()=>{
-    if(btn){btn.disabled=true;btn.textContent='Getting accurate GPS...';}
+    if(btn){btn.disabled=true;btn.textContent='Getting GPS… Allow location if asked';}
     name.placeholder='Getting accurate GPS...';
     try{
         const pos=await getAccuratePosition(),lat=pos.coords.latitude,lon=pos.coords.longitude;
@@ -5840,7 +5841,7 @@ async function fetchKycLocation(showError=true){
         name.dataset.accuracy=String(Math.round(pos.coords.accuracy));
         name.title='GPS accuracy '+locationAccuracyText(pos);
         showLocationAccuracy(name,pos);
-    }catch(e){if(!value.value){name.value='';name.dataset.fullName='';name.placeholder='Location not found — try again';}if(showError)kycAlert(e.message||'GPS পাওয়া যায়নি।','error');}
+    }catch(e){if(!value.value){name.value='';name.dataset.fullName='';name.placeholder=e.code===1?'Location blocked — Allow in site settings':'GPS not found — press Get Location again';}if(showError)kycAlert(e.message||'GPS পাওয়া যায়নি।','error');}
     finally{if(btn){btn.disabled=false;btn.textContent='📍 Get Location';}}
     })();
     try{return await kycLocationInFlight;}finally{kycLocationInFlight=null;}
@@ -6271,7 +6272,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-10-18-workforce-v103';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-10-19-kyc-gps-v106';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
