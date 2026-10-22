@@ -53,3 +53,14 @@ footer{color:#52647a;font-size:11px;padding:8px 14px}.boot-card p{color:#52647a}
 @media(max-width:380px){.filters{grid-template-columns:minmax(0,1fr)}.metrics{gap:8px}.metric-top{font-size:11px}.metric-icon{display:none}.setup-values{grid-template-columns:minmax(0,1fr)}.topbar-tools{gap:6px}.breadcrumb{font-size:11px}.admin-avatar{display:none}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important}}
 @media print{body{background:white;font-size:13px}.sidebar,.workspace,dialog,#toasts{display:none!important}#print-area{display:block!important}#print-area h1{font-size:20px;margin-bottom:10px}#print-area table{white-space:normal;border-collapse:collapse;font-size:12px}#print-area td,#print-area th{padding:7px;border:1px solid #dae2ec;font-size:12px;position:static}#print-area p{font-size:13px;color:#6d7c91}@page{size:landscape;margin:12mm}}
+/* Report output: consistent designation columns, restrained colors and print layout. */
+@media print{
+ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:Arial,sans-serif}
+ #print-area{color:#243b53}#print-area .print-heading{display:flex;justify-content:space-between;gap:20px;border-bottom:3px solid #142b4c;padding:0 0 14px;margin-bottom:14px}
+ #print-area .print-brand{font-size:11px;font-weight:700;letter-spacing:2px;color:#42658f}#print-area h1{font-size:25px;margin:6px 0}#print-area p{margin:4px 0;color:#435b77;font-size:11px}
+ #print-area .print-meta{text-align:right;font-size:10px;line-height:1.7;color:#52647a}#print-area .print-summary{display:flex;gap:28px;padding:10px 14px;background:#eaf0f7;border:1px solid #c7d5e5;font-size:11px;margin:0 0 8px}#print-area .print-summary b{margin-left:5px;color:#142b4c}
+ #print-area .print-filter{margin:8px 0 12px}#print-area .table-wrap{overflow:visible;max-height:none}#print-area table{width:100%;table-layout:auto;white-space:normal}#print-area thead{display:table-header-group}#print-area tr{break-inside:avoid}
+ #print-area th{background:#142b4c!important;color:white!important;text-align:center;font-size:9px;letter-spacing:0;padding:9px 6px}#print-area td{font-size:10px;padding:7px 6px;color:#243b53;overflow-wrap:anywhere}#print-area td small{font-size:9px;color:#52647a}#print-area .person{min-width:0}#print-area .avatar{display:none}#print-area .tag{font-size:9px;padding:3px 5px;white-space:normal}
+ #print-area tbody tr:nth-child(even){background:#f2f6fa!important}#print-area .print-signatures{display:flex;justify-content:space-between;gap:60px;margin-top:45px;break-inside:avoid;font-size:10px}#print-area .print-signatures span{border-top:1px solid #8da2ba;padding:7px 22px;text-align:center}#print-area .print-footer{display:block;padding:10px 0 0;margin-top:15px;border-top:1px solid #dae2ec;text-align:center;font-size:9px}
+ @page{size:A4 landscape;margin:12mm}
+}
