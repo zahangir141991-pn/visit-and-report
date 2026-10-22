@@ -87,3 +87,8 @@ footer{color:#52647a;font-size:11px;padding:8px 14px}.boot-card p{color:#52647a}
  td small{color:#3c526d}td strong,.person strong{color:#102942;font-weight:650}.mono{color:#24476d}.tag{font-weight:700}
  .filters label,.panel-heading small,.page-header p,.metric small{color:#3c526d}.metric-top{color:#344961;font-weight:650}
 }
+@media screen{
+ th{background:#dce9f7!important;color:#000!important;border-color:#afc1d5!important}
+ td,td small,td strong,.person strong,.mono{color:#000}td{background:#fff}tbody tr:nth-child(even) td{background:#f0f4f8}tbody tr:hover td{background:#e3edfa}
+ .page-header p,.metric-top,.metric small,.panel-heading small{color:#000}
+}
