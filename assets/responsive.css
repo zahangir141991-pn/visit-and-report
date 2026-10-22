@@ -129,3 +129,49 @@
  @media(max-width:767px){#app-nav.nav-sidebar{will-change:transform;transition:transform .18s cubic-bezier(.2,.7,.2,1);backface-visibility:hidden}#main-app .report-pagination select{font-size:16px;min-height:40px}#main-app .report-pagination button{min-width:40px;min-height:40px}}
  @media(prefers-reduced-motion:reduce){#app-nav.nav-sidebar{transition:none}}
 }
+/* v114: small-screen KYC cards reuse the same scoped, paginated table records. */
+@media screen and (max-width:767px){
+ #main-app #view-kyc-status{min-width:0;width:100%;padding-left:10px;padding-right:10px}
+ #main-app #view-kyc-status .section-head{align-items:flex-start;gap:9px}
+ #main-app #view-kyc-status .section-head>div{max-width:100%;min-width:0}
+ #main-app #view-kyc-status .section-head>div:last-child{gap:6px!important}
+ #main-app #view-kyc-status .compact-filter-panel{margin-bottom:9px!important}
+ #main-app #view-kyc-status .filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #main-app #view-kyc-status .filter-grid>div:last-child{grid-column:1/-1}
+ #main-app #view-kyc-status .kyc-summary{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important}
+ #main-app #view-kyc-status .kyc-summary .card{padding:7px 8px!important;min-height:54px!important}
+ #main-app #view-kyc-status .kyc-summary span{font-size:10px!important;line-height:1.35!important}
+ #main-app #view-kyc-status #kyc-page-controls{display:grid!important;grid-template-columns:1fr 1fr;gap:7px!important;align-items:center;margin:10px 0!important}
+ #main-app #view-kyc-status #kyc-page-controls>label{order:0;display:flex;align-items:center;gap:8px;grid-column:1;margin:0;min-width:0;font-size:12px}
+ #main-app #view-kyc-status #kyc-page-controls select{width:76px;min-height:40px;font-size:16px;padding:6px}
+ #main-app #view-kyc-status #kyc-page-controls>span{order:1;text-align:right;min-width:0;font-size:11px;overflow-wrap:anywhere}
+ #main-app #view-kyc-status #kyc-page-controls>button{order:2;min-height:40px;margin:0;width:100%;font-size:12px}
+ #main-app #view-kyc-status .table-responsive{width:100%;max-width:100%;border:0;box-shadow:none;border-radius:0;background:transparent;overflow:visible!important}
+ #main-app #view-kyc-status table.kyc-table{display:block;width:100%!important;min-width:0!important;max-width:100%;table-layout:auto;border:0;background:transparent}
+ #main-app #view-kyc-status table.kyc-table thead{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);clip-path:inset(50%);white-space:nowrap;border:0}
+ #main-app #view-kyc-status table.kyc-table tbody{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;width:100%}
+ #main-app #view-kyc-status table.kyc-table tbody tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;min-width:0;border:1px solid #b9cce2;border-top:3px solid #376aa9;border-radius:10px;overflow:hidden;background:white;box-shadow:0 2px 7px #142e5008}
+ #main-app #view-kyc-status table.kyc-table tbody tr td{display:block;min-width:0;max-width:100%;width:auto;height:auto;padding:8px 10px!important;border:0;border-bottom:1px solid #e1e8f1!important;background:#fff!important;color:#000!important;font-size:12px!important;line-height:1.45!important;white-space:normal;overflow-wrap:anywhere;text-align:left}
+ #main-app #view-kyc-status table.kyc-table tbody tr td[data-label]::before{content:attr(data-label);display:block;margin:0 0 3px;font-size:10px;line-height:1.35;font-weight:600;color:#3c526d}
+ #main-app #view-kyc-status table.kyc-table tbody tr td:nth-child(odd){border-right:1px solid #e1e8f1}
+ #main-app #view-kyc-status table.kyc-table tbody tr td:is([data-label="Uddokta Number"],[data-label="Shop Name"],[data-label="Location"],[data-label="Current Status"],[data-label="Rejection Reason"]){grid-column:1/-1;border-right:0}
+ #main-app #view-kyc-status table.kyc-table tbody tr td[data-label="Uddokta Number"]{font-size:15px!important;font-weight:700!important;background:#edf4fc!important;letter-spacing:.3px;font-variant-numeric:tabular-nums}
+ #main-app #view-kyc-status table.kyc-table tbody tr td[data-label="Shop Name"]{font-size:13px!important;font-weight:650!important}
+ #main-app #view-kyc-status table.kyc-table tbody tr td[data-label="Current Status"]{background:#f5f8fd!important;padding:10px!important}
+ #main-app #view-kyc-status .kyc-truncate{display:block;width:100%;max-width:100%!important;white-space:normal!important;overflow:visible!important;text-overflow:clip;overflow-wrap:anywhere}
+ #main-app #view-kyc-status .kyc-status-control{display:flex;flex-wrap:wrap;align-items:center;gap:7px;min-width:0;width:100%}
+ #main-app #view-kyc-status .kyc-status-control select{flex:1 1 135px;width:auto;max-width:100%;min-width:0;font-size:16px;min-height:42px;padding:7px}
+ #main-app #view-kyc-status .kyc-status-update-btn{flex:0 1 auto;max-width:100%;font-size:12px!important;min-height:42px!important;padding:8px 10px!important;white-space:normal}
+ #main-app #view-kyc-status .kyc-status-confirmed{color:#09633d!important;font-size:20px}
+ #main-app #view-kyc-status .kyc-history-view-btn{height:40px;min-width:44px;font-size:18px}
+ #main-app #view-kyc-status td[data-label="Picture"] .btn{min-height:40px;min-width:64px;font-size:12px;margin:0}
+ #main-app #view-kyc-status .kyc-reason{max-width:100%;border-bottom:0!important}
+ #main-app #view-kyc-status table.kyc-table tbody tr td:not([data-label]){grid-column:1/-1;text-align:center;padding:22px 12px!important}
+ #main-app #view-kyc-status table.kyc-table tbody tr td:not([data-label])::before{content:none}
+}
+@media screen and (max-width:359px){
+ #main-app #view-kyc-status .filter-grid{grid-template-columns:1fr!important}
+ #main-app #view-kyc-status .kyc-summary{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #main-app #view-kyc-status table.kyc-table tbody tr td{padding:7px 8px!important;font-size:11px!important}
+ #main-app #view-kyc-status .kyc-status-control select{flex-basis:100%}
+}
