@@ -79,3 +79,11 @@ footer{color:#52647a;font-size:11px;padding:8px 14px}.boot-card p{color:#52647a}
  }
  @media(max-width:359px){.filters{grid-template-columns:minmax(0,1fr)}.page-header h1{font-size:20px}.page-header .toolbar button{flex:1 1 120px}.metric{padding:9px}.metric-top{font-size:11px}.metric b{font-size:22px}}
 }
+/* v111: high-contrast report cells and visible row boundaries. */
+@media screen{
+ th{background:#16365b!important;color:#fff!important;border-right:1px solid #416080;border-bottom:2px solid #0d2541;font-weight:700}
+ td{color:#172d48;font-weight:550;border-right:1px solid #ccd8e6;border-bottom:1px solid #ccd8e6;background:#fff}
+ tbody tr:nth-child(even) td{background:#edf3fa}tbody tr:hover td{background:#dfecfc}
+ td small{color:#3c526d}td strong,.person strong{color:#102942;font-weight:650}.mono{color:#24476d}.tag{font-weight:700}
+ .filters label,.panel-heading small,.page-header p,.metric small{color:#3c526d}.metric-top{color:#344961;font-weight:650}
+}

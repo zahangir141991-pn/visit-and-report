@@ -82,3 +82,26 @@
  @media(max-width:359px){#main-app .page{padding-left:8px;padding-right:8px}#main-app :is(.filter-grid,.compact-filter-panel .morning-actions,.chart-filter-grid){grid-template-columns:1fr!important}#header-user-name{max-width:40vw;font-size:10px}#main-app .section-head>div{min-width:0}#main-app .section-head h2{font-size:16px}}
  @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 }
+/* v111: stronger report contrast without enlarging the compact layout. */
+@media screen{
+ #main-app label,#main-app .section-head small,#main-app :is(.filter-grid,.compact-filter-panel .morning-actions,.chart-filter-grid) label{color:#344961!important}
+ #main-app :is(.quick-grid,.cards-grid,.morning-summary,.kyc-summary) :is(.card-lbl,span),#main-app :is(.report-kpi,.chart-kpi)>span,#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card span{color:#344961!important;font-weight:650!important}
+ #main-app table.reports-table{border-color:#b9c9dc}
+ #main-app table.reports-table :is(th,td){border-right:1px solid #ccd8e6;border-bottom:1px solid #ccd8e6}
+ #main-app table.reports-table th{background:#16365b!important;color:#fff!important;font-weight:700!important;border-bottom:2px solid #0d2541!important}
+ #main-app table.reports-table tbody td{color:#172d48!important;font-weight:550;background:#fff}
+ #main-app table.reports-table tbody tr:nth-child(even) td{background:#edf3fa}
+ #main-app table.reports-table tbody tr:hover td{background:#dfecfc}
+ #main-app table.reports-table :is(td strong,td b){color:#102942!important;font-weight:700}
+ #main-app table.reports-table td small{color:#3c526d!important}
+ #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table thead th{background:#16365b!important;color:white!important;border-right:1px solid #416080!important;border-bottom:2px solid #0d2541!important}
+ #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table thead th :is(.table-sort-btn,.table-sort-state,.report-wrap-label){color:white!important;font-weight:700!important}
+ #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table thead th .table-sort-state{color:#bce0ff!important}
+ #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table tbody td{color:#172d48!important;font-weight:550!important;background:#fff!important;border-color:#c7d5e6!important}
+ #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table tbody tr:nth-child(even) td{background:#edf3fa!important}
+ #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table tbody tr:hover td{background:#dfecfc!important}
+ #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table tbody tr.zero-b2b-row td{background:#fff8da!important;color:#563c09!important;font-weight:650!important;border-color:#e6d8a4!important}
+ #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table tbody tr.zero-b2b-row:hover td{background:#fff0b5!important}
+ .report-floating-head{background:#16365b;border-color:#416080}.report-floating-head th{background:#16365b!important;color:#fff!important;border-right-color:#416080}.report-floating-head th :is(button,span){color:#fff!important;font-weight:700!important}.report-floating-head .table-sort-state{color:#bce0ff!important}
+ #main-app .kyc-truncate,#main-app table.reports-table a{color:#174e90;font-weight:600}
+}
