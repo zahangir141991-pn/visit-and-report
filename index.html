@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-10-22-morning-b2b-v108">
+    <meta name="dms-app-version" content="2026-10-22-morning-wrap-v109">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -538,6 +538,10 @@ body:has(#view-morning-report.active) #app-copyright,body:has(#view-afternoon-re
 .report-floating-head th,.report-floating-head th :is(button,span){font-size:11px!important;line-height:1.35!important}
 #main-app #view-morning-report .morning-summary .zero-b2b-kpi{background:#fffaf0!important;--kpi-color:#b7791f;--kpi-tint:#fffaf0}
 @media(max-width:600px){#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary{gap:6px!important}#main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card{padding:8px 10px!important}}
+
+/* Two-line last-day B2B headers retain full accessible/export names. */
+#view-morning-report th.b2b-wrap-head{width:112px;min-width:112px;white-space:normal!important}
+#view-morning-report .b2b-wrap-head .report-wrap-label{display:block;white-space:nowrap;line-height:1.35;text-align:center}
 </style>
 
 <style id="mobile-navigation-and-assignment-ui">
@@ -1585,8 +1589,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-10-22-morning-b2b-v108';
-        const APP_RELEASED_AT = 1792652515098;
+        const APP_CACHE_VERSION = '2026-10-22-morning-wrap-v109';
+        const APP_RELEASED_AT = 1792653003728;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -5380,7 +5384,7 @@ function applyReportTableUi(report,rows,cols,isZeroRow,zeroTxn){
 }
 function reportHeaderHtml(report,cols){
     const state=reportTableUi[report]||{sortKey:'',sortDir:1};
-    return '<tr>'+cols.map(c=>{const cls=c.key==='agent'?'agent-col':(c.key==='agentName'?'agent-name-col':(c.key==='dso'?'dso-col':''));const active=state.sortKey===c.key;const icon=active?(state.sortDir===1?'↑':'↓'):'⇅';const direction=active?(state.sortDir===1?'ascending':'descending'):'sortable';return '<th class="'+cls+'"><div class="table-head-box"><button type="button" class="table-sort-btn" aria-label="Sort '+escapeMorningHtml(c.title)+' '+direction+'" title="Sort '+direction+'" onclick="setReportTableSort(\''+report+'\',\''+c.key+'\')"><span>'+escapeMorningHtml(c.title)+'</span><span class="table-sort-state'+(active?' active':'')+'" aria-hidden="true">'+icon+'</span></button></div></th>';}).join('')+'</tr>';
+    return '<tr>'+cols.map(c=>{const cls=c.key==='agent'?'agent-col':(c.key==='agentName'?'agent-name-col':(c.key==='dso'?'dso-col':''));const wrap=report==='morning'&&['lastDayB2br','lastDayB2bs'].includes(c.key);const label=wrap?'<span class="report-wrap-label">LAST_DAY_<br>'+escapeMorningHtml(c.title.slice(9))+'</span>':'<span>'+escapeMorningHtml(c.title)+'</span>';const active=state.sortKey===c.key;const icon=active?(state.sortDir===1?'↑':'↓'):'⇅';const direction=active?(state.sortDir===1?'ascending':'descending'):'sortable';return '<th class="'+cls+(wrap?' b2b-wrap-head':'')+'"><div class="table-head-box"><button type="button" class="table-sort-btn" aria-label="Sort '+escapeMorningHtml(c.title)+' '+direction+'" title="Sort '+direction+'" onclick="setReportTableSort(\''+report+'\',\''+c.key+'\')">'+label+'<span class="table-sort-state'+(active?' active':'')+'" aria-hidden="true">'+icon+'</span></button></div></th>';}).join('')+'</tr>';
 }
 function reportCellHtml(col,row){
     const value=String(col.value(row)??''),cls=col.key==='agent'?'agent-col':(col.key==='agentName'?'agent-name-col':(col.key==='dso'?'dso-col':''));
@@ -6274,7 +6278,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-10-22-morning-b2b-v108';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-10-22-morning-wrap-v109';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
