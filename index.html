@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-10-19-kyc-gps-v106">
+    <meta name="dms-app-version" content="2026-10-22-morning-b2b-v108">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1585,8 +1585,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-10-19-kyc-gps-v106';
-        const APP_RELEASED_AT = 1792408802781;
+        const APP_CACHE_VERSION = '2026-10-22-morning-b2b-v108';
+        const APP_RELEASED_AT = 1792652515098;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -5498,6 +5498,8 @@ function renderMorningReport(){
         {title:'AGENTNAME',key:'agentName',value:r=>map.agentName>=0?(r[map.agentName]??''):''},
         {title:'AGENT TYPE',key:'agentType',value:r=>morningAgentType(r,map)},
         {title:'BALANCE',key:'balance',number:true,value:r=>map.balance>=0?formatMorningNumber(parseMorningNumber(r[map.balance])):''},
+        {title:'LAST_DAY_B2BR',key:'lastDayB2br',number:true,value:r=>map.lastDayB2br>=0?formatMorningNumber(parseMorningNumber(r[map.lastDayB2br])):'—'},
+        {title:'LAST_DAY_B2BS',key:'lastDayB2bs',number:true,value:r=>map.lastDayB2bs>=0?formatMorningNumber(parseMorningNumber(r[map.lastDayB2bs])):'—'},
         {title:'MTD_TXN',key:'mtdTxn',number:true,value:r=>map.mtdTxn>=0?formatMorningNumber(parseMorningNumber(r[map.mtdTxn])):''},
         {title:'MTD ISLAMIC CICO',key:'islamicCico',number:true,value:r=>map.islamicCico>=0?formatMorningNumber(parseMorningNumber(r[map.islamicCico])):''},
         {title:'LAST_DAY_TXN',key:'lastDayTxn',number:true,value:r=>map.lastDayTxn>=0?formatMorningNumber(parseMorningNumber(r[map.lastDayTxn])):''}
@@ -6272,7 +6274,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-10-19-kyc-gps-v106';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-10-22-morning-b2b-v108';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
