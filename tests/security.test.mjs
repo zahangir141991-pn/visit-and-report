@@ -22,8 +22,8 @@ test('old private disk caches purged without deleting device or retry tokens',()
 test('public HTML has no embedded master payload or local password fallback',()=>{
  assert.ok(!source.includes('EMBEDDED_MASTER_GZIP_BASE64'));
  assert.ok(!source.includes("localStorage.setItem('dm_app_passwords'"));
- const login=source.slice(source.indexOf('let passwordOk = false;'),source.indexOf('userPasswords[user]=pass;'));
- assert.match(login,/cloudAuth&&cloudAuth.passwordHash/);
+ const login=source.slice(source.indexOf('let cloudAuth;',source.indexOf('async function login(')),source.indexOf('userPasswords[user]=pass;'));
+ assert.match(login,/await signInDmsServer\(user,pass\)/);assert.ok(!source.includes('async function readCloudAuth('));
  assert.ok(!login.includes('saveCloudAuth'));assert.ok(!login.includes('userPasswords['));
 });
 test('inline scripts parse',()=>{for(const match of source.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){if(match[1].trim())new vm.Script(match[1]);}});
