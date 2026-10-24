@@ -13,3 +13,7 @@ test('query commands are Acknowledged, not falsely reported as completed data do
 test('attendance routes identical user IDs to their own device and preserves unmapped data',async()=>{
  const store=new Store();store.put('attendance/records/e1',{kind:'employee',code:'101',name:'Sadar',branch:'Sadar',sourceDevice:'d2'});store.put('attendance/records/e2',{kind:'employee',code:'101',name:'Singair',branch:'Singair',sourceDevice:'d1'});const handle=createReceiver(store);await handle(request('/iclock/cdata?SN=SN1&table=ATTLOG','101\t2026-10-18 08:30:00\t0\t1'));const punches=Object.values(store.value.attendance.records).filter(r=>r.kind==='punch');assert.equal(punches.length,1);assert.equal(punches[0].employee,'e2');
 });
+
+test('BIODATA is acknowledged without retaining templates and refreshes heartbeat',async()=>{
+ const store=new Store(),handle=createReceiver(store);const response=await handle(request('/iclock/cdata?SN=SN1&table=BIODATA&Stamp=9999','PIN=101\tTMP=PRIVATE_TEMPLATE\n'));assert.equal(response.status,200);assert.equal(await response.text(),'OK: 1');assert.equal(store.get('attendance/records/status_d1/online'),true);assert(store.get('attendance/records/status_d1/updated'));assert(!JSON.stringify(store.value).includes('PRIVATE_TEMPLATE'));assert.equal((await handle(request('/iclock/cdata?SN=SN1&table=BIODATA','PIN=101','1.2.3.4'))).status,403);
+});
