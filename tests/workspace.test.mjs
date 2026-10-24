@@ -33,3 +33,8 @@ test('receiver Configure saves a pasted URL without changing shift or device rec
  assert.equal(changes['settings/receiverHost'],'adms.zahangir-ithome.workers.dev');assert.equal(Object.keys(changes).length,3);assert.equal(w.run("rules().start"),'09:00');assert.equal(w.run("rules().grace"),7);assert.equal(w.run("rules().legacy"),'keep');
  assert.equal(w.run("rules().receiverHost"),'adms.zahangir-ithome.workers.dev');w.run("sdk.update=async()=>{throw Error('Permission denied')}");await assert.rejects(w.run("saveReceiver({receiverHost:'https://other.example/'})"),/Permission denied/);assert.equal(w.run("rules().receiverHost"),'adms.zahangir-ithome.workers.dev');
 });
+
+test('import lists every device and branch even before device users arrive',()=>{
+ const w=workspace();w.context.seed=[device,{...device,id:'singair',name:'Singair MB20-VL',location:'Singair'}, {id:'u1',kind:'deviceUser',device:'d1',code:'102',name:'Bob'}];w.run('state.records=seed;deviceImportDialog("singair")');const html=w.nodes['dialog-body'].innerHTML;assert(html.includes('Singair MB20-VL'));assert(html.includes('Sadar unit'));assert(html.includes('value="singair" selected'));assert(html.includes('value="Singair" selected'));
+ const submit={disabled:false};w.nodes['dialog-body'].querySelector=()=>({elements:{device:{value:'singair'}},querySelector:()=>submit});w.run('updateDeviceImportPreview()');assert(submit.disabled);assert(w.nodes['device-import-preview'].innerHTML.includes('No users downloaded from Singair'));assert(!w.nodes['device-import-preview'].innerHTML.includes('Bob'));
+});
