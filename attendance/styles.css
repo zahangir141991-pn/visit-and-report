@@ -92,3 +92,6 @@ footer{color:#52647a;font-size:11px;padding:8px 14px}.boot-card p{color:#52647a}
  td,td small,td strong,.person strong,.mono{color:#000}td{background:#fff}tbody tr:nth-child(even) td{background:#f0f4f8}tbody tr:hover td{background:#e3edfa}
  .page-header p,.metric-top,.metric small,.panel-heading small{color:#000}
 }
+
+/* One vertical scroll surface inside Attendance. */
+.table-wrap{max-height:none!important;overflow-y:visible;overflow-x:auto}input[data-employee-select]{width:17px;height:17px}.delete-choice{display:flex;align-items:center;gap:10px;margin:15px 0}

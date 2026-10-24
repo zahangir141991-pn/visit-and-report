@@ -95,7 +95,8 @@ def run_cycle(conn, root, device_id, record_data, checkpoint):
     employees = {k: v for k, v in record_data.items() if isinstance(v, dict) and v.get('kind') == 'employee'}
     by_code = {}
     for key, employee in employees.items():
-        by_code.setdefault(str(employee.get('code')), []).append(key)
+        if employee.get('sourceDevice') == device_id or (not employee.get('sourceDevice') and str(employee.get('branch', '')).strip().lower() == str(device.get('location', '')).strip().lower()):
+            by_code.setdefault(str(employee.get('code')), []).append(key)
     updates, new_hashes = {}, []
     users = conn.get_users()
     for user in users:
@@ -120,7 +121,7 @@ def run_cycle(conn, root, device_id, record_data, checkpoint):
         new_hashes.append(raw_id)
         new_count += 1
     status = dict(kind='deviceStatus', device=device_id, online=True, updated=timestamp(), mode='Local connector',
-                  protocolVersion=2, capabilities=['pull_attendance', 'push_user', 'inspect_users'], userCount=len(users))
+                  protocolVersion=2, capabilities=['pull_attendance', 'push_user', 'inspect_users', 'delete_user'], userCount=len(users))
     status_path = 'attendance/records/status_' + device_id
     for key, value in status.items():
         updates[status_path + '/' + key] = value
@@ -146,9 +147,27 @@ def run_cycle(conn, root, device_id, record_data, checkpoint):
         try:
             if int(job.get('attempts', 0)) > 5:
                 raise ValueError('Maximum delivery attempts exceeded')
-            if job['kind'] == 'pushjob' and job.get('action', 'upsert_user') == 'upsert_user':
+            if job['kind'] == 'pushjob' and job.get('action') == 'delete_user':
                 employee = employees.get(job.get('employee'))
-                if not employee:
+                code = str(job.get('code', ''))
+                if not employee or not employee.get('deleted') or str(employee.get('code')) != code or job.get('employee') not in by_code.get(code, []):
+                    raise ValueError('Deletion employee or device mapping does not match')
+                if any(k != job.get('employee') and not employees[k].get('deleted') for k in by_code.get(code, [])):
+                    raise ValueError('Another employee uses this device ID')
+                matches = [u for u in conn.get_users() if str(u.user_id) == code]
+                for user in matches:
+                    conn.delete_user(uid=user.uid)
+                if any(str(u.user_id) == code for u in conn.get_users()):
+                    raise ValueError('Device still contains this user')
+                removal = {'attendance/records/' + job['employee'] + '/deviceDeletionStatus': 'Synced'}
+                for key, value in record_data.items():
+                    if isinstance(value, dict) and value.get('kind') == 'deviceUser' and value.get('device') == device_id and str(value.get('code')) == code:
+                        removal['attendance/records/' + key] = None
+                root.update(removal)
+                reference.update(dict(status='Synced', completedAt=timestamp(), returnCode=0, resultMessage='Device read-back confirmed user deletion'))
+            elif job['kind'] == 'pushjob' and job.get('action', 'upsert_user') == 'upsert_user':
+                employee = employees.get(job.get('employee'))
+                if not employee or employee.get('deleted'):
                     raise ValueError('Employee does not exist')
                 push_user(conn, employee, job)
                 reference.update(dict(status='Synced', completedAt=timestamp(), returnCode=0,
