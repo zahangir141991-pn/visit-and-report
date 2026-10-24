@@ -20,3 +20,9 @@ test('device employee import includes all downloaded users, skips mappings and v
  const imported=Object.entries(plan.updates).map(([id,v])=>({...v,id}));assert.equal(Object.keys(C.deviceEmployeeImport([...source,...imported],'d1','2020-01-01','Sadar').updates).length,0);
  assert.throws(()=>C.deviceEmployeeImport(source,'d1','','Sadar'));assert.throws(()=>C.deviceEmployeeImport([...source,{id:'bad',kind:'deviceUser',device:'d1',code:'BAD',name:''}],'d1','2020-01-01','Sadar'));
 });
+
+test('receiver configuration accepts HTTPS home URLs and rejects credentials, paths and login servers',()=>{
+ assert.equal(C.normalizeReceiverHost('https://adms.zahangir-ithome.workers.dev/'),'adms.zahangir-ithome.workers.dev');
+ assert.equal(C.normalizeReceiverHost(' ADMS.ZAHANGIR-ITHOME.WORKERS.DEV '),'adms.zahangir-ithome.workers.dev');
+ for(const value of ['', 'https://user:pass@example.com','https://example.com/token','https://example.com/?secret=1','https://example.com/#x','https://example.com:8443','https://dms-attendance-login.zahangir-ithome.workers.dev/'])assert.throws(()=>C.normalizeReceiverHost(value));
+});

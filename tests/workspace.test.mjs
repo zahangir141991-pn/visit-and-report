@@ -25,3 +25,11 @@ test('employee deletion is confirmed, hides directory entry and preserves histor
  w.context.deleted={...employee,...C.employeeDeletion(employee,C.today(),new Date().toISOString(),'dms_admin')};w.run('state.records=[deleted];render()');assert(!w.nodes.app.innerHTML.includes('data-action="employee-edit"'));w.run("state.reportDate='2026-10-18';state.reportMode='daily'");assert.equal(w.run('getReport().rows[0].name'),employee.name);w.run("state.reportDate=C.addDays(C.today(),1)");assert.equal(w.run('getReport().rows.length'),0);await assert.rejects(w.run("deleteEmployee('e1')"));
  const plan=C.deviceEmployeeImport([w.context.deleted,device,{id:'du',kind:'deviceUser',device:'d1',code:'101',name:'Alice'}],'d1','2026-01-01','Sadar');assert.equal(Object.keys(plan.updates).length,0);
 });
+
+test('receiver Configure saves a pasted URL without changing shift or device records',async()=>{
+ const w=workspace();w.context.seed=[{id:'settings',kind:'settings',start:'09:00',end:'18:00',grace:7,legacy:'keep'},device];w.run("state.records=seed;state.page='devices';render()");assert(w.nodes.app.innerHTML.includes('data-action="receiver-configure"'));
+ w.run('receiverConfigureDialog()');assert(w.nodes['dialog-body'].innerHTML.includes('data-form="receiver"'));assert(!w.nodes['dialog-body'].innerHTML.includes('name="start"'));
+ await w.run("saveReceiver({receiverHost:'https://adms.zahangir-ithome.workers.dev/'})");const changes=w.captured.at(-1).value;
+ assert.equal(changes['settings/receiverHost'],'adms.zahangir-ithome.workers.dev');assert.equal(Object.keys(changes).length,3);assert.equal(w.run("rules().start"),'09:00');assert.equal(w.run("rules().grace"),7);assert.equal(w.run("rules().legacy"),'keep');
+ assert.equal(w.run("rules().receiverHost"),'adms.zahangir-ithome.workers.dev');w.run("sdk.update=async()=>{throw Error('Permission denied')}");await assert.rejects(w.run("saveReceiver({receiverHost:'https://other.example/'})"),/Permission denied/);assert.equal(w.run("rules().receiverHost"),'adms.zahangir-ithome.workers.dev');
+});
