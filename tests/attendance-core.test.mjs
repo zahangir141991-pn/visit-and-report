@@ -26,3 +26,8 @@ test('receiver configuration accepts HTTPS home URLs and rejects credentials, pa
  assert.equal(C.normalizeReceiverHost(' ADMS.ZAHANGIR-ITHOME.WORKERS.DEV '),'adms.zahangir-ithome.workers.dev');
  for(const value of ['', 'https://user:pass@example.com','https://example.com/token','https://example.com/?secret=1','https://example.com/#x','https://example.com:8443','https://dms-attendance-login.zahangir-ithome.workers.dev/'])assert.throws(()=>C.normalizeReceiverHost(value));
 });
+
+test('same machine user ID in different branches imports without overwriting existing employees',()=>{
+ const old={id:'old',kind:'employee',employeeId:'801',code:'801',name:'Sadar Employee',branch:'Sadar',join:'2020-01-01'},device={id:'singair',kind:'device',location:'Singair'},user={kind:'deviceUser',device:'singair',code:'801',name:'Singair Employee'};
+ const plan=C.deviceEmployeeImport([old,device,user],'singair','2026-01-01','Singair');const fresh=Object.values(plan.updates)[0];assert.equal(fresh.sourceDevice,'singair');assert.equal(fresh.employeeId,'Singair-801');assert.equal(old.branch,'Sadar');assert(!plan.updates.old);const again=C.deviceEmployeeImport([old,device,user,{id:Object.keys(plan.updates)[0],...fresh}],'singair','2026-01-01','Singair');assert.equal(Object.keys(again.updates).length,0);
+});
