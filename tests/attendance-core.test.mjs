@@ -31,3 +31,10 @@ test('same machine user ID in different branches imports without overwriting exi
  const old={id:'old',kind:'employee',employeeId:'801',code:'801',name:'Sadar Employee',branch:'Sadar',join:'2020-01-01'},device={id:'singair',kind:'device',location:'Singair'},user={kind:'deviceUser',device:'singair',code:'801',name:'Singair Employee'};
  const plan=C.deviceEmployeeImport([old,device,user],'singair','2026-01-01','Singair');const fresh=Object.values(plan.updates)[0];assert.equal(fresh.sourceDevice,'singair');assert.equal(fresh.employeeId,'Singair-801');assert.equal(old.branch,'Sadar');assert(!plan.updates.old);const again=C.deviceEmployeeImport([old,device,user,{id:Object.keys(plan.updates)[0],...fresh}],'singair','2026-01-01','Singair');assert.equal(Object.keys(again.updates).length,0);
 });
+test('DM consolidation preserves punches and leave, ignores unrelated people and blocks pending device work',()=>{
+ const dm={...employee,kind:'employee',name:'Zahangir Kabir',designation:'DM',allBranchAttendance:'true'},duplicate={...dm,id:'e2',branch:'Singair',sourceDevice:'d2',allBranchAttendance:false},other={...duplicate,id:'e3',employeeId:'OTHER',name:'Different Person'},p={id:'p1',kind:'punch',employee:'e2',date:'2026-10-18',time:'08:30',device:'d2'},leave={id:'l1',kind:'leave',employee:'e2'};
+ const result=C.prepareDmMerge([dm,duplicate,other,p,leave],dm,'e1');assert.deepEqual(result.ids,['e2']);assert.equal(result.updates.e2.mergedInto,'e1');assert.equal(result.updates.p1.employee,'e1');assert.equal(result.updates.p1.device,'d2');assert.equal(result.updates.l1.employee,'e1');assert(!result.updates.e3);assert(!('id' in result.updates.p1));
+ assert.throws(()=>C.validateEmployee(dm,[dm,other],'e1'),/unique device user ID/);
+ assert.throws(()=>C.prepareDmMerge([dm,duplicate,{kind:'pushjob',employee:'e2',status:'Sent'}],dm,'e1'),/pending device operations/);
+ assert.equal(C.prepareDmMerge([dm,duplicate],{...dm,allBranchAttendance:false},'e1').ids.length,0);
+});

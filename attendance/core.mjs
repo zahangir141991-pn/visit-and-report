@@ -63,3 +63,14 @@ export function employeeDeletion(employee,date,deletedAt,deletedBy){
  const stop=addDays(date,1),inactiveFrom=employee.active===false&&validDate(employee.inactiveFrom)&&employee.inactiveFrom<stop?employee.inactiveFrom:stop;
  return {deleted:true,deletedAt,deletedBy,active:false,inactiveFrom,updatedAt:deletedAt};
 }
+
+export function prepareDmMerge(records,input,id){
+ const normalized=v=>String(v||'').trim().replace(/\s+/g,' ').toLowerCase();
+ if(!id||String(input.allBranchAttendance)!=='true'||!/^(dm|distribution manager)$/i.test(String(input.designation||'').trim()))return {updates:{},ids:[]};
+ const duplicates=records.filter(e=>e.kind==='employee'&&e.id!==id&&!e.deleted&&!e.mergedInto&&String(e.code)===String(input.code)&&normalized(e.name)===normalized(input.name));
+ const ids=duplicates.map(e=>e.id),updates={},now=new Date().toISOString();
+ if(records.some(j=>['pushjob','syncjob'].includes(j.kind)&&ids.includes(j.employee)&&['Queued','Sent'].includes(j.status)))throw Error('Wait for pending device operations before consolidating DM profiles.');
+ for(const e of duplicates){const value={...e,mergedInto:id,mergedAt:now,deleted:true,active:false,inactiveFrom:today()};delete value.id;updates[e.id]=value;}
+ for(const record of records.filter(v=>['punch','leave'].includes(v.kind)&&ids.includes(v.employee))){const value={...record,employee:id,previousEmployee:record.employee};delete value.id;updates[record.id]=value;}
+ return {updates,ids};
+}

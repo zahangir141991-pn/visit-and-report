@@ -92,7 +92,7 @@ def run_cycle(conn, root, device_id, record_data, checkpoint):
     serial = conn.get_serialnumber()
     if device.get('serial') and str(serial).strip() != str(device['serial']).strip():
         raise ValueError('Machine serial does not match DMS device')
-    employees = {k: v for k, v in record_data.items() if isinstance(v, dict) and v.get('kind') == 'employee'}
+    employees = {k: v for k, v in record_data.items() if isinstance(v, dict) and v.get('kind') == 'employee' and not v.get('mergedInto')}
     by_code = {}
     for key, employee in employees.items():
         if (employee.get('allBranchAttendance') is True and not employee.get('deleted') and str(employee.get('designation', '')).strip().lower() in ('dm', 'distribution manager')) or employee.get('sourceDevice') == device_id or (not employee.get('sourceDevice') and str(employee.get('branch', '')).strip().lower() == str(device.get('location', '')).strip().lower()):
