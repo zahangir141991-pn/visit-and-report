@@ -95,8 +95,13 @@ def run_cycle(conn, root, device_id, record_data, checkpoint):
     employees = {k: v for k, v in record_data.items() if isinstance(v, dict) and v.get('kind') == 'employee'}
     by_code = {}
     for key, employee in employees.items():
-        if employee.get('sourceDevice') == device_id or (not employee.get('sourceDevice') and str(employee.get('branch', '')).strip().lower() == str(device.get('location', '')).strip().lower()):
+        if (employee.get('allBranchAttendance') is True and not employee.get('deleted') and str(employee.get('designation', '')).strip().lower() in ('dm', 'distribution manager')) or employee.get('sourceDevice') == device_id or (not employee.get('sourceDevice') and str(employee.get('branch', '')).strip().lower() == str(device.get('location', '')).strip().lower()):
             by_code.setdefault(str(employee.get('code')), []).append(key)
+    for key, employee in employees.items():
+        if employee.get('allBranchAttendance') is True and not employee.get('deleted') and str(employee.get('designation', '')).strip().lower() in ('dm', 'distribution manager'):
+            code = str(employee.get('code'))
+            if sum(str(e.get('code')) == code for e in employees.values()) != 1:
+                by_code[code] = []
     updates, new_hashes = {}, []
     users = conn.get_users()
     for user in users:
