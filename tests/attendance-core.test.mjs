@@ -38,3 +38,4 @@ test('DM consolidation preserves punches and leave, ignores unrelated people and
  assert.throws(()=>C.prepareDmMerge([dm,duplicate,{kind:'pushjob',employee:'e2',status:'Sent'}],dm,'e1'),/pending device operations/);
  assert.equal(C.prepareDmMerge([dm,duplicate],{...dm,allBranchAttendance:false},'e1').ids.length,0);
 });
+test('additional public IPs are exact reviewed addresses, never CIDR or wildcards',()=>{assert.deepEqual(C.approvedPublicIps('103.1.2.3,103.1.2.4 103.1.2.3'),['103.1.2.3','103.1.2.4']);assert.throws(()=>C.approvedPublicIps('*'));assert.throws(()=>C.approvedPublicIps('103.1.2.0/24'));assert.throws(()=>C.approvedPublicIps('103.1.2.999'));assert.throws(()=>C.approvedPublicIps(Array.from({length:9},(_,i)=>'103.1.2.'+i).join(',')));});
