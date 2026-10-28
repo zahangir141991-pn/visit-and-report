@@ -5,3 +5,5 @@ test('rejects duplicate users and malformed workbook',()=>{const m=matrix();m.pu
 test('growth uses previous month and zero baseline is not a fabricated percentage',()=>{assert.equal(A.previousMonth('2026-01'),'2025-12');assert.equal(A.previousMonth('2026-03'),'2026-02');assert.equal(A.change(120,100),20);assert.equal(A.change(80,100),-20);assert.equal(A.change(5,0),null)});
 
 test('legacy files preserve missing Islamic as unavailable',()=>{const m=matrix();m[1]=[];m[2][49]='Trx MTD (CI & CO)';m[2][69]='';m[3][49]=100;m[4][49]=200;const p=A.parse(m);assert.equal(p.groups['839'].islamic,null);assert.equal(A.sum(Object.values(p.groups)).islamic,null);assert.equal(A.change(null,10),null)});
+
+test('master mapping normalizes DSO wallets and flags conflicting DSS assignments',()=>{const m=A.masterDssMap([['01332517801','1','Shop','NEW DSS'],['801','2','Shop','NEW DSS'],['01332517802','3','Shop','DSS A'],['802','4','Shop','DSS B']]);assert.equal(m.get('801'),'NEW DSS');assert.match(m.get('802'),/Multiple DSS/);assert.equal(A.masterDssMap([]).size,0);});

@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-10-28-performance-v129">
+    <meta name="dms-app-version" content="2026-10-28-performance-v130">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1294,7 +1294,7 @@ body.app-logged-in #view-login{display:none!important}
             </div>
 
             <!-- Common DSS / DSO Assignment Upload -->
-            <div id="view-monthly-performance" class="page hidden" aria-hidden="true"><div class="section-head"><div><h2>Month wise performance report</h2><small>DSO and DSS monthly analysis</small></div></div><section class="perf-panel" id="perf-upload-wrap"><h3>Upload monthly Excel</h3><div class="perf-filters"><label>Report month<input id="perf-upload-month" type="month"></label><label>Excel file<input id="perf-upload-file" type="file" accept=".xlsx,.xls,.csv" onchange="previewPerformance(this)"></label><button type="button" id="perf-upload-button" class="btn" onclick="savePerformance()" disabled>Upload report</button></div><p id="perf-upload-status">Select the Excel file containing the Uddokta sheet.</p></section><section class="perf-panel"><div class="perf-filters"><label>Month<select id="perf-month" onchange="renderPerformance()"></select></label><label>DSS<select id="perf-dss" onchange="renderPerformance()"></select></label><label>DSO<select id="perf-dso" onchange="renderPerformance()"></select></label><label>Group by<select id="perf-group" onchange="renderPerformance()"><option value="dso">DSO wise</option><option value="dss">DSS wise</option></select></label></div><p id="perf-meta">Loading…</p><div id="perf-cards" class="perf-cards"></div></section><section class="perf-panel"><div class="perf-chart-header"><h3>Monthly trend</h3><label>Metric<select id="perf-metric" onchange="renderPerformance()"><option value="txn">MTD TXN</option><option value="ci">MTD CI</option><option value="co">MTD CO</option><option value="islamic">Islamic MTD TXN</option><option value="under5">Below 5 Lac</option><option value="atleast5">5 Lac &amp; Above</option><option value="active">Active Uddokta</option></select></label></div><div id="perf-chart" class="perf-chart"></div><small>Amounts shown in crore. Growth compares the immediately previous calendar month; matching report dates are recommended.</small></section><section class="perf-panel"><div class="perf-table"><table><thead><tr><th>DSO / DSS</th><th>MTD TXN</th><th>MTD CI</th><th>MTD CO</th><th>Islamic MTD TXN</th><th>Below 5 Lac</th><th>5 Lac &amp; Above</th><th>Active Uddokta</th><th>TXN Growth</th></tr></thead><tbody id="perf-table-body"></tbody></table></div></section></div>
+            <div id="view-monthly-performance" class="page hidden" aria-hidden="true"><div class="section-head"><div><h2>Month wise performance report</h2><small>DSO and DSS monthly analysis</small></div></div><section class="perf-panel" id="perf-upload-wrap"><h3>Upload monthly Excel</h3><div class="perf-filters"><label>Report month<input id="perf-upload-month" type="month"></label><label>Excel file<input id="perf-upload-file" type="file" accept=".xlsx,.xls,.csv" onchange="previewPerformance(this)"></label><button type="button" id="perf-upload-button" class="btn" onclick="savePerformance()" disabled>Upload report</button></div><p id="perf-upload-status">Select the monthly Excel file containing the Uddokta sheet. DSO comes from Excel; DSS comes from updated Uddokta Information. No DSS column is required.</p></section><section class="perf-panel"><div class="perf-filters"><label>Month<select id="perf-month" onchange="renderPerformance()"></select></label><label>DSS<select id="perf-dss" onchange="renderPerformance()"></select></label><label>DSO<select id="perf-dso" onchange="renderPerformance()"></select></label><label>Group by<select id="perf-group" onchange="renderPerformance()"><option value="dso">DSO wise</option><option value="dss">DSS wise</option></select></label></div><p id="perf-meta">Loading…</p><div id="perf-cards" class="perf-cards"></div></section><section class="perf-panel"><div class="perf-chart-header"><h3>Monthly trend</h3><label>Metric<select id="perf-metric" onchange="renderPerformance()"><option value="txn">MTD TXN</option><option value="ci">MTD CI</option><option value="co">MTD CO</option><option value="islamic">Islamic MTD TXN</option><option value="under5">Below 5 Lac</option><option value="atleast5">5 Lac &amp; Above</option><option value="active">Active Uddokta</option></select></label></div><div id="perf-chart" class="perf-chart"></div><small>Amounts shown in crore. Growth compares the immediately previous calendar month; matching report dates are recommended.</small></section><section class="perf-panel"><div class="perf-table"><table><thead><tr><th>DSO / DSS</th><th>MTD TXN</th><th>MTD CI</th><th>MTD CO</th><th>Islamic MTD TXN</th><th>Below 5 Lac</th><th>5 Lac &amp; Above</th><th>Active Uddokta</th><th>TXN Growth</th></tr></thead><tbody id="perf-table-body"></tbody></table></div></section></div>
             <div id="view-assignment-upload" class="page">
                 <div class="section-head"><div><h2>DSS–DSO Assignment Upload</h2><small style="color:#64748b">এই common assignment সব report-এ ব্যবহার হবে</small></div></div>
                 <div class="card" style="text-align:left;max-width:760px;margin:0 auto 16px">
@@ -1617,7 +1617,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-10-28-performance-v129';
+        const APP_CACHE_VERSION = '2026-10-28-performance-v130';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -2903,6 +2903,7 @@ function clearPrivateSessionData(){
             }
             authoritativeUddoktaDB = Array.isArray(rows) ? rows.slice() : [];
             uddoktaDB = authoritativeUddoktaDB.slice();
+            if(window.renderPerformance&&document.getElementById('view-monthly-performance')?.classList.contains('active'))window.renderPerformance();
             rebuildDssDsoAssignmentIndex(uddoktaDB);
             uddoktaMasterSynced = true;
             saveUddoktaCache(uddoktaDB);
@@ -5567,7 +5568,7 @@ function clearAssignmentUpload(){pendingAssignmentRows=null;const i=document.get
 async function previewAssignmentExcel(input){
     pendingAssignmentRows=null;const btn=document.getElementById('btn-save-assignment');if(btn)btn.disabled=true;const file=input&&input.files&&input.files[0];if(!file){clearAssignmentUpload();return;}
     setMorningStatus('assignment-upload-status','Reading assignment Excel...');try{await ensureXlsxSdk();}catch(e){setMorningStatus('assignment-upload-status','Excel reader could not load.','error');return;}
-    const reader=new FileReader();reader.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array',dense:true}),sheet=wb.Sheets[wb.SheetNames[0]],matrix=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false,blankrows:false});if(matrix.length<2)throw new Error('No data rows found.');const headers=matrix[0].map(String),dssI=afternoonHeaderIndex(headers,['DSS','DSS Name']),dsoI=afternoonHeaderIndex(headers,['DSO','DSO Number','DSO Wallet']);if(dssI<0||dsoI<0)throw new Error('Required headers: DSS, DSO');const seen=new Set(),rows=[];matrix.slice(1).forEach(r=>{const dss=String(r[dssI]||'').trim().toUpperCase(),dso=normalizeScopeWallet(r[dsoI]);const key=dss+'|'+dso;if(dss&&dso&&!seen.has(key)){seen.add(key);rows.push({dss,dso});}});if(!rows.length)throw new Error('No valid DSS–DSO assignment found.');pendingAssignmentRows=rows;if(btn)btn.disabled=false;setMorningStatus('assignment-upload-status',`Ready: ${rows.length} unique DSS–DSO assignments.`,'ok');}catch(err){setMorningStatus('assignment-upload-status','Could not read Excel: '+err.message,'error');}};reader.readAsArrayBuffer(file);
+    const reader=new FileReader();reader.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array',dense:true}),sheet=wb.Sheets[wb.SheetNames[0]],matrix=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false,blankrows:false});if(matrix.length<2)throw new Error('No data rows found.');const headers=matrix[0].map(String),dssI=afternoonHeaderIndex(headers,['DSS','DSS Name']),dsoI=afternoonHeaderIndex(headers,['DSO','DSO Number','DSO Wallet']);if(dssI<0||dsoI<0)throw new Error(wb.SheetNames.some(n=>/^uddokta$/i.test(n.trim()))?'This is a monthly performance file. Open Reports > Month wise performance report. DSS will come from updated Uddokta Information.':'Required headers: DSS, DSO');const seen=new Set(),rows=[];matrix.slice(1).forEach(r=>{const dss=String(r[dssI]||'').trim().toUpperCase(),dso=normalizeScopeWallet(r[dsoI]);const key=dss+'|'+dso;if(dss&&dso&&!seen.has(key)){seen.add(key);rows.push({dss,dso});}});if(!rows.length)throw new Error('No valid DSS–DSO assignment found.');pendingAssignmentRows=rows;if(btn)btn.disabled=false;setMorningStatus('assignment-upload-status',`Ready: ${rows.length} unique DSS–DSO assignments.`,'ok');}catch(err){setMorningStatus('assignment-upload-status','Could not read Excel: '+err.message,'error');}};reader.readAsArrayBuffer(file);
 }
 async function saveAssignmentExcel(){
     if(getRoleInfo().role!=='Admin'){alert('Only Admin can upload assignments.');return;}if(!pendingAssignmentRows){alert('Select a valid assignment Excel first.');return;}if(!db){setMorningStatus('assignment-upload-status','Database is not connected.','error');return;}
@@ -6342,7 +6343,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-10-28-performance-v129';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-10-28-performance-v130';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
@@ -6419,6 +6420,6 @@ function isOlderUploadedReport(candidate,current){
 }
 </script>
 
-<script src="performance/analytics.js?v=129"></script><script src="performance/app.js?v=129"></script>
+<script src="performance/analytics.js?v=130"></script><script src="performance/app.js?v=130"></script>
 </body>
 </html>

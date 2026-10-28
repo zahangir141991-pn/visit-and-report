@@ -15,5 +15,6 @@ function parse(matrix){const m=mapColumns(matrix), groups={},seen=new Set();let 
 const sum=rows=>rows.reduce((a,r)=>{for(const k of ['agents','active','under5','atleast5','txn','ci','co'])a[k]+=(Number(r[k])||0);if(r.islamic==null)a.islamic=null;else if(a.islamic!==null)a.islamic+=Number(r.islamic)||0;return a},{agents:0,active:0,under5:0,atleast5:0,txn:0,ci:0,co:0,islamic:0});
 const change=(a,b)=>a==null||b==null||b===0?null:((a-b)/b)*100;
 function previousMonth(month){if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))return '';const [y,m]=month.split('-').map(Number);return m===1?(y-1)+'-12':y+'-'+String(m-1).padStart(2,'0');}
-const api={wallet,mapColumns,parse,sum,change,previousMonth};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.PerformanceAnalytics=api;
+function masterDssMap(rows){const sets=new Map();for(const row of Array.isArray(rows)?rows:[]){if(!Array.isArray(row))continue;const dso=wallet(row[0]),dss=String(row[3]||'').trim().toUpperCase().replace(/\s+/g,' ');if(!dso||!dss)continue;if(!sets.has(dso))sets.set(dso,new Set());sets.get(dso).add(dss);}return new Map([...sets].map(([dso,names])=>[dso,names.size===1?[...names][0]:'Multiple DSS — check Uddokta Information']));}
+const api={masterDssMap,wallet,mapColumns,parse,sum,change,previousMonth};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.PerformanceAnalytics=api;
 })(typeof window!=='undefined'?window:globalThis);
