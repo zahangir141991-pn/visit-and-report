@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-10-28-auth-v134">
+    <meta name="dms-app-version" content="2026-10-28-performance-v135">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1618,7 +1618,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-10-28-auth-v134';
+        const APP_CACHE_VERSION = '2026-10-28-performance-v135';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -4182,7 +4182,7 @@ function deferVisiblePageWork(tab,task){
                 setTimeout(() => document.getElementById('old-password')?.focus(), 0);
             }
             if ((tab === 'admin' || tab === 'login-info') && currentUser !== 'admin') return;
-            if (tab === 'monthly-performance' && !['Admin','DM'].includes(getRoleInfo().role)) return;
+            if (tab === 'monthly-performance' && !['Admin','DM','DSS','DSO'].includes(getRoleInfo().role)) return;
             if (tab === 'morning-upload' && getRoleInfo().role !== 'Admin') return;
             if (tab === 'afternoon-upload' && getRoleInfo().role !== 'Admin') return;
             if (tab === 'assignment-upload' && getRoleInfo().role !== 'Admin') return;
@@ -5245,7 +5245,7 @@ function reportsMenuAction(tab){
     }
 }
 function updateMorningMenuAccess(){
-    document.getElementById('monthly-performance-menu-btn')?.classList.toggle('hidden',!['Admin','DM'].includes(getRoleInfo().role));
+    document.getElementById('monthly-performance-menu-btn')?.classList.toggle('hidden',!['Admin','DM','DSS','DSO'].includes(getRoleInfo().role));
     const role=typeof getRoleInfo==='function'?getRoleInfo():{role:''};
     const upload=document.getElementById('morning-upload-menu-btn');
     if(upload)upload.classList.toggle('hidden',role.role!=='Admin');
@@ -6345,7 +6345,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-10-28-auth-v134';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-10-28-performance-v135';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
@@ -6422,6 +6422,6 @@ function isOlderUploadedReport(candidate,current){
 }
 </script>
 
-<script src="performance/analytics.js?v=131"></script><script src="performance/app.js?v=131"></script>
+<script src="performance/analytics.js?v=131"></script><script src="performance/app.js?v=135"></script>
 </body>
 </html>

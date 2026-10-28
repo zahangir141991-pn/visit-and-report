@@ -49,6 +49,10 @@
       ],
       ".read": "auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId",
       ".write": "auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId"
+    },
+    "uddokta_master": {
+      ".read": "auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId",
+      ".write": "auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId && auth.token.dmsUserId === 'admin'"
     }
   }
 }

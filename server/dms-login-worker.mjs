@@ -74,20 +74,45 @@ async function issueToken(env,id,account,attendanceOnly){
  const now=Math.floor(Date.now()/1000),c=serviceAccount(env);
  return signedJwt(env,{iss:c.account.client_email,sub:c.account.client_email,aud:'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit',iat:now,exp:now+3600,uid:'dms_'+id,claims:loginClaims(id,account,attendanceOnly)});
 }
+// Read-only monthly access: verify Firebase session before selecting server-owned scope.
+const performanceDssUsers={sohag:'MOHOSIN HOSSAIN SOHAG',alamin:'MD. ALAMIN',imran:'MD. IMRAN HOSSAIN',rubel:'RUBEL',shofiq:'MD. SHOFIQ'};
+export function performanceWallet(value){const n=String(value||'').replace(/\D/g,'');if(/^8(?:0[1-9]|[1-3]\d|4[0-5])$/.test(n))return n;if(/^0?13325178(?:0[1-9]|[1-3]\d|4[0-5])$/.test(n))return String(800+Number(n.slice(-2)));return '';}
+function performanceDss(value){const n=String(value||'').trim().toUpperCase().replace(/\s+/g,' ');return ({SOHAG:performanceDssUsers.sohag,ALAMIN:performanceDssUsers.alamin,IMRAN:performanceDssUsers.imran,RUBEL:performanceDssUsers.rubel,SHOFIQ:performanceDssUsers.shofiq})[n]||n;}
+export function scopedPerformance(id,reports,master){
+ const all=['admin','zahangir'].includes(id),own=/^013325178(?:0[1-9]|[1-3]\d|4[0-5])$/.test(id)?performanceWallet(id):'',dss=performanceDssUsers[id];
+ if(!all&&!own&&!dss)throw Object.assign(Error('Report permission required'),{status:403});
+ const sets=new Map();for(const row of Object.values(master||{})){const wallet=performanceWallet(row?.dsoWallet),name=performanceDss(row?.dssName);if(!wallet||!name)continue;if(!sets.has(wallet))sets.set(wallet,new Set());sets.get(wallet).add(name);}
+ const names=Object.fromEntries([...sets].map(([wallet,names])=>[wallet,names.size===1?[...names][0]:'Multiple DSS — check Uddokta Information']));
+ const allowed=all?new Set(Object.keys(names)):own?new Set([own]):new Set([...sets].filter(([,names])=>names.size===1&&names.has(dss)).map(([wallet])=>wallet));
+ const months={},visible=new Set();for(const [month,report]of Object.entries(reports||{})){if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)||!report)continue;const groups={};for(const row of Object.values(report.groups||{})){const wallet=performanceWallet(row?.dso);if(wallet&&(all||allowed.has(wallet))){groups[wallet]={...row,dso:wallet};visible.add(wallet);}}months[month]={groups,asOf:report.asOf||'',uploadedAt:report.uploadedAt||0};}
+ return {months,dssNames:Object.fromEntries([...visible].map(wallet=>[wallet,names[wallet]||'Unassigned'])),allowedDsos:[...allowed]};
+}
+async function performanceSession(env,input){
+ const token=input.idToken;if(typeof token!=='string'||token.length>3500)throw Object.assign(Error('Sign in again'),{status:401});
+ const response=await request('https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyDxJ1ntoGQa6QYddVJ14p4T7MkAWHo2hVE',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({idToken:token})});
+ if(!response.ok)throw Object.assign(Error('Sign in again'),{status:401});const user=(await response.json()).users?.[0];
+ let claims;try{const part=token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');claims=JSON.parse(atob(part.padEnd(Math.ceil(part.length/4)*4,'=')))}catch{throw Object.assign(Error('Invalid session'),{status:401})}
+ const id=claims.dmsUserId;
+ if(!user||user.disabled===true||!approvedUser(id)||claims.aud!=='visit-report-ea224'||claims.iss!=='https://securetoken.google.com/visit-report-ea224'||claims.sub!=='dms_'+id||user.localId!==claims.sub||claims.dmsAuthenticated!==true||claims.dmsPasswordChangeRequired!==false||claims.exp<=Date.now()/1000)throw Object.assign(Error('Report permission required'),{status:403});
+ const account=await readAccount(env,id);if(!account||account.enabled===false||account.disabled===true||account.forceChange===true)throw Object.assign(Error('Sign in again'),{status:403});return id;
+}
+async function performanceReport(env,input){const id=await performanceSession(env,input);if(!['admin','zahangir',...Object.keys(performanceDssUsers)].includes(id)&&!/^013325178(?:0[1-9]|[1-3]\d|4[0-5])$/.test(id))throw Object.assign(Error('Report permission required'),{status:403});const [r,m]=await Promise.all([firebase(env,'monthly_performance'),firebase(env,'uddokta_master')]);if(!r.ok||!m.ok)throw Error('FIREBASE_ACCESS_DENIED');return scopedPerformance(id,await r.json(),await m.json());}
 export default {async fetch(req,env){
  const u=new URL(req.url),origin=req.headers.get('Origin')||'';
  if(req.method==='GET'&&['/','/health'].includes(u.pathname)){
   try{serviceAccount(env);databaseUrl(env);await credentialCache.key;
-   return json({ok:true,service:'DMS Secure Login',version:'134',configured:true,capabilities:['attendance-token','dms-login','password-change'],note:'Configuration validated only; authenticated login and database rules must be tested separately.'});
+   return json({ok:true,service:'DMS Secure Login',version:'135',configured:true,capabilities:['attendance-token','dms-login','password-change'],note:'Configuration validated only; authenticated login and database rules must be tested separately.'});
   }catch(e){return json({ok:false,configured:false,error:errors[e.message]||'Login server configuration error'},503)}
  }
- if(!['/','/token','/login','/password','/admin/password'].includes(u.pathname))return json({error:'Not found'},404);
+ if(!['/','/token','/login','/password','/admin/password','/performance'].includes(u.pathname))return json({error:'Not found'},404);
  if(!origin||!origins(env).includes(origin))return json({error:'Website is not permitted'},403);
  if(req.method==='OPTIONS')return new Response(null,{status:204,headers:{'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Methods':'POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type',Vary:'Origin','Access-Control-Max-Age':'600'}});
  if(req.method!=='POST')return json({error:'POST required'},405,origin);
  if(!req.headers.get('Content-Type')?.toLowerCase().startsWith('application/json'))return json({error:'JSON required'},415,origin);
  try{
-  const input=await readInput(req),id=normalizeUser(input.userId),password=input.password;
+  const input=await readInput(req);
+  if(u.pathname==='/performance')return json(await performanceReport(env,input),200,origin);
+  const id=normalizeUser(input.userId),password=input.password;
   const attendanceOnly=['/','/token'].includes(u.pathname);
   if(!approvedUser(id)||typeof password!=='string'||!password||password.length>256||(attendanceOnly&&(!['admin','zahangir'].includes(id)||password==='1234')))
    return json({error:'Invalid User ID or Password'},401,origin);
