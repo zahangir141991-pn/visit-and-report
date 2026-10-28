@@ -1,0 +1,54 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "$section": {
+      ".read": "($section === 'dms_app_release') || ((auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId) && ($section !== 'user_auth' && $section !== 'attendance_server' && $section !== 'attendance' && $section !== 'monthly_performance' && $section !== 'dms_app_release')) || ($section === 'monthly_performance' && ((auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId) && (auth.token.dmsUserId === 'admin' || auth.token.dmsUserId === 'zahangir'))) || ($section === 'attendance' && auth != null && auth.token.attendanceAdmin === true)",
+      ".write": "((auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId) && ($section !== 'user_auth' && $section !== 'attendance_server' && $section !== 'attendance' && $section !== 'monthly_performance' && $section !== 'dms_app_release')) || ($section === 'monthly_performance' && ((auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId) && auth.token.dmsUserId === 'admin')) || ($section === 'dms_app_release' && ((auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId) && auth.token.dmsUserId === 'admin')) || ($section === 'attendance' && auth != null && auth.token.attendanceAdmin === true)"
+    },
+    "attendance": {
+      "records": {
+        ".indexOn": [
+          "kind",
+          "device",
+          "employee",
+          "date"
+        ]
+      },
+      ".read": "auth != null && auth.token.attendanceAdmin === true",
+      ".write": "auth != null && auth.token.attendanceAdmin === true"
+    },
+    "visit_reports": {
+      ".indexOn": [
+        "date",
+        "timestamp",
+        "user",
+        "dsoWallet",
+        "dssName"
+      ],
+      ".read": "auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId",
+      ".write": "auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId"
+    },
+    "visit_reports_index": {
+      ".indexOn": [
+        "date",
+        "timestamp",
+        "user",
+        "dsoWallet",
+        "dssName"
+      ],
+      ".read": "auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId",
+      ".write": "auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId"
+    },
+    "new_uddokta_kyc": {
+      ".indexOn": [
+        "date",
+        "collectionDate",
+        "dsoWallet",
+        "submittedBy"
+      ],
+      ".read": "auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId",
+      ".write": "auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId"
+    }
+  }
+}
