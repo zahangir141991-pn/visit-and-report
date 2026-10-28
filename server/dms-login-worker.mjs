@@ -78,10 +78,10 @@ export default {async fetch(req,env){
  const u=new URL(req.url),origin=req.headers.get('Origin')||'';
  if(req.method==='GET'&&['/','/health'].includes(u.pathname)){
   try{serviceAccount(env);databaseUrl(env);await credentialCache.key;
-   return json({ok:true,service:'DMS Secure Login',version:'116',configured:true,capabilities:['attendance-token','dms-login','password-change'],note:'Configuration validated only; authenticated login and database rules must be tested separately.'});
+   return json({ok:true,service:'DMS Secure Login',version:'134',configured:true,capabilities:['attendance-token','dms-login','password-change'],note:'Configuration validated only; authenticated login and database rules must be tested separately.'});
   }catch(e){return json({ok:false,configured:false,error:errors[e.message]||'Login server configuration error'},503)}
  }
- if(!['/','/token','/login','/password'].includes(u.pathname))return json({error:'Not found'},404);
+ if(!['/','/token','/login','/password','/admin/password'].includes(u.pathname))return json({error:'Not found'},404);
  if(!origin||!origins(env).includes(origin))return json({error:'Website is not permitted'},403);
  if(req.method==='OPTIONS')return new Response(null,{status:204,headers:{'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Methods':'POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type',Vary:'Origin','Access-Control-Max-Age':'600'}});
  if(req.method!=='POST')return json({error:'POST required'},405,origin);
@@ -96,6 +96,20 @@ export default {async fetch(req,env){
   if(!await rateLimit(env,ip,'all-login',100)||!await rateLimit(env,ip,id))return json({error:'Too many attempts. Please wait one minute.'},429,origin);
   const account=await readAccount(env,id);
   if(!await passwordMatches(account,id,password)||(attendanceOnly&&account.forceChange===true))return json({error:'Invalid User ID or Password'},401,origin);
+  if(u.pathname==='/admin/password'){
+   if(id!=='admin'||account.forceChange===true||password==='1234')return json({error:'Admin permission required'},403,origin);
+   const target=normalizeUser(input.targetUser),next=input.newPassword,reset=input.forceChange===true;
+   if(!approvedUser(target)||typeof next!=='string'||next.length>256||(!reset&&next.length<8)||(reset&&next!=='1234'))return json({error:'Select a valid user and use at least 8 characters, or reset to 1234'},400,origin);
+   const response=await firebase(env,'user_auth/'+target,{headers:{'X-Firebase-ETag':'true'}});
+   if(!response.ok)throw Error('FIREBASE_ACCESS_DENIED');
+   const latest=await response.json(),etag=response.headers.get('etag');
+   if(!etag)return json({error:'Password update unavailable. Try again.'},503,origin);
+   const updated={...(latest||{}),...await newPasswordRecord(target,next),forceChange:reset,updatedBy:'admin'};
+   const saved=await firebase(env,'user_auth/'+target,{method:'PUT',headers:{'Content-Type':'application/json','If-Match':etag},body:JSON.stringify(updated)});
+   if(saved.status===412)return json({error:'Account changed. Try again.'},409,origin);
+   if(!saved.ok)throw Error('FIREBASE_ACCESS_DENIED');
+   return json({ok:true,userId:target},200,origin);
+  }
   if(u.pathname==='/password'){
    const next=input.newPassword;
    if(typeof next!=='string'||next.length<8||next.length>256||next===password)return json({error:'Use a different password with at least 8 characters'},400,origin);

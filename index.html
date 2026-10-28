@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-10-28-adms-v133">
+    <meta name="dms-app-version" content="2026-10-28-auth-v134">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1164,6 +1164,7 @@ body.app-logged-in #view-login{display:none!important}
                         <input type="password" id="admin-new-password" minlength="3" placeholder="Enter new password">
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <label for="admin-confirm-password">Your current Admin password</label><input id="admin-confirm-password" type="password" autocomplete="current-password" placeholder="Confirm Admin password">
                         <button type="button" class="btn" onclick="adminChangePassword()">🔐 Change Password</button>
                         <button type="button" class="btn btn-danger" onclick="adminResetPassword()">Reset Selected to '1234'</button>
                     </div>
@@ -1617,7 +1618,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-10-28-adms-v133';
+        const APP_CACHE_VERSION = '2026-10-28-auth-v134';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -1973,9 +1974,10 @@ body.app-logged-in #view-login{display:none!important}
         // Only Admin may reset credentials; self-service changes go through the Worker.
         async function saveCloudAuth(userId,password,forceChange){
             if(currentUser!=='admin')throw Error('Admin permission required');
-            const record={passwordHash:await hashPassword(password,userId),forceChange:!!forceChange,updatedAt:Date.now(),updatedBy:'admin',passwordAlgorithm:'sha256',passwordSalt:null,passwordIterations:null};
-            const path='user_auth/'+encodeURIComponent(userId);
-            await firebaseRestWrite(path,JSON.stringify(record),'PATCH',null,15000);return record;
+            const adminPassword=document.getElementById('admin-confirm-password')?.value||'';
+            if(!adminPassword)throw Error('Enter your current Admin password in the confirmation field.');
+            const result=await authServerRequest('/admin/password',{userId:'admin',password:adminPassword,targetUser:userId,newPassword:password,forceChange:!!forceChange});
+            document.getElementById('admin-confirm-password').value='';return result;
         }
 
         // Browsers do not expose phone IMEI. A persistent random Device ID provides
@@ -2600,12 +2602,12 @@ function clearPrivateSessionData(){
                 alert('Please select a user.');
                 return;
             }
-            if (newPass.length < 3) {
-                alert('Password must be at least 3 characters.');
+            if (newPass.length < 8) {
+                alert('Password must be at least 8 characters.');
                 return;
             }
 
-            try{await saveCloudAuth(targetUser,newPass,false);}catch(e){alert('Server-এ Password save হয়নি। Internet check করে আবার চেষ্টা করুন।');return;}
+            try{await saveCloudAuth(targetUser,newPass,false);}catch(e){alert(e.message||'Password update failed.');return;}
             userPasswords[targetUser] = newPass;savePasswords();
 
             const label = select.options[select.selectedIndex]?.text || targetUser.toUpperCase();
@@ -2626,7 +2628,7 @@ function clearPrivateSessionData(){
             const oldSelect = document.getElementById('reset-user-select');
             const targetUser = modernSelect?.value || oldSelect?.value;
             if (!targetUser) return;
-            try{await saveCloudAuth(targetUser,'1234',true);}catch(e){alert('Server-এ Password reset হয়নি। Internet check করে আবার চেষ্টা করুন।');return;}
+            try{await saveCloudAuth(targetUser,'1234',true);}catch(e){alert(e.message||'Password reset failed.');return;}
             userPasswords[targetUser] = '1234';savePasswords();
             const label = modernSelect?.options[modernSelect.selectedIndex]?.text || targetUser.toUpperCase();
             const status = document.getElementById('admin-password-status');
@@ -6343,7 +6345,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-10-28-adms-v133';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-10-28-auth-v134';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
