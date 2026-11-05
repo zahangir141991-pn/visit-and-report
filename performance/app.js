@@ -44,7 +44,7 @@ window.savePerformance=async function(){
  const month=el('perf-upload-month').value,session=appSessionGeneration,upload=pending,user=currentUser;
  if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))return alert('Select a valid report month.');
  if(upload.asOf&&upload.asOf.slice(0,7)!==month)return alert('Selected month does not match the report date.');
- if(months[month]&&!confirm('Replace the report for '+month+'?'))return;
+ if(!confirm('Save the report for '+month+'? This replaces any existing report for that month.'))return;
  const b=el('perf-upload-button');saving=true;b.disabled=true;
  try{
   if(!await anonymousBlocked())throw Error('Secure database access is required before uploading.');

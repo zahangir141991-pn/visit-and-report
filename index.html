@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-05-target-v143">
+    <meta name="dms-app-version" content="2026-11-05-uploads-v144">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -898,6 +898,11 @@ body:has(#view-kyc-status.active) #app-copyright,body:has(#view-kyc-status.activ
 .target-kpis span,.target-kpis strong{display:block}.target-kpis span{font-size:.8rem;color:#334155}.target-kpis strong{color:#0f172a;margin-top:6px;overflow-wrap:anywhere}
 #target-status,.target-legend{font-size:.83rem;color:#475569;margin:12px 0}.target-legend span:first-child{color:#087f70;margin-right:12px}
 #target-chart svg{display:block;width:100%;max-height:280px}
+</style><style>
+.nav-sidebar #nav-uploads{order:3;background:transparent;border:0;font:inherit;text-align:left}
+.uploads-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(190px,100%),1fr));gap:10px;margin-bottom:16px}
+.uploads-detail{text-align:left;margin-bottom:10px}.uploads-detail summary{font-weight:700;cursor:pointer;padding:5px 0}
+.uploads-detail[open] summary{margin-bottom:12px}
 </style></head>
 <body style="margin:0;background:#f8fafc;color:#0f172a;min-height:100vh;">
 <header id="app-header" style="display:block;background:#2563eb;color:#fff;padding:18px 20px;text-align:center;">
@@ -1022,10 +1027,6 @@ body.app-logged-in #view-login{display:none!important}
                 </div>
                 <section class="card target-card" aria-labelledby="target-title">
                     <div class="section-head"><h3 id="target-title">Target vs Achievement</h3><label>Month <input type="month" id="target-month" onchange="DmsTargets.load()"></label></div>
-                    <div id="target-admin" hidden>
-                        <label>Target Excel (DSO, Target in BDT) <input id="target-file" type="file" accept=".xlsx,.xls,.csv"></label>
-                        <button id="target-save" type="button" class="btn btn-sm" onclick="DmsTargets.upload()">Upload Monthly Target</button>
-                    </div>
                     <div class="target-kpis">
                         <div><span>Monthly Target</span><strong id="target-goal">—</strong></div>
                         <div><span>MTD Achievement</span><strong id="target-actual">—</strong></div>
@@ -1207,7 +1208,24 @@ body.app-logged-in #view-login{display:none!important}
                     <button type="button" class="btn btn-danger" onclick="adminResetPassword()">Reset Password to '1234'</button>
                 </div>
 
-                <div class="card" style="text-align:left; margin-bottom:16px;">
+
+            </div>
+
+            <div id="view-uploads" class="page hidden" aria-hidden="true">
+                <div class="section-head"><div><h2>Uploads</h2><small>Excel files for reports, targets and assignments</small></div></div>
+                <div class="uploads-grid">
+                    <button type="button" class="btn btn-sec" onclick="switchTab('morning-upload')">Morning Report</button>
+                    <button type="button" class="btn btn-sec" onclick="switchTab('afternoon-upload')">Afternoon / Evening Report</button>
+                    <button type="button" class="btn btn-sec" onclick="switchTab('assignment-upload')">DSS–DSO Assignment</button>
+                </div>
+                <details class="card uploads-detail"><summary>Monthly Target</summary>                    <div id="target-admin">
+                        <label>Target month <input type="month" id="target-upload-month"></label>
+                        <label>Target Excel (DSO, Target in BDT) <input id="target-file" type="file" accept=".xlsx,.xls,.csv"></label>
+                        <button id="target-save" type="button" class="btn btn-sm" onclick="DmsTargets.upload()">Upload Monthly Target</button>
+                    </div>
+</details>
+                <details class="card uploads-detail"><summary>Monthly Performance</summary><section class="perf-panel" id="perf-upload-wrap"><h3>Upload monthly Excel</h3><div class="perf-filters"><label>Report month<input id="perf-upload-month" type="month"></label><label>Excel file<input id="perf-upload-file" type="file" accept=".xlsx,.xls,.csv" onchange="previewPerformance(this)"></label><label id="perf-sheet-wrap" hidden>Report sheet<select id="perf-sheet" onchange="selectPerformanceSheet(this.value)"></select></label><button type="button" id="perf-upload-button" class="btn" onclick="savePerformance()" disabled>Upload report</button></div><p id="perf-upload-status">Select the monthly Excel file. The report sheet is identified by its columns. DSO comes from Excel; DSS comes from updated Uddokta Information. No DSS column is required.</p></section></details>
+                <details class="card uploads-detail"><summary>Uddokta Information</summary>                <div class="card" style="text-align:left; margin-bottom:16px;">
                     <h3 style="font-size:1rem; margin-bottom:6px;">Update Uddokta Information</h3>
                     <p style="color:#64748b;font-size:.86rem;line-height:1.5;margin-bottom:12px;">Admin Excel upload করে Uddokta Number, Uddokta Name, DSO এবং DSS information update/add করতে পারবেন।</p>
                     <div class="form-group">
@@ -1223,7 +1241,7 @@ body.app-logged-in #view-login{display:none!important}
                     <div style="margin-top:10px;padding:10px 12px;background:#f8fafc;border-radius:10px;color:#475569;font-size:.8rem;line-height:1.55;">
                         <b>Excel columns:</b> DSO Number/DSO Wallet, Uddokta Number, Uddokta Name, DSS Name. Header names can be English or Bangla. Uddokta Number is used as the unique key.
                     </div>
-                </div>
+                </div></details>
             </div>
 
             <!-- Admin-only Login Information Page -->
@@ -1244,6 +1262,7 @@ body.app-logged-in #view-login{display:none!important}
 
             <!-- Morning Excel Upload -->
             <div id="view-morning-upload" class="page">
+                <button type="button" class="btn btn-sm btn-sec" style="margin-bottom:12px" onclick="switchTab('uploads')">← All uploads</button>
                 <div class="section-head"><div><h2>Morning Excel File Upload</h2><small style="color:#64748b">Admin uploads the latest Morning Report data</small></div></div>
                 <section class="report-upload-meta hidden" data-report-upload-meta="morning" aria-label="Report upload date and elapsed time">
                     <div class="upload-meta-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
@@ -1296,6 +1315,7 @@ body.app-logged-in #view-login{display:none!important}
 
             <!-- Afternoon / Evening Excel Upload -->
             <div id="view-afternoon-upload" class="page">
+                <button type="button" class="btn btn-sm btn-sec" style="margin-bottom:12px" onclick="switchTab('uploads')">← All uploads</button>
                 <div class="section-head"><div><h2>Afternoon/Evening Excel Upload</h2><small style="color:#64748b">Admin uploads the latest Afternoon/Evening Report data</small></div></div>
                 <section class="report-upload-meta hidden" data-report-upload-meta="afternoon" aria-label="Report upload date and elapsed time">
                     <div class="upload-meta-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
@@ -1315,8 +1335,9 @@ body.app-logged-in #view-login{display:none!important}
             </div>
 
             <!-- Common DSS / DSO Assignment Upload -->
-            <div id="view-monthly-performance" class="page hidden" aria-hidden="true"><div class="section-head"><div><h2>Month wise performance report</h2><small>DSO and DSS monthly analysis</small></div></div><section class="perf-panel" id="perf-upload-wrap"><h3>Upload monthly Excel</h3><div class="perf-filters"><label>Report month<input id="perf-upload-month" type="month"></label><label>Excel file<input id="perf-upload-file" type="file" accept=".xlsx,.xls,.csv" onchange="previewPerformance(this)"></label><label id="perf-sheet-wrap" hidden>Report sheet<select id="perf-sheet" onchange="selectPerformanceSheet(this.value)"></select></label><button type="button" id="perf-upload-button" class="btn" onclick="savePerformance()" disabled>Upload report</button></div><p id="perf-upload-status">Select the monthly Excel file. The report sheet is identified by its columns. DSO comes from Excel; DSS comes from updated Uddokta Information. No DSS column is required.</p></section><section class="perf-panel"><div class="perf-filters"><label>Month<select id="perf-month" onchange="renderPerformance()"></select></label><label>DSS<select id="perf-dss" onchange="renderPerformance()"></select></label><label>DSO<select id="perf-dso" onchange="renderPerformance()"></select></label><label>Group by<select id="perf-group" onchange="renderPerformance()"><option value="dso">DSO wise</option><option value="dss">DSS wise</option><option value="agent">Agent wise</option></select></label></div><p id="perf-meta">Loading…</p><div id="perf-cards" class="perf-cards"></div></section><section class="perf-panel"><div class="perf-chart-header"><h3>Monthly trend</h3><label>Metric<select id="perf-metric" onchange="renderPerformance()"><option value="txn">MTD TXN</option><option value="ci">MTD CI</option><option value="co">MTD CO</option><option value="islamic">Islamic MTD TXN</option><option value="atleast5">5 Lac &amp; Above</option><option value="active">Active Uddokta</option></select></label></div><div id="perf-chart" class="perf-chart"></div><small>Amounts shown in crore. Growth compares the immediately previous calendar month; matching report dates are recommended.</small></section><section class="perf-panel"><div id="perf-agent-controls" class="perf-filters" hidden><label>Search agent<input id="perf-agent-search" type="search" placeholder="Number / name / DSO" oninput="renderPerformance()"></label><label>Rows<select id="perf-agent-size" onchange="renderPerformance()"><option>25</option><option>50</option><option>100</option></select></label><button type="button" id="perf-agent-prev" class="btn btn-sec" onclick="performanceAgentPage(-1)">Previous</button><span id="perf-agent-page"></span><button type="button" id="perf-agent-next" class="btn btn-sec" onclick="performanceAgentPage(1)">Next</button></div><div class="perf-table"><table><thead id="perf-table-head"><tr><th>DSO / DSS</th><th>MTD TXN</th><th>MTD CI</th><th>MTD CO</th><th>Islamic MTD TXN</th><th>5 Lac &amp; Above</th><th>Active Uddokta</th><th>TXN Growth</th></tr></thead><tbody id="perf-table-body"></tbody></table></div></section></div>
+            <div id="view-monthly-performance" class="page hidden" aria-hidden="true"><div class="section-head"><div><h2>Month wise performance report</h2><small>DSO and DSS monthly analysis</small></div></div><section class="perf-panel"><div class="perf-filters"><label>Month<select id="perf-month" onchange="renderPerformance()"></select></label><label>DSS<select id="perf-dss" onchange="renderPerformance()"></select></label><label>DSO<select id="perf-dso" onchange="renderPerformance()"></select></label><label>Group by<select id="perf-group" onchange="renderPerformance()"><option value="dso">DSO wise</option><option value="dss">DSS wise</option><option value="agent">Agent wise</option></select></label></div><p id="perf-meta">Loading…</p><div id="perf-cards" class="perf-cards"></div></section><section class="perf-panel"><div class="perf-chart-header"><h3>Monthly trend</h3><label>Metric<select id="perf-metric" onchange="renderPerformance()"><option value="txn">MTD TXN</option><option value="ci">MTD CI</option><option value="co">MTD CO</option><option value="islamic">Islamic MTD TXN</option><option value="atleast5">5 Lac &amp; Above</option><option value="active">Active Uddokta</option></select></label></div><div id="perf-chart" class="perf-chart"></div><small>Amounts shown in crore. Growth compares the immediately previous calendar month; matching report dates are recommended.</small></section><section class="perf-panel"><div id="perf-agent-controls" class="perf-filters" hidden><label>Search agent<input id="perf-agent-search" type="search" placeholder="Number / name / DSO" oninput="renderPerformance()"></label><label>Rows<select id="perf-agent-size" onchange="renderPerformance()"><option>25</option><option>50</option><option>100</option></select></label><button type="button" id="perf-agent-prev" class="btn btn-sec" onclick="performanceAgentPage(-1)">Previous</button><span id="perf-agent-page"></span><button type="button" id="perf-agent-next" class="btn btn-sec" onclick="performanceAgentPage(1)">Next</button></div><div class="perf-table"><table><thead id="perf-table-head"><tr><th>DSO / DSS</th><th>MTD TXN</th><th>MTD CI</th><th>MTD CO</th><th>Islamic MTD TXN</th><th>5 Lac &amp; Above</th><th>Active Uddokta</th><th>TXN Growth</th></tr></thead><tbody id="perf-table-body"></tbody></table></div></section></div>
             <div id="view-assignment-upload" class="page">
+                <button type="button" class="btn btn-sm btn-sec" style="margin-bottom:12px" onclick="switchTab('uploads')">← All uploads</button>
                 <div class="section-head"><div><h2>DSS–DSO Assignment Upload</h2><small style="color:#64748b">এই common assignment সব report-এ ব্যবহার হবে</small></div></div>
                 <div class="card" style="text-align:left;max-width:760px;margin:0 auto 16px">
                     <div class="morning-actions"><div><label>Excel File (.xlsx / .xls / .csv)</label><input type="file" id="assignment-excel-file" accept=".xlsx,.xls,.csv" onchange="previewAssignmentExcel(this)"></div></div>
@@ -1439,12 +1460,10 @@ body.app-logged-in #view-login{display:none!important}
         <div class="nav-item visit-parent" id="nav-reports" onclick="toggleReportsMenu(event)"><span>📈</span><span>Reports <b class="menu-arrow">▾</b></span></div>
         <div id="reports-menu-panel" class="reports-menu-panel">
             <button type="button" id="monthly-performance-menu-btn" class="visit-menu-btn" onclick="reportsMenuAction('monthly-performance')">📈 Month wise performance report</button>
-            <button type="button" id="morning-upload-menu-btn" class="visit-menu-btn" onclick="reportsMenuAction('morning-upload')">📤 Morning Excel File Upload</button>
             <button type="button" class="visit-menu-btn" onclick="reportsMenuAction('morning-report')">📊 Morning Report</button>
-            <button type="button" id="afternoon-upload-menu-btn" class="visit-menu-btn" onclick="reportsMenuAction('afternoon-upload')">📤 Afternoon/Evening Excel Upload</button>
             <button type="button" class="visit-menu-btn" onclick="reportsMenuAction('afternoon-report')">📊 Afternoon/Evening Report</button>
-            <button type="button" id="assignment-upload-menu-btn" class="visit-menu-btn" onclick="reportsMenuAction('assignment-upload')">🔗 DSS–DSO Assignment Upload</button>
         </div>
+        <button type="button" class="nav-item hidden" id="nav-uploads" onclick="switchTab('uploads')"><span aria-hidden="true">↑</span><span>Uploads</span></button>
         <div class="nav-item visit-parent" id="nav-kyc" onclick="toggleKycMenu(event)"><span>🪪</span><span>New Uddokta KYC Tracker <b class="menu-arrow">▾</b></span></div>
         <div id="kyc-menu-panel" class="kyc-menu-panel">
             <button type="button" class="visit-menu-btn" onclick="kycMenuAction('kyc-collection')">➕ KYC Collection</button>
@@ -1639,7 +1658,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-05-target-v143';
+        const APP_CACHE_VERSION = '2026-11-05-uploads-v144';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -4203,14 +4222,14 @@ function deferVisiblePageWork(tab,task){
                 tab = 'change-pass';
                 setTimeout(() => document.getElementById('old-password')?.focus(), 0);
             }
-            if ((tab === 'admin' || tab === 'login-info') && currentUser !== 'admin') return;
+            if ((tab === 'admin' || tab === 'login-info' || tab === 'uploads') && currentUser !== 'admin') return;
             if (tab === 'monthly-performance' && !['Admin','DM','DSS','DSO'].includes(getRoleInfo().role)) return;
             if (tab === 'morning-upload' && getRoleInfo().role !== 'Admin') return;
             if (tab === 'afternoon-upload' && getRoleInfo().role !== 'Admin') return;
             if (tab === 'assignment-upload' && getRoleInfo().role !== 'Admin') return;
             if (tab === 'login-info') { try { startAdminLoginMonitoring(); loadAdminLoginInfo(); loadAdminLatestLoginAlert(); } catch (_) {} }
             // Single-page navigation: ONLY the clicked page is visible.
-            const pages = ['dashboard','form','daily','notices','admin','login-info','change-pass','morning-upload','morning-report','afternoon-upload','afternoon-report','assignment-upload','monthly-performance','kyc-collection','kyc-status'];
+            const pages = ['dashboard','form','daily','notices','admin','uploads','login-info','change-pass','morning-upload','morning-report','afternoon-upload','afternoon-report','assignment-upload','monthly-performance','kyc-collection','kyc-status'];
             pages.forEach(name => {
                 const el = document.getElementById('view-' + name);
                 if (!el) return;
@@ -4219,7 +4238,7 @@ function deferVisiblePageWork(tab,task){
                 el.setAttribute('aria-hidden', 'true');
             });
 
-            ['dashboard','form','daily','notices','admin','login-info','settings','reports','kyc'].forEach(name => {
+            ['dashboard','form','daily','notices','admin','uploads','login-info','settings','reports','kyc'].forEach(name => {
                 const nav = document.getElementById('nav-' + name);
                 if (nav) nav.classList.remove('active');
             });
@@ -4231,7 +4250,7 @@ function deferVisiblePageWork(tab,task){
                 page.setAttribute('aria-hidden', 'false');syncReportUploadClock();
             }
 
-            const navId = tab === 'change-pass' ? 'nav-settings' : ((tab === 'daily' || tab === 'form') ? 'nav-visit' : ((tab === 'morning-upload' || tab === 'morning-report' || tab === 'afternoon-upload' || tab === 'afternoon-report' || tab === 'assignment-upload' || tab === 'monthly-performance') ? 'nav-reports' : ((tab === 'kyc-collection' || tab === 'kyc-status') ? 'nav-kyc' : 'nav-' + tab)));
+            const navId = ['morning-upload','afternoon-upload','assignment-upload'].includes(tab) ? 'nav-uploads' : tab === 'change-pass' ? 'nav-settings' : ((tab === 'daily' || tab === 'form') ? 'nav-visit' : ((tab === 'morning-upload' || tab === 'morning-report' || tab === 'afternoon-upload' || tab === 'afternoon-report' || tab === 'assignment-upload' || tab === 'monthly-performance') ? 'nav-reports' : ((tab === 'kyc-collection' || tab === 'kyc-status') ? 'nav-kyc' : 'nav-' + tab)));
             const nav = document.getElementById(navId);
             if (nav) nav.classList.add('active');
 
@@ -4263,6 +4282,7 @@ function deferVisiblePageWork(tab,task){
             }
             if (tab === 'notices') renderNotices();
             if (tab === 'dashboard') window.DmsTargets?.open();
+            if (tab === 'uploads') { const month=document.getElementById('target-upload-month'); if(!month.value)month.value=getDhakaToday().slice(0,7); }
             if (tab === 'morning-upload') { const input=document.getElementById('morning-target-date'); const today=getDhakaToday(); input.max=today; if(!input.value)input.value=new Date(Date.parse(today+'T00:00:00Z')-86400000).toISOString().slice(0,10); }
         }
 
@@ -5268,30 +5288,16 @@ function reportsMenuAction(tab){
 }
 function updateMorningMenuAccess(){
     document.getElementById('monthly-performance-menu-btn')?.classList.toggle('hidden',!['Admin','DM','DSS','DSO'].includes(getRoleInfo().role));
-    const role=typeof getRoleInfo==='function'?getRoleInfo():{role:''};
-    const upload=document.getElementById('morning-upload-menu-btn');
-    if(upload)upload.classList.toggle('hidden',role.role!=='Admin');
-    const afternoonUpload=document.getElementById('afternoon-upload-menu-btn');
-    if(afternoonUpload)afternoonUpload.classList.toggle('hidden',role.role!=='Admin');
-    const assignmentUpload=document.getElementById('assignment-upload-menu-btn');
-    if(assignmentUpload)assignmentUpload.classList.toggle('hidden',role.role!=='Admin');
+    document.getElementById('nav-uploads')?.classList.toggle('hidden',getRoleInfo().role!=='Admin');
 }
 function clearMorningUpload(){
     pendingMorningExcel=null;
     const input=document.getElementById('morning-excel-file');if(input)input.value='';
-    const date=document.getElementById('morning-target-date').value;
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date>getDhakaToday()){alert('Select the correct MTD as-of date.');return;}
-    let groups;
-    try{groups=DmsTargets.snapshot(pendingMorningExcel,morningColumnMap(pendingMorningExcel.headers));if(!Object.keys(groups).length)throw Error('No valid DSO rows found.');}catch(e){alert(e.message);return;}
     const btn=document.getElementById('btn-save-morning-excel');if(btn)btn.disabled=true;
     setMorningStatus('morning-upload-preview','Select an Excel file to preview.');
 }
 async function previewMorningExcel(input){
     pendingMorningExcel=null;
-    const date=document.getElementById('morning-target-date').value;
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date>getDhakaToday()){alert('Select the correct MTD as-of date.');return;}
-    let groups;
-    try{groups=DmsTargets.snapshot(pendingMorningExcel,morningColumnMap(pendingMorningExcel.headers));if(!Object.keys(groups).length)throw Error('No valid DSO rows found.');}catch(e){alert(e.message);return;}
     const btn=document.getElementById('btn-save-morning-excel');if(btn)btn.disabled=true;
     const file=input&&input.files&&input.files[0];
     if(!file){clearMorningUpload();return;}
@@ -6380,7 +6386,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-05-target-v143';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-05-uploads-v144';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
@@ -6457,6 +6463,6 @@ function isOlderUploadedReport(candidate,current){
 }
 </script>
 
-<script src="performance/targets.js?v=143"></script><script src="performance/analytics.js?v=137"></script><script src="performance/app.js?v=136"></script>
+<script src="performance/targets.js?v=144"></script><script src="performance/analytics.js?v=137"></script><script src="performance/app.js?v=144"></script>
 </body>
 </html>
