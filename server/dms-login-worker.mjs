@@ -97,20 +97,36 @@ async function performanceSession(env,input){
  const account=await readAccount(env,id);if(!account||account.enabled===false||account.disabled===true||account.forceChange===true)throw Object.assign(Error('Sign in again'),{status:403});return id;
 }
 async function performanceReport(env,input){const id=await performanceSession(env,input);if(!['admin','zahangir',...Object.keys(performanceDssUsers)].includes(id)&&!/^013325178(?:0[1-9]|[1-3]\d|4[0-6])$/.test(id))throw Object.assign(Error('Report permission required'),{status:403});const [r,m]=await Promise.all([firebase(env,'monthly_performance'),firebase(env,'uddokta_master')]);if(!r.ok||!m.ok)throw Error('FIREBASE_ACCESS_DENIED');return scopedPerformance(id,await r.json(),await m.json());}
+export function scopedTargets(id,data,assignments,master){
+ const all=['admin','zahangir'].includes(id), own=performanceWallet(id), dss=performanceDssUsers[id];
+ const names=new Map();for(const row of Object.values(assignments||{})){const dso=performanceWallet(row?.dso),name=performanceDss(row?.dss);if(!dso||!name)continue;if(!names.has(dso))names.set(dso,new Set());names.get(dso).add(name);}
+ const allowed=new Set(names.size?[...names].filter(([,v])=>v.size===1&&v.has(dss)).map(([k])=>k):scopedPerformance(id,{},master).allowedDsos);
+ const filter=(obj,positive=false)=>Object.fromEntries(Object.entries(obj||{}).filter(([k,v])=>performanceWallet(k)===k&&(all||own===k||allowed.has(k))&&typeof v==='number'&&Number.isFinite(v)&&(positive?v>0:v>=0)));
+ return {targets:filter(data?.targets,true),history:Object.fromEntries(Object.entries(data?.history||{}).filter(([date])=>/^\d{4}-\d{2}-\d{2}$/.test(date)).map(([date,rows])=>[date,filter(rows)]))};
+}
+async function targetReport(env,input){
+ const id=await performanceSession(env,input),month=input.month;
+ if(typeof month!=='string'||!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))throw Object.assign(Error('Select a valid month'),{status:400});
+ const read=async path=>{const r=await firebase(env,path);if(!r.ok)throw Error('FIREBASE_ACCESS_DENIED');return r.json();};
+ const [data,assignments]=await Promise.all([read('dms_target_tracking/'+month),performanceDssUsers[id]?read('dss_dso_assignments_common'):null]);
+ const master=performanceDssUsers[id]&&!Object.values(assignments||{}).some(row=>performanceWallet(row?.dso)&&performanceDss(row?.dss))?await read('uddokta_master'):null;
+ return scopedTargets(id,data,assignments,master);
+}
 export default {async fetch(req,env){
  const u=new URL(req.url),origin=req.headers.get('Origin')||'';
  if(req.method==='GET'&&['/','/health'].includes(u.pathname)){
   try{serviceAccount(env);databaseUrl(env);await credentialCache.key;
-   return json({ok:true,service:'DMS Secure Login',version:'137',configured:true,capabilities:['attendance-token','dms-login','password-change'],note:'Configuration validated only; authenticated login and database rules must be tested separately.'});
+   return json({ok:true,service:'DMS Secure Login',version:'143',configured:true,capabilities:['attendance-token','dms-login','password-change'],note:'Configuration validated only; authenticated login and database rules must be tested separately.'});
   }catch(e){return json({ok:false,configured:false,error:errors[e.message]||'Login server configuration error'},503)}
  }
- if(!['/','/token','/login','/password','/admin/password','/performance'].includes(u.pathname))return json({error:'Not found'},404);
+ if(!['/','/token','/login','/password','/admin/password','/performance','/targets'].includes(u.pathname))return json({error:'Not found'},404);
  if(!origin||!origins(env).includes(origin))return json({error:'Website is not permitted'},403);
  if(req.method==='OPTIONS')return new Response(null,{status:204,headers:{'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Methods':'POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type',Vary:'Origin','Access-Control-Max-Age':'600'}});
  if(req.method!=='POST')return json({error:'POST required'},405,origin);
  if(!req.headers.get('Content-Type')?.toLowerCase().startsWith('application/json'))return json({error:'JSON required'},415,origin);
  try{
   const input=await readInput(req);
+  if(u.pathname==='/targets')return json(await targetReport(env,input),200,origin);
   if(u.pathname==='/performance')return json(await performanceReport(env,input),200,origin);
   const id=normalizeUser(input.userId),password=input.password;
   const attendanceOnly=['/','/token'].includes(u.pathname);

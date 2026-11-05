@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-05-login-v142">
+    <meta name="dms-app-version" content="2026-11-05-target-v143">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -889,7 +889,16 @@ body:has(#view-kyc-status.active) #app-copyright,body:has(#view-kyc-status.activ
 <meta name="theme-color" content="#2563eb">
 <link rel="stylesheet" href="assets/responsive.css?v=125">
 <style>.perf-panel{background:#fff;border:1px solid #cbd5e1;border-radius:12px;padding:14px;margin:10px 0;color:#102132}.perf-panel h3{margin:0 0 10px;font-size:15px}.perf-filters,.perf-chart-header{display:flex;flex-wrap:wrap;align-items:end;gap:10px}.perf-filters[hidden],.perf-filters [hidden]{display:none!important}.perf-filters label,.perf-chart-header label{font-size:12px;font-weight:600;color:#243746;display:grid;gap:4px}.perf-filters input,.perf-filters select,.perf-chart-header select{min-height:36px;border:1px solid #aab9c5;border-radius:7px;padding:5px 8px;color:#102132;background:#fff;max-width:210px}.perf-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px}.perf-card{background:#edf7f3;border:1px solid #b8d8cb;border-radius:9px;padding:9px}.perf-card span{display:block;color:#345348;font-size:11px;font-weight:600}.perf-card strong{display:block;font-size:16px;color:#123c2c;margin-top:5px}.perf-chart{overflow-x:auto}.perf-chart svg{display:block;min-width:480px;width:100%;height:auto}.perf-chart-header{justify-content:space-between}.perf-table{overflow:auto}.perf-table table{border-collapse:collapse;width:100%;min-width:950px;font-size:12px}.perf-table th,.perf-table td{border:1px solid #cbd5e1;padding:8px;text-align:center}.perf-table thead th{background:#173f50;color:white;white-space:nowrap}.perf-table tbody tr:nth-child(even){background:#edf5f7}.perf-panel p,.perf-panel small{color:#364b57;font-size:12px}@media(max-width:600px){.perf-panel{padding:10px}.perf-filters label{flex:1 1 135px}.perf-filters input,.perf-filters select{max-width:100%;width:100%}}</style>
-</head>
+<style>
+.target-card{text-align:left}.target-card .section-head{flex-wrap:wrap;gap:12px}.target-card input{max-width:100%}
+#target-admin{padding:12px;background:#f1f5f9;border-radius:10px;margin-bottom:12px}
+#target-admin[hidden]{display:none!important}
+.target-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr));gap:10px;margin-top:14px}
+.target-kpis>div{background:#f3f8fb;border:1px solid #dae5ee;padding:12px;border-radius:12px;min-width:0}
+.target-kpis span,.target-kpis strong{display:block}.target-kpis span{font-size:.8rem;color:#334155}.target-kpis strong{color:#0f172a;margin-top:6px;overflow-wrap:anywhere}
+#target-status,.target-legend{font-size:.83rem;color:#475569;margin:12px 0}.target-legend span:first-child{color:#087f70;margin-right:12px}
+#target-chart svg{display:block;width:100%;max-height:280px}
+</style></head>
 <body style="margin:0;background:#f8fafc;color:#0f172a;min-height:100vh;">
 <header id="app-header" style="display:block;background:#2563eb;color:#fff;padding:18px 20px;text-align:center;">
   <button type="button" id="mobile-menu-btn" aria-label="Open navigation" aria-expanded="false" onclick="toggleMobileNav()">☰</button>
@@ -1011,36 +1020,22 @@ body.app-logged-in #view-login{display:none!important}
                 <div class="section-head">
                     <div><h2>Dashboard</h2><small style="color:#64748b">DMS</small></div>
                 </div>
-                <div class="quick-grid dashboard-summary-grid">
-                    <div class="card"><div class="card-lbl">Total Uddokta</div><div class="card-val" id="dashboard-total-uddokta-count">0</div></div>
-                    <div class="card"><div class="card-lbl">Total Visit</div><div class="card-val" id="total-visit-count">0</div></div>
-                    <div class="card"><div class="card-lbl">Today Visit</div><div class="card-val" id="unique-visit-count">0</div></div>
-                    <div class="card"><div class="card-lbl">Today</div><div class="card-val" id="today-date-card" style="font-size:1rem"></div></div>
-                    <div class="card hidden" aria-hidden="true"><div class="card-lbl">Access</div><div class="card-val" id="access-card" style="font-size:1rem"></div></div>
-                </div>
-                <div id="dashboard-visit-chart-card" class="card dashboard-chart-card hidden">
-                    <div class="dashboard-chart-head">
-                        <div>
-                            <div class="dashboard-chart-title">Date-wise Visit Analytics</div>
-                            <div class="dashboard-chart-sub" id="dashboard-chart-subtitle">Visit count, unique Uddokta count and visit rate by date</div>
-                        </div>
+                <section class="card target-card" aria-labelledby="target-title">
+                    <div class="section-head"><h3 id="target-title">Target vs Achievement</h3><label>Month <input type="month" id="target-month" onchange="DmsTargets.load()"></label></div>
+                    <div id="target-admin" hidden>
+                        <label>Target Excel (DSO, Target in BDT) <input id="target-file" type="file" accept=".xlsx,.xls,.csv"></label>
+                        <button id="target-save" type="button" class="btn btn-sm" onclick="DmsTargets.upload()">Upload Monthly Target</button>
                     </div>
-                    <div class="chart-filter-grid">
-                        <div><label for="dashboard-chart-from">From Date</label><input type="date" id="dashboard-chart-from" onchange="renderDashboardVisitChart()"></div>
-                        <div><label for="dashboard-chart-to">To Date</label><input type="date" id="dashboard-chart-to" onchange="renderDashboardVisitChart()"></div>
-                        <button type="button" class="btn btn-sm btn-sec chart-reset" onclick="resetDashboardChartFilter()">↺ Reset</button>
+                    <div class="target-kpis">
+                        <div><span>Monthly Target</span><strong id="target-goal">—</strong></div>
+                        <div><span>MTD Achievement</span><strong id="target-actual">—</strong></div>
+                        <div><span>Achievement %</span><strong id="target-pct">—</strong></div>
+                        <div><span>Daily Requirement</span><strong id="target-daily">—</strong></div>
                     </div>
-                    <div class="chart-kpi-grid">
-                        <div class="chart-kpi kpi-blue"><span>Selected Visits</span><b id="chart-kpi-visits">0</b></div>
-                        <div class="chart-kpi kpi-green"><span>Unique Uddokta</span><b id="chart-kpi-uddokta">0</b></div>
-                        <div class="chart-kpi kpi-orange"><span>Repeat Visits</span><b id="chart-kpi-repeat">0</b></div>
-                        <div class="chart-kpi kpi-purple"><span>Active Days</span><b id="chart-kpi-days">0</b></div>
-                        <div class="chart-kpi kpi-red"><span>Avg Visit / Day</span><b id="chart-kpi-avg">0</b></div>
-                    </div>
-                    <div class="chart-info-strip" id="dashboard-chart-info">Hover on a date to see Visit Count, Unique Uddokta, Repeat Visit and Visit Rate.</div>
-                    <div class="chart-wrap"><canvas id="dashboard-visit-chart"></canvas></div>
-                    <div id="dashboard-chart-empty" class="chart-empty">No visit data found for the selected dates.</div>
-                </div>
+                    <p id="target-status" role="status"></p>
+                    <div class="target-legend"><span>● Achievement</span> <span>┄ Target pace</span></div>
+                    <div id="target-chart"></div>
+                </section>
             </div>
 
             <!-- New Visit Entry Form -->
@@ -1259,6 +1254,7 @@ body.app-logged-in #view-login{display:none!important}
                     <div class="morning-actions">
                         <div><label>Excel File (.xlsx / .xls / .csv)</label><input type="file" id="morning-excel-file" accept=".xlsx,.xls,.csv" onchange="previewMorningExcel(this)"></div>
                     </div>
+                    <label>MTD as-of date <input type="date" id="morning-target-date" required></label>
                     <div id="morning-upload-preview" class="morning-status">Select an Excel file to preview.</div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
                         <button type="button" class="btn" id="btn-save-morning-excel" onclick="saveMorningExcel()" disabled>📤 Upload Morning File</button>
@@ -1592,6 +1588,7 @@ body.app-logged-in #view-login{display:none!important}
         }
         function stopPrivateFirebaseSubscriptions(){
             if(window.closePerformance)window.closePerformance();
+            window.DmsTargets?.close();
             for(const subscription of activeFirebaseSubscriptions){try{subscription.query.off(subscription.event,subscription.callback);}catch(_){}}
             activeFirebaseSubscriptions.clear();firebaseListenersStarted=false;firebaseConnectionMonitorStarted=false;
             morningReportRealtimeRef=null;afternoonReportRealtimeRef=null;kycRealtimeRef=null;
@@ -1642,7 +1639,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-05-login-v142';
+        const APP_CACHE_VERSION = '2026-11-05-target-v143';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -4265,7 +4262,8 @@ function deferVisiblePageWork(tab,task){
                 scheduleRenderReports();
             }
             if (tab === 'notices') renderNotices();
-            if (tab === 'dashboard') scheduleDashboardChartRender();
+            if (tab === 'dashboard') window.DmsTargets?.open();
+            if (tab === 'morning-upload') { const input=document.getElementById('morning-target-date'); const today=getDhakaToday(); input.max=today; if(!input.value)input.value=new Date(Date.parse(today+'T00:00:00Z')-86400000).toISOString().slice(0,10); }
         }
 
         function populateDsoFilter(){
@@ -5130,7 +5128,7 @@ function setMorningStatus(id, message, type){
 // does not expose byte-progress for set(), and one large JSON write can be slow on
 // mobile networks. Chunking shortens the wait while the small metadata write gives
 // every connected user one clean realtime update after all chunks are ready.
-async function saveReportInParallelChunks(reportType,payload){
+async function saveReportInParallelChunks(reportType,payload,targetSnapshot){
     const rows=Array.isArray(payload.rows)?payload.rows:[];
     const chunkSize=400;
     const chunks=[];
@@ -5145,8 +5143,10 @@ async function saveReportInParallelChunks(reportType,payload){
     await Promise.all(parts.map(part=>firebaseRestWrite(part.path,part.body,'PUT',(loaded,total)=>{part.loaded=total?Math.min(loaded,total):loaded;updateActual();})));
     const meta=Object.assign({},payload,{rows:[],chunked:true,chunkRoot,chunkCount:chunks.length,rowCount:rows.length,schemaVersion:3});
     paintUploadProgress(97,'Final data confirmation...');
-    const savedResponse=await firebaseRestWrite(reportType+'_report_current',JSON.stringify(meta),'PUT');
-    let savedMeta=meta;try{const parsed=JSON.parse(savedResponse);if(parsed&&Number.isFinite(Number(parsed.uploadedAt))&&Number(parsed.uploadedAt)>0)savedMeta=parsed;}catch(_){}
+    const savedResponse=targetSnapshot
+      ? await firebaseRestWrite('',JSON.stringify({[reportType+'_report_current']:meta,['dms_target_tracking/'+targetSnapshot.date.slice(0,7)+'/history/'+targetSnapshot.date]:targetSnapshot.groups}),'PATCH')
+      : await firebaseRestWrite(reportType+'_report_current',JSON.stringify(meta),'PUT');
+    let savedMeta=meta;try{const response=JSON.parse(savedResponse);const parsed=targetSnapshot?response[reportType+'_report_current']:response;if(parsed&&Number.isFinite(Number(parsed.uploadedAt))&&Number(parsed.uploadedAt)>0)savedMeta=parsed;}catch(_){}
     if(!Number.isFinite(Number(savedMeta.uploadedAt))||Number(savedMeta.uploadedAt)<=0)savedMeta=Object.assign({},savedMeta,{uploadedAt:Date.now()});
     await firebaseRestWrite('dms_live_update_signal',JSON.stringify({type:reportType,revision:Date.now(),uploadId}),'PUT',null,8000).catch(e=>console.warn('Report saved; update signal unavailable:',e));
     paintUploadProgress(99,'Final data confirmation...');
@@ -5279,11 +5279,19 @@ function updateMorningMenuAccess(){
 function clearMorningUpload(){
     pendingMorningExcel=null;
     const input=document.getElementById('morning-excel-file');if(input)input.value='';
+    const date=document.getElementById('morning-target-date').value;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date>getDhakaToday()){alert('Select the correct MTD as-of date.');return;}
+    let groups;
+    try{groups=DmsTargets.snapshot(pendingMorningExcel,morningColumnMap(pendingMorningExcel.headers));if(!Object.keys(groups).length)throw Error('No valid DSO rows found.');}catch(e){alert(e.message);return;}
     const btn=document.getElementById('btn-save-morning-excel');if(btn)btn.disabled=true;
     setMorningStatus('morning-upload-preview','Select an Excel file to preview.');
 }
 async function previewMorningExcel(input){
     pendingMorningExcel=null;
+    const date=document.getElementById('morning-target-date').value;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date>getDhakaToday()){alert('Select the correct MTD as-of date.');return;}
+    let groups;
+    try{groups=DmsTargets.snapshot(pendingMorningExcel,morningColumnMap(pendingMorningExcel.headers));if(!Object.keys(groups).length)throw Error('No valid DSO rows found.');}catch(e){alert(e.message);return;}
     const btn=document.getElementById('btn-save-morning-excel');if(btn)btn.disabled=true;
     const file=input&&input.files&&input.files[0];
     if(!file){clearMorningUpload();return;}
@@ -5322,6 +5330,10 @@ async function saveMorningExcel(){
         setMorningStatus('morning-upload-preview','Database is not connected. Check internet connection and try again.','error');
         return;
     }
+    const date=document.getElementById('morning-target-date').value;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date>getDhakaToday()){alert('Select the correct MTD as-of date.');return;}
+    let groups;
+    try{groups=DmsTargets.snapshot(pendingMorningExcel,morningColumnMap(pendingMorningExcel.headers));if(!Object.keys(groups).length)throw Error('No valid DSO rows found.');}catch(e){alert(e.message);return;}
     const btn=document.getElementById('btn-save-morning-excel');if(btn)btn.disabled=true;
     setMorningStatus('morning-upload-preview','Uploading morning data...');
     beginUploadProgress('Morning Report Upload');
@@ -5329,8 +5341,9 @@ async function saveMorningExcel(){
     // Publish the complete source report only after every data chunk has been saved.
     
     try{
-        const saved=await saveReportInParallelChunks('morning',payload);try{privateDataStorage.setItem('morning_report_current',JSON.stringify(saved));}catch(_){}applyMorningReportData(saved,'saved cloud');
-        setMorningStatus('morning-upload-preview',`Upload successful. ${payload.rows.length} rows saved. Previous Morning Excel has been replaced.`,'ok');
+        const tracking=await DmsTargets.privateStore();
+        const saved=await saveReportInParallelChunks('morning',payload,tracking?{date,groups}:undefined);try{privateDataStorage.setItem('morning_report_current',JSON.stringify(saved));}catch(_){}applyMorningReportData(saved,'saved cloud');
+        setMorningStatus('morning-upload-preview',`Upload successful. ${payload.rows.length} rows saved. Previous Morning Excel has been replaced.${tracking?'':' Target history not saved: publish the updated Database Rules.'}`,'ok');
         completeUploadProgress('Morning Report uploaded successfully');
     }catch(err){
         failUploadProgress('Morning Report upload failed');
@@ -6367,7 +6380,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-05-login-v142';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-05-target-v143';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
@@ -6444,6 +6457,6 @@ function isOlderUploadedReport(candidate,current){
 }
 </script>
 
-<script src="performance/analytics.js?v=137"></script><script src="performance/app.js?v=136"></script>
+<script src="performance/targets.js?v=143"></script><script src="performance/analytics.js?v=137"></script><script src="performance/app.js?v=136"></script>
 </body>
 </html>

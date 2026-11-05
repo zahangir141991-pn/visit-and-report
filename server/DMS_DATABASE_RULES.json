@@ -3,8 +3,8 @@
     ".read": false,
     ".write": false,
     "$section": {
-      ".read": "($section === 'dms_app_release') || ((auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId) && ($section !== 'user_auth' && $section !== 'attendance_server' && $section !== 'attendance' && $section !== 'monthly_performance' && $section !== 'dms_app_release')) || ($section === 'monthly_performance' && ((auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId) && (auth.token.dmsUserId === 'admin' || auth.token.dmsUserId === 'zahangir'))) || ($section === 'attendance' && auth != null && auth.token.attendanceAdmin === true)",
-      ".write": "((auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId) && ($section !== 'user_auth' && $section !== 'attendance_server' && $section !== 'attendance' && $section !== 'monthly_performance' && $section !== 'dms_app_release')) || ($section === 'monthly_performance' && ((auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId) && auth.token.dmsUserId === 'admin')) || ($section === 'dms_app_release' && ((auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId) && auth.token.dmsUserId === 'admin')) || ($section === 'attendance' && auth != null && auth.token.attendanceAdmin === true)"
+      ".read": "($section === 'dms_app_release') || ((auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId) && ($section !== 'dms_target_tracking' && $section !== 'dss_dso_assignments_common' && $section !== 'morning_report_current' && $section !== 'morning_report_chunks' && $section !== 'user_auth' && $section !== 'attendance_server' && $section !== 'attendance' && $section !== 'monthly_performance' && $section !== 'dms_app_release')) || ($section === 'monthly_performance' && ((auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId) && (auth.token.dmsUserId === 'admin' || auth.token.dmsUserId === 'zahangir'))) || ($section === 'attendance' && auth != null && auth.token.attendanceAdmin === true)",
+      ".write": "((auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId) && ($section !== 'dms_target_tracking' && $section !== 'dss_dso_assignments_common' && $section !== 'morning_report_current' && $section !== 'morning_report_chunks' && $section !== 'user_auth' && $section !== 'attendance_server' && $section !== 'attendance' && $section !== 'monthly_performance' && $section !== 'dms_app_release')) || ($section === 'monthly_performance' && ((auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId) && auth.token.dmsUserId === 'admin')) || ($section === 'dms_app_release' && ((auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId) && auth.token.dmsUserId === 'admin')) || ($section === 'attendance' && auth != null && auth.token.attendanceAdmin === true)"
     },
     "attendance": {
       "records": {
@@ -51,6 +51,22 @@
       ".write": "auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId"
     },
     "uddokta_master": {
+      ".read": "auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId",
+      ".write": "auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId && auth.token.dmsUserId === 'admin'"
+    },
+    "dms_target_tracking": {
+      ".read": false,
+      ".write": "auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId && auth.token.dmsUserId === 'admin'"
+    },
+    "dss_dso_assignments_common": {
+      ".read": "auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId",
+      ".write": "auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId && auth.token.dmsUserId === 'admin'"
+    },
+    "morning_report_current": {
+      ".read": "auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId",
+      ".write": "auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId && auth.token.dmsUserId === 'admin'"
+    },
+    "morning_report_chunks": {
       ".read": "auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId",
       ".write": "auth != null && auth.token.dmsAuthenticated === true && auth.token.dmsPasswordChangeRequired === false && auth.uid === 'dms_' + auth.token.dmsUserId && auth.token.dmsUserId === 'admin'"
     }
