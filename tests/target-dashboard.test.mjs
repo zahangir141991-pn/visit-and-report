@@ -30,3 +30,7 @@ test('sums phase amounts by DSO, prefers explicit monthly total, and rejects per
  assert.deepEqual(parse([['DSO','Phase','Target Amount'],[801,'Phase 1',320],[801,'Phase 2',340]]),{801:660});
  assert.throws(()=>parse([['DSO','Phase 1','Phase 2'],[801,'32%','34%']]),/Invalid/);
 });
+test('projects month-end amount and target percentage from report date',()=>{
+ const s=globalThis.DmsTargets.summarize({targets:{801:1000},history:{'2026-11-10':{801:400}}},'2026-11','2026-11-12');
+ assert.equal(s.trend,1200);assert.equal(s.trendPct,120);assert.equal(s.pct,40);
+});

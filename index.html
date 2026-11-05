@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-05-uploads-v147">
+    <meta name="dms-app-version" content="2026-11-05-trend-v148">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1032,6 +1032,8 @@ body.app-logged-in #view-login{display:none!important}
                         <div><span>MTD Achievement</span><strong id="target-actual">—</strong></div>
                         <div><span>Achievement %</span><strong id="target-pct">—</strong></div>
                         <div><span>Daily Requirement</span><strong id="target-daily">—</strong></div>
+                        <div><span>Trend Amount (Month-end)</span><strong id="target-trend">—</strong></div>
+                        <div><span>Trend % of Target</span><strong id="target-trend-pct">—</strong></div>
                     </div>
                     <p id="target-status" role="status"></p>
                     <div class="target-legend"><span>● Achievement</span> <span>┄ Target pace</span></div>
@@ -1660,7 +1662,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-05-uploads-v147';
+        const APP_CACHE_VERSION = '2026-11-05-trend-v148';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -6388,7 +6390,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-05-uploads-v147';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-05-trend-v148';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
@@ -6465,6 +6467,6 @@ function isOlderUploadedReport(candidate,current){
 }
 </script>
 
-<script src="performance/targets.js?v=147"></script><script src="performance/analytics.js?v=137"></script><script src="performance/app.js?v=144"></script>
+<script src="performance/targets.js?v=148"></script><script src="performance/analytics.js?v=137"></script><script src="performance/app.js?v=144"></script>
 </body>
 </html>
