@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-05-login-v138">
+    <meta name="dms-app-version" content="2026-11-05-login-v139">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -916,7 +916,7 @@ body:has(#view-kyc-status.active) #app-copyright,body:has(#view-kyc-status.activ
       </div>
       <div class="form-group">
         <label for="login-pass">Password</label>
-        <div class="dms-signin-password"><input type="password" id="login-pass" autocomplete="current-password" enterkeyhint="go" placeholder="Enter your password"><button type="button" id="login-password-toggle" aria-controls="login-pass" onclick="const field=document.getElementById('login-pass');const show=field.type==='password';field.type=show?'text':'password';this.textContent=show?'Hide':'Show';this.setAttribute('aria-label',show?'Hide password':'Show password')" aria-label="Show password">Show</button></div>
+        <input type="password" id="login-pass" autocomplete="current-password" enterkeyhint="go" placeholder="Enter your password">
       </div>
       <button type="submit" class="btn" id="login-button">Sign in</button>
     </form>
@@ -957,10 +957,6 @@ body:not(.app-logged-in) #view-login{display:grid!important;place-items:center;v
 .dms-signin-form label{display:block;color:#243b34;font-size:13px;font-weight:700;margin-bottom:7px}
 .dms-signin-form input{width:100%;height:48px;background:#f8fbfa;color:#182c26;border:1px solid #c7d7d0;border-radius:10px;padding:0 13px;font-size:16px}
 .dms-signin-form input:focus-visible,.dms-signin-form button:focus-visible{outline:3px solid #56a895;outline-offset:2px}
-.dms-signin-password{position:relative}
-.dms-signin-password input{padding-right:72px}
-#login-password-toggle{position:absolute;right:5px;top:4px;min-width:58px;height:40px;border:0;background:transparent;color:#075c4c;font-size:13px;font-weight:750;border-radius:8px;cursor:pointer}
-#login-password-toggle:hover{background:#e2f1eb}
 #login-button{width:100%;min-height:48px;background:#086555;color:white;font-weight:750;border-radius:10px;margin:3px 0 0;touch-action:manipulation}
 #login-button:hover:not(:disabled){background:#064c41}
 @media(max-width:620px){body:not(.app-logged-in) #view-login{padding:18px 12px}.dms-signin{grid-template-columns:1fr;max-width:440px;border-radius:19px}.dms-signin-brand{padding:20px 24px;gap:0}.dms-signin-intro,.dms-signin-art{display:none}.dms-signin-form{padding:27px 24px 30px}}
@@ -1645,7 +1641,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-05-login-v138';
+        const APP_CACHE_VERSION = '2026-11-05-login-v139';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -2578,8 +2574,6 @@ function clearPrivateSessionData(){
             if (headerNameEl) headerNameEl.innerText = '';
             const loginPass = document.getElementById('login-pass');
             loginPass.value = ''; loginPass.type = 'password';
-            const loginToggle = document.getElementById('login-password-toggle');
-            loginToggle.textContent = 'Show'; loginToggle.setAttribute('aria-label','Show password');
             document.getElementById('login-user').focus();
             // Show login instantly. Non-visible cleanup runs after the browser paints.
             const logoutGeneration=appSessionGeneration;
@@ -6372,7 +6366,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-05-login-v138';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-05-login-v139';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
