@@ -1,7 +1,7 @@
 (function(root){
 'use strict';
 const norm=v=>String(v==null?'':v).toLowerCase().replace(/[^a-z0-9]/g,'');
-const wallet=v=>{let s=String(v??'').replace(/\D/g,'');if(/^8(?:0[1-9]|[1-3]\d|4[0-5])$/.test(s))return s;if(/^0?13325178(?:0[1-9]|[1-3]\d|4[0-5])$/.test(s))return String(800+Number(s.slice(-2)));return '';};
+const wallet=v=>{let s=String(v??'').replace(/\D/g,'');if(/^8(?:0[1-9]|[1-3]\d|4[0-6])$/.test(s))return s;if(/^0?13325178(?:0[1-9]|[1-3]\d|4[0-6])$/.test(s))return String(800+Number(s.slice(-2)));return '';};
 const numeric=(v,row,label)=>{if(v==null||v==='')return 0;const n=typeof v==='number'?v:Number(String(v).replace(/[,\s৳]/g,''));if(!Number.isFinite(n)||n<0)throw Error('Invalid '+label+' at Excel row '+row);return n;};
 function mapColumns(matrix){
  const dsoAliases=['DSO Wallet','DSO','DSO Number','DSO ID'],agentAliases=['Uddokta Wallet','Uddokta Number','AGENT','Agent Number','Uddokta Mobile'];const has=(row,names)=>names.some(n=>row.map(norm).includes(norm(n)));const headerRow=matrix.findIndex((r,i)=>i<20&&has(r,dsoAliases)&&has(r,agentAliases));if(headerRow<0)throw Error('Uddokta sheet is missing its headers.');const h=(matrix[headerRow]||[]).map(norm), groups=matrix.slice(0,headerRow).map(r=>r.map(norm)).sort((a,b)=>b.filter(v=>/regulartrx|islamictrx|totaltrx|merchant/.test(v)).length-a.filter(v=>/regulartrx|islamictrx|totaltrx|merchant/.test(v)).length)[0]||[];let section='';const sections=[];

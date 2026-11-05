@@ -33,10 +33,10 @@ const errors={SERVICE_ACCOUNT_INVALID_JSON:'Cloudflare Secret-এ সম্প�
 export function normalizeUser(value){
  const id=String(value||'').trim().toLowerCase();
  const numeric=Number(id);
- if(/^\d{3}$/.test(id)&&numeric>=801&&numeric<=845)return '01332517'+id;
+ if(/^\d{3}$/.test(id)&&numeric>=801&&numeric<=846)return '01332517'+id;
  return id;
 }
-export function approvedUser(id){return ['admin','zahangir','alamin','sohag','imran','rubel','shofiq'].includes(id)||/^013325178(?:0[1-9]|[1-3]\d|4[0-5])$/.test(id)}
+export function approvedUser(id){return ['admin','zahangir','alamin','sohag','imran','rubel','shofiq'].includes(id)||/^013325178(?:0[1-9]|[1-3]\d|4[0-6])$/.test(id)}
 export async function passwordMatches(account,id,password){
  if(!account||account.enabled===false||account.disabled===true)return false;
  if(account.passwordAlgorithm==='pbkdf2-sha256'){
@@ -76,10 +76,10 @@ async function issueToken(env,id,account,attendanceOnly){
 }
 // Read-only monthly access: verify Firebase session before selecting server-owned scope.
 const performanceDssUsers={sohag:'MOHOSIN HOSSAIN SOHAG',alamin:'MD. ALAMIN',imran:'MD. IMRAN HOSSAIN',rubel:'RUBEL',shofiq:'MD. SHOFIQ'};
-export function performanceWallet(value){const n=String(value||'').replace(/\D/g,'');if(/^8(?:0[1-9]|[1-3]\d|4[0-5])$/.test(n))return n;if(/^0?13325178(?:0[1-9]|[1-3]\d|4[0-5])$/.test(n))return String(800+Number(n.slice(-2)));return '';}
+export function performanceWallet(value){const n=String(value||'').replace(/\D/g,'');if(/^8(?:0[1-9]|[1-3]\d|4[0-6])$/.test(n))return n;if(/^0?13325178(?:0[1-9]|[1-3]\d|4[0-6])$/.test(n))return String(800+Number(n.slice(-2)));return '';}
 function performanceDss(value){const n=String(value||'').trim().toUpperCase().replace(/\s+/g,' ');return ({SOHAG:performanceDssUsers.sohag,ALAMIN:performanceDssUsers.alamin,IMRAN:performanceDssUsers.imran,RUBEL:performanceDssUsers.rubel,SHOFIQ:performanceDssUsers.shofiq})[n]||n;}
 export function scopedPerformance(id,reports,master){
- const all=['admin','zahangir'].includes(id),own=/^013325178(?:0[1-9]|[1-3]\d|4[0-5])$/.test(id)?performanceWallet(id):'',dss=performanceDssUsers[id];
+ const all=['admin','zahangir'].includes(id),own=/^013325178(?:0[1-9]|[1-3]\d|4[0-6])$/.test(id)?performanceWallet(id):'',dss=performanceDssUsers[id];
  if(!all&&!own&&!dss)throw Object.assign(Error('Report permission required'),{status:403});
  const sets=new Map();for(const row of Object.values(master||{})){const wallet=performanceWallet(row?.dsoWallet),name=performanceDss(row?.dssName);if(!wallet||!name)continue;if(!sets.has(wallet))sets.set(wallet,new Set());sets.get(wallet).add(name);}
  const names=Object.fromEntries([...sets].map(([wallet,names])=>[wallet,names.size===1?[...names][0]:'Multiple DSS — check Uddokta Information']));
@@ -96,12 +96,12 @@ async function performanceSession(env,input){
  if(!user||user.disabled===true||!approvedUser(id)||claims.aud!=='visit-report-ea224'||claims.iss!=='https://securetoken.google.com/visit-report-ea224'||claims.sub!=='dms_'+id||user.localId!==claims.sub||claims.dmsAuthenticated!==true||claims.dmsPasswordChangeRequired!==false||claims.exp<=Date.now()/1000)throw Object.assign(Error('Report permission required'),{status:403});
  const account=await readAccount(env,id);if(!account||account.enabled===false||account.disabled===true||account.forceChange===true)throw Object.assign(Error('Sign in again'),{status:403});return id;
 }
-async function performanceReport(env,input){const id=await performanceSession(env,input);if(!['admin','zahangir',...Object.keys(performanceDssUsers)].includes(id)&&!/^013325178(?:0[1-9]|[1-3]\d|4[0-5])$/.test(id))throw Object.assign(Error('Report permission required'),{status:403});const [r,m]=await Promise.all([firebase(env,'monthly_performance'),firebase(env,'uddokta_master')]);if(!r.ok||!m.ok)throw Error('FIREBASE_ACCESS_DENIED');return scopedPerformance(id,await r.json(),await m.json());}
+async function performanceReport(env,input){const id=await performanceSession(env,input);if(!['admin','zahangir',...Object.keys(performanceDssUsers)].includes(id)&&!/^013325178(?:0[1-9]|[1-3]\d|4[0-6])$/.test(id))throw Object.assign(Error('Report permission required'),{status:403});const [r,m]=await Promise.all([firebase(env,'monthly_performance'),firebase(env,'uddokta_master')]);if(!r.ok||!m.ok)throw Error('FIREBASE_ACCESS_DENIED');return scopedPerformance(id,await r.json(),await m.json());}
 export default {async fetch(req,env){
  const u=new URL(req.url),origin=req.headers.get('Origin')||'';
  if(req.method==='GET'&&['/','/health'].includes(u.pathname)){
   try{serviceAccount(env);databaseUrl(env);await credentialCache.key;
-   return json({ok:true,service:'DMS Secure Login',version:'135',configured:true,capabilities:['attendance-token','dms-login','password-change'],note:'Configuration validated only; authenticated login and database rules must be tested separately.'});
+   return json({ok:true,service:'DMS Secure Login',version:'137',configured:true,capabilities:['attendance-token','dms-login','password-change'],note:'Configuration validated only; authenticated login and database rules must be tested separately.'});
   }catch(e){return json({ok:false,configured:false,error:errors[e.message]||'Login server configuration error'},503)}
  }
  if(!['/','/token','/login','/password','/admin/password','/performance'].includes(u.pathname))return json({error:'Not found'},404);
