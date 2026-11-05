@@ -23,3 +23,10 @@ test('finds the target sheet and headers after title rows and skips totals',()=>
  assert.deepEqual(globalThis.DmsTargets.parseSheets([{rows:[['Cover']]},{rows:[['November'],[],['DSO Number','Target Amount'],[801,1500],['Grand Total',1500]]}]),{801:1500});
  assert.throws(()=>globalThis.DmsTargets.parseSheets([{rows:[['DSO','Target'],[801,1]]},{rows:[['DSO','Target'],[802,1]]}]),/একাধিক/);
 });
+test('sums phase amounts by DSO, prefers explicit monthly total, and rejects percentages',()=>{
+ const parse=globalThis.DmsTargets.parse;
+ assert.deepEqual(parse([['DSO','Phase 1 Target','Phase 2 Target','Phase 3 Target'],[801,320,340,320]]),{801:980});
+ assert.deepEqual(parse([['DSO','Monthly Target','Phase 1 Target','Phase 2 Target'],[801,1000,320,340]]),{801:1000});
+ assert.deepEqual(parse([['DSO','Phase','Target Amount'],[801,'Phase 1',320],[801,'Phase 2',340]]),{801:660});
+ assert.throws(()=>parse([['DSO','Phase 1','Phase 2'],[801,'32%','34%']]),/Invalid/);
+});
