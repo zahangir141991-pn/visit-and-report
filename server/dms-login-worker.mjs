@@ -108,15 +108,16 @@ async function targetReport(env,input){
  const id=await performanceSession(env,input),month=input.month;
  if(typeof month!=='string'||!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))throw Object.assign(Error('Select a valid month'),{status:400});
  const read=async path=>{const r=await firebase(env,path);if(!r.ok)throw Error('FIREBASE_ACCESS_DENIED');return r.json();};
- const [data,assignments]=await Promise.all([read('dms_target_tracking/'+month),performanceDssUsers[id]?read('dss_dso_assignments_common'):null]);
+ const metric=input.metric||'cico';if(!['cico','ci','co','islamic','five'].includes(metric))throw Object.assign(Error('Invalid target metric'),{status:400});
+ const [data,assignments]=await Promise.all([read('dms_target_tracking/'+month+(metric==='cico'?'':'/metrics/'+metric)),performanceDssUsers[id]?read('dss_dso_assignments_common'):null]);
  const master=performanceDssUsers[id]&&!Object.values(assignments||{}).some(row=>performanceWallet(row?.dso)&&performanceDss(row?.dss))?await read('uddokta_master'):null;
- return scopedTargets(id,data,assignments,master);
+ return {...scopedTargets(id,data,assignments,master),metric};
 }
 export default {async fetch(req,env){
  const u=new URL(req.url),origin=req.headers.get('Origin')||'';
  if(req.method==='GET'&&['/','/health'].includes(u.pathname)){
   try{serviceAccount(env);databaseUrl(env);await credentialCache.key;
-   return json({ok:true,service:'DMS Secure Login',version:'143',configured:true,capabilities:['attendance-token','dms-login','password-change'],note:'Configuration validated only; authenticated login and database rules must be tested separately.'});
+   return json({ok:true,service:'DMS Secure Login',version:'147',configured:true,capabilities:['attendance-token','dms-login','password-change'],note:'Configuration validated only; authenticated login and database rules must be tested separately.'});
   }catch(e){return json({ok:false,configured:false,error:errors[e.message]||'Login server configuration error'},503)}
  }
  if(!['/','/token','/login','/password','/admin/password','/performance','/targets'].includes(u.pathname))return json({error:'Not found'},404);

@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-05-uploads-v146">
+    <meta name="dms-app-version" content="2026-11-05-uploads-v147">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1026,7 +1026,7 @@ body.app-logged-in #view-login{display:none!important}
                     <div><h2>Dashboard</h2><small style="color:#64748b">DMS</small></div>
                 </div>
                 <section class="card target-card" aria-labelledby="target-title">
-                    <div class="section-head"><h3 id="target-title">Target vs Achievement</h3><label>Month <input type="month" id="target-month" onchange="DmsTargets.load()"></label></div>
+                    <div class="section-head"><h3 id="target-title">Target vs Achievement</h3><label>Month <input type="month" id="target-month" onchange="DmsTargets.load()"></label><label>Metric <select id="target-metric" onchange="DmsTargets.load()"><option value="cico">CICO (BDT)</option><option value="ci">Cash In (BDT)</option><option value="co">Cash Out (BDT)</option><option value="islamic">Islamic CICO (BDT)</option><option value="five">5 Lac Uddokta Count</option></select></label></div>
                     <div class="target-kpis">
                         <div><span>Monthly Target</span><strong id="target-goal">—</strong></div>
                         <div><span>MTD Achievement</span><strong id="target-actual">—</strong></div>
@@ -1660,7 +1660,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-05-uploads-v146';
+        const APP_CACHE_VERSION = '2026-11-05-uploads-v147';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -5166,7 +5166,7 @@ async function saveReportInParallelChunks(reportType,payload,targetSnapshot){
     const meta=Object.assign({},payload,{rows:[],chunked:true,chunkRoot,chunkCount:chunks.length,rowCount:rows.length,schemaVersion:3});
     paintUploadProgress(97,'Final data confirmation...');
     const savedResponse=targetSnapshot
-      ? await firebaseRestWrite('',JSON.stringify({[reportType+'_report_current']:meta,['dms_target_tracking/'+targetSnapshot.date.slice(0,7)+'/history/'+targetSnapshot.date]:targetSnapshot.groups}),'PATCH')
+      ? await firebaseRestWrite('',JSON.stringify({[reportType+'_report_current']:meta,['dms_target_tracking/'+targetSnapshot.date.slice(0,7)+'/history/'+targetSnapshot.date]:targetSnapshot.groups,...Object.fromEntries(Object.entries(targetSnapshot.metrics||{}).map(([metric,rows])=>['dms_target_tracking/'+targetSnapshot.date.slice(0,7)+'/metrics/'+metric+'/history/'+targetSnapshot.date,rows]))}),'PATCH')
       : await firebaseRestWrite(reportType+'_report_current',JSON.stringify(meta),'PUT');
     let savedMeta=meta;try{const response=JSON.parse(savedResponse);const parsed=targetSnapshot?response[reportType+'_report_current']:response;if(parsed&&Number.isFinite(Number(parsed.uploadedAt))&&Number(parsed.uploadedAt)>0)savedMeta=parsed;}catch(_){}
     if(!Number.isFinite(Number(savedMeta.uploadedAt))||Number(savedMeta.uploadedAt)<=0)savedMeta=Object.assign({},savedMeta,{uploadedAt:Date.now()});
@@ -5340,8 +5340,8 @@ async function saveMorningExcel(){
     }
     const date=document.getElementById('morning-target-date').value;
     if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date>getDhakaToday()){alert('Select the correct MTD as-of date.');return;}
-    let groups;
-    try{groups=DmsTargets.snapshot(pendingMorningExcel,morningColumnMap(pendingMorningExcel.headers));if(!Object.keys(groups).length)throw Error('No valid DSO rows found.');}catch(e){alert(e.message);return;}
+    let groups, metrics;
+    try{const map=morningColumnMap(pendingMorningExcel.headers);groups=DmsTargets.snapshot(pendingMorningExcel,map);metrics=DmsTargets.achievementMetrics(pendingMorningExcel,map);if(!Object.keys(groups).length)throw Error('No valid DSO rows found.');}catch(e){alert(e.message);return;}
     const btn=document.getElementById('btn-save-morning-excel');if(btn)btn.disabled=true;
     setMorningStatus('morning-upload-preview','Uploading morning data...');
     beginUploadProgress('Morning Report Upload');
@@ -5350,7 +5350,7 @@ async function saveMorningExcel(){
     
     try{
         const tracking=await DmsTargets.privateStore();
-        const saved=await saveReportInParallelChunks('morning',payload,tracking?{date,groups}:undefined);try{privateDataStorage.setItem('morning_report_current',JSON.stringify(saved));}catch(_){}applyMorningReportData(saved,'saved cloud');
+        const saved=await saveReportInParallelChunks('morning',payload,tracking?{date,groups,metrics}:undefined);try{privateDataStorage.setItem('morning_report_current',JSON.stringify(saved));}catch(_){}applyMorningReportData(saved,'saved cloud');
         setMorningStatus('morning-upload-preview',`Upload successful. ${payload.rows.length} rows saved. Previous Morning Excel has been replaced.${tracking?'':' Target history not saved: publish the updated Database Rules.'}`,'ok');
         completeUploadProgress('Morning Report uploaded successfully');
     }catch(err){
@@ -6388,7 +6388,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-05-uploads-v146';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-05-uploads-v147';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
@@ -6465,6 +6465,6 @@ function isOlderUploadedReport(candidate,current){
 }
 </script>
 
-<script src="performance/targets.js?v=146"></script><script src="performance/analytics.js?v=137"></script><script src="performance/app.js?v=144"></script>
+<script src="performance/targets.js?v=147"></script><script src="performance/analytics.js?v=137"></script><script src="performance/app.js?v=144"></script>
 </body>
 </html>
