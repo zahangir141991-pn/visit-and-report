@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-05-login-v140">
+    <meta name="dms-app-version" content="2026-11-05-login-v141">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -902,7 +902,7 @@ body:has(#view-kyc-status.active) #app-copyright,body:has(#view-kyc-status.activ
   <div class="dms-signin">
     <aside class="dms-signin-brand" aria-label="DMS · M/S. Mostafa">
       <div class="dms-signin-logo"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiB2aWV3Qm94PSIwIDAgNTEyIDUxMiI+PHRpdGxlPkRNUzwvdGl0bGU+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJiZyIgeDI9IjEiIHkyPSIxIj48c3RvcCBzdG9wLWNvbG9yPSIjMjU2M2ViIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMTQzYjk1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIHJ4PSIxMTYiIGZpbGw9InVybCgjYmcpIi8+PHBhdGggZmlsbD0iI2ZmZiIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTEyIDExMkgyMjZDMzM0IDExMiA0MDIgMTY0IDQwMiAyNTZTMzM0IDQwMCAyMjYgNDAwSDExMlYxMTJaTTE3MiAxNzJWMzQwSDIyNEMyOTYgMzQwIDM0MCAzMTAgMzQwIDI1NlMyOTYgMTcyIDIyNCAxNzJIMTcyWiIvPjxyZWN0IHg9IjE5OCIgeT0iMjU5IiB3aWR0aD0iMjkiIGhlaWdodD0iNTMiIHJ4PSI4IiBmaWxsPSIjNWVlYWQ0Ii8+PHJlY3QgeD0iMjQwIiB5PSIyMjYiIHdpZHRoPSIyOSIgaGVpZ2h0PSI4NiIgcng9IjgiIGZpbGw9IiM1ZWVhZDQiLz48cmVjdCB4PSIyODIiIHk9IjE5MiIgd2lkdGg9IjI5IiBoZWlnaHQ9IjEyMCIgcng9IjgiIGZpbGw9IiM1ZWVhZDQiLz48L3N2Zz4K" width="48" height="48" alt=""><div><strong>DMS</strong><small>M/S. Mostafa</small></div></div>
-      <div class="dms-signin-intro"><h1>Distribution<br>Management<br>System</h1></div>
+      <div class="dms-signin-intro"><h1><span>Distribution</span> <span>Management</span> <span class="dms-title-accent">System</span></h1></div>
       <svg class="dms-signin-art" viewBox="0 0 400 180" fill="none" aria-hidden="true"><path d="M0 159h400M0 119h400M0 79h400M0 39h400M44 0v180M119 0v180M194 0v180M269 0v180M344 0v180" stroke="white" opacity=".13"/><path d="m0 148 74-42 61 18 59-52 56 19 67-58 83 8v139H0Z" fill="#86efac" opacity=".13"/><path d="m0 148 74-42 61 18 59-52 56 19 67-58 83 8" stroke="#86efac" stroke-width="3"/><circle cx="317" cy="33" r="5" fill="#bbf7d0"/></svg>
     </aside>
     <form class="dms-signin-form" onsubmit="event.preventDefault();login(true)">
@@ -943,7 +943,10 @@ body:not(.app-logged-in) #view-login{display:grid!important;place-items:center;v
 .dms-signin-logo img{display:block;border-radius:12px}
 .dms-signin-logo strong{display:block;font-size:22px;letter-spacing:.04em}
 .dms-signin-logo small{color:#c2e2d8;font-size:13px}
-.dms-signin-intro h1{margin:12px 0;font-size:clamp(30px,4vw,46px);line-height:1.02;letter-spacing:-.035em;color:#fff}
+.dms-signin-intro::before{content:"";display:block;width:42px;height:3px;border-radius:3px;background:#a7efd4;margin-bottom:18px}
+.dms-signin-intro h1{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:clamp(28px,4.2vw,44px);font-weight:740;line-height:1.09;letter-spacing:-.045em;color:#f5fffc}
+.dms-signin-intro h1 span{display:block}
+.dms-signin-intro h1 .dms-title-accent{color:#a7efd4}
 .dms-signin-art{position:absolute;inset:auto 0 0;width:100%;z-index:-1;opacity:.58}
 .dms-signin-form{margin:0;align-self:center;padding:42px clamp(24px,5vw,52px);min-width:0;text-align:left}
 .dms-signin-form h2{font-size:clamp(26px,4vw,36px);letter-spacing:-.045em;line-height:1.08;margin:0;color:#122921}
@@ -1639,7 +1642,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-05-login-v140';
+        const APP_CACHE_VERSION = '2026-11-05-login-v141';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -6364,7 +6367,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-05-login-v140';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-05-login-v141';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
