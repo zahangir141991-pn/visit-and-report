@@ -19,3 +19,7 @@ test('scopes targets and history to DSO, DSS and management roles',()=>{
  assert.deepEqual(scopedTargets('sohag',data,assignments).history['2026-11-01'],{801:200});
  assert.deepEqual(scopedTargets('zahangir',data,assignments).targets,data.targets);
 });
+test('finds the target sheet and headers after title rows and skips totals',()=>{
+ assert.deepEqual(globalThis.DmsTargets.parseSheets([{rows:[['Cover']]},{rows:[['November'],[],['DSO Number','Target Amount'],[801,1500],['Grand Total',1500]]}]),{801:1500});
+ assert.throws(()=>globalThis.DmsTargets.parseSheets([{rows:[['DSO','Target'],[801,1]]},{rows:[['DSO','Target'],[802,1]]}]),/একাধিক/);
+});

@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-05-uploads-v144">
+    <meta name="dms-app-version" content="2026-11-05-uploads-v145">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1222,6 +1222,8 @@ body.app-logged-in #view-login{display:none!important}
                         <label>Target month <input type="month" id="target-upload-month"></label>
                         <label>Target Excel (DSO, Target in BDT) <input id="target-file" type="file" accept=".xlsx,.xls,.csv"></label>
                         <button id="target-save" type="button" class="btn btn-sm" onclick="DmsTargets.upload()">Upload Monthly Target</button>
+                        <a class="btn btn-sm btn-sec" href="data:text/csv;charset=utf-8,DSO%2CTarget%0A" download="Monthly_Target_Template.csv">Download template</a>
+                        <p id="target-upload-status" role="status"></p>
                     </div>
 </details>
                 <details class="card uploads-detail"><summary>Monthly Performance</summary><section class="perf-panel" id="perf-upload-wrap"><h3>Upload monthly Excel</h3><div class="perf-filters"><label>Report month<input id="perf-upload-month" type="month"></label><label>Excel file<input id="perf-upload-file" type="file" accept=".xlsx,.xls,.csv" onchange="previewPerformance(this)"></label><label id="perf-sheet-wrap" hidden>Report sheet<select id="perf-sheet" onchange="selectPerformanceSheet(this.value)"></select></label><button type="button" id="perf-upload-button" class="btn" onclick="savePerformance()" disabled>Upload report</button></div><p id="perf-upload-status">Select the monthly Excel file. The report sheet is identified by its columns. DSO comes from Excel; DSS comes from updated Uddokta Information. No DSS column is required.</p></section></details>
@@ -1658,7 +1660,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-05-uploads-v144';
+        const APP_CACHE_VERSION = '2026-11-05-uploads-v145';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -6386,7 +6388,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-05-uploads-v144';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-05-uploads-v145';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
@@ -6463,6 +6465,6 @@ function isOlderUploadedReport(candidate,current){
 }
 </script>
 
-<script src="performance/targets.js?v=144"></script><script src="performance/analytics.js?v=137"></script><script src="performance/app.js?v=144"></script>
+<script src="performance/targets.js?v=145"></script><script src="performance/analytics.js?v=137"></script><script src="performance/app.js?v=144"></script>
 </body>
 </html>
