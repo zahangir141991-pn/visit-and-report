@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-05-target-connection-v150">
+    <meta name="dms-app-version" content="2026-11-05-target-filters-v151">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1027,6 +1027,7 @@ body.app-logged-in #view-login{display:none!important}
                 </div>
                 <section class="card target-card" aria-labelledby="target-title">
                     <div class="section-head"><h3 id="target-title">Target vs Achievement</h3><label>Month <input type="month" id="target-month" onchange="DmsTargets.load()"></label><label>Metric <select id="target-metric" onchange="DmsTargets.load()"><option value="cico">CICO (BDT)</option><option value="ci">Cash In (BDT)</option><option value="co">Cash Out (BDT)</option><option value="islamic">Islamic CICO (BDT)</option><option value="five">5 Lac Uddokta Count</option></select></label></div>
+                    <div id="target-admin-filters" class="perf-filters" hidden style="margin-top:12px"><label>DSS<select id="target-filter-dss" onchange="document.getElementById('target-filter-dso').value='';DmsTargets.load()"><option value="">All DSS</option></select></label><label>DSO<select id="target-filter-dso" onchange="DmsTargets.load()"><option value="">All DSO</option></select></label></div>
                     <div class="target-kpis">
                         <div><span>Monthly Target</span><strong id="target-goal">—</strong></div>
                         <div><span>MTD Achievement</span><strong id="target-actual">—</strong></div>
@@ -1662,7 +1663,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-05-target-connection-v150';
+        const APP_CACHE_VERSION = '2026-11-05-target-filters-v151';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -6391,7 +6392,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-05-target-connection-v150';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-05-target-filters-v151';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
@@ -6468,6 +6469,6 @@ function isOlderUploadedReport(candidate,current){
 }
 </script>
 
-<script src="performance/targets.js?v=150"></script><script src="performance/analytics.js?v=137"></script><script src="performance/app.js?v=144"></script>
+<script src="performance/targets.js?v=151"></script><script src="performance/analytics.js?v=137"></script><script src="performance/app.js?v=144"></script>
 </body>
 </html>

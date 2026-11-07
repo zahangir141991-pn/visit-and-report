@@ -53,3 +53,11 @@ test('temporary target failure retries and later refresh failure preserves same-
  await context.DmsTargets.load();assert.equal(calls,2);assert.equal(el('target-actual').textContent,'100');
  fail=true;await context.DmsTargets.load();assert.equal(el('target-actual').textContent,'100');assert.match(el('target-status').textContent,/previous data/);
 });
+test('Admin DSS/DSO selection filters target, trend history and totals consistently',()=>{
+ const data={targets:{801:1000,802:2000},history:{'2026-11-06':{801:200,802:600}}},index=new Map([['DSS A',new Set(['801'])],['DSS B',new Set(['802'])]]);
+ const scoped=DmsTargets.selectScope(data,'DSS A','',index);
+ assert.deepEqual(scoped.targets,{801:1000});
+ assert.deepEqual(scoped.history['2026-11-06'],{801:200});
+ assert.deepEqual(DmsTargets.selectScope(data,'DSS A','802',index).targets,{});
+ assert.deepEqual(DmsTargets.selectScope(data,'','802',index).targets,{802:2000});
+});
