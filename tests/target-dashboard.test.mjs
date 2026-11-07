@@ -44,3 +44,12 @@ test('Morning Report uses previous completed day and corrects across month bound
  const summary=DmsTargets.summarize({targets:{801:130696735},history:{'2026-11-06':{801:23737207.64}}},'2026-11','2026-11-07');
  assert.equal(summary.trendPct.toFixed(2),'90.81');
 });
+test('temporary target failure retries and later refresh failure preserves same-session cards',async()=>{
+ const {readFileSync}=await import('node:fs'),vm=await import('node:vm');
+ const nodes=new Map(),el=id=>{if(!nodes.has(id))nodes.set(id,{value:id==='target-month'?'2026-11':id==='target-metric'?'cico':'',textContent:'',replaceChildren(){},append(){}});return nodes.get(id)};
+ let calls=0,fail=false;
+ const context={document:{getElementById:el,createElementNS:()=>({setAttribute(){},append(){}})},currentUser:'admin',appSessionGeneration:1,revision:0,firebase:{auth:()=>({currentUser:{getIdToken:async()=> 'token'}})},getDhakaToday:()=> '2026-11-07',authServerRequest:async()=>{calls++;if(fail||calls===1)throw new TypeError('Failed to fetch');return {targets:{801:1000},history:{'2026-11-06':{801:100}}}},setTimeout:fn=>fn(),clearInterval(){},setInterval(){},console};
+ vm.createContext(context);vm.runInContext(readFileSync(new URL('../performance/targets.js',import.meta.url),'utf8'),context);
+ await context.DmsTargets.load();assert.equal(calls,2);assert.equal(el('target-actual').textContent,'100');
+ fail=true;await context.DmsTargets.load();assert.equal(el('target-actual').textContent,'100');assert.match(el('target-status').textContent,/previous data/);
+});
