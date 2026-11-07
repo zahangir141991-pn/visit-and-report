@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-07-login-v153">
+    <meta name="dms-app-version" content="2026-11-07-login-v154">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -948,30 +948,30 @@ body:has(#view-kyc-status.active) #app-copyright,body:has(#view-kyc-status.activ
 /* Fail-safe: before a successful login the login card must remain visible even
    if the external JavaScript is delayed, blocked, or an older class is cached. */
 body:not(.app-logged-in) #app-header{display:none!important}
-body:not(.app-logged-in) #view-login{display:grid!important;place-items:center;visibility:visible!important;opacity:1!important;position:relative!important;z-index:20!important;min-height:100vh;min-height:100dvh;padding:24px 16px;background:#f4f6fa}
+body:not(.app-logged-in) #view-login{display:grid!important;place-items:center;visibility:visible!important;opacity:1!important;position:relative!important;z-index:20!important;min-height:100vh;min-height:100dvh;padding:24px 16px;background:radial-gradient(ellipse at 50% 15%,#e8effe 0,transparent 60%),#f6f8fc}
 .dms-signin,.dms-signin *{box-sizing:border-box}
-.dms-signin{width:min(100%,408px);padding:32px;background:#fff;border:1px solid #e2e7ef;border-radius:20px;box-shadow:0 10px 40px #172b4d0b}
-.dms-signin-brand{text-align:center;padding-bottom:26px}
-.dms-signin-logo{display:flex;flex-direction:column;align-items:center;gap:12px}
-.dms-signin-logo img{display:block;width:52px;height:52px;border-radius:13px}
-.dms-signin-logo strong{display:block;color:#172b4d;font-size:22px;font-weight:750;letter-spacing:.02em}
-.dms-signin-logo small{display:block;color:#64748b;font-size:12px;margin-top:3px}
-.dms-signin-intro h1{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;font-weight:500;line-height:1.5;color:#52627b;margin:12px auto 0;letter-spacing:0}
+.dms-signin{width:min(100%,420px);padding:36px 32px 32px;background:#fff;border:1px solid #e0e7f1;border-radius:24px;box-shadow:0 18px 60px #203b6510,0 2px 6px #203b6504}
+.dms-signin-brand{text-align:center;padding-bottom:22px}
+.dms-signin-logo{display:flex;flex-direction:column;align-items:center;gap:14px}
+.dms-signin-logo img{display:block;width:58px;height:58px;border-radius:15px;box-shadow:0 0 0 8px #f0f5ff,0 8px 20px #245ac718;margin:8px 0}
+.dms-signin-logo strong{display:block;color:#172b4d;font-size:24px;font-weight:750;letter-spacing:.04em}
+.dms-signin-logo small{display:block;color:#64748b;font-size:12px;margin-top:5px}
+.dms-signin-intro h1{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;font-weight:500;line-height:1.5;color:#52627b;margin:14px auto 0;max-width:240px;letter-spacing:0}
 .dms-signin-intro h1 span{display:inline}
-.dms-signin-form{margin:0;padding:22px 0 0;text-align:left;border-top:1px solid #edf0f5}
-.dms-signin-form h2{font-size:17px;font-weight:650;color:#172b4d;letter-spacing:-.02em;margin:0 0 18px}
+.dms-signin-form{margin:0;padding:20px 0 0;text-align:left;border-top:1px solid #edf1f7}
+.dms-signin-form h2{font-size:16px;font-weight:650;color:#334155;letter-spacing:-.02em;margin:0 0 16px;text-align:center}
 .dms-signin-form .form-group{margin:0 0 14px}
 .dms-signin-form label{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
 .dms-signin-field{position:relative}
 .dms-signin-field svg{position:absolute;inset:50% auto auto 14px;transform:translateY(-50%);width:18px;height:18px;color:#75849a;pointer-events:none}
-.dms-signin-form input{display:block;width:100%;height:48px;background:#fafbfd;color:#172b4d;border:1px solid #dce2eb;border-radius:9px;padding:0 14px 0 42px;font-size:16px;box-shadow:none}
+.dms-signin-form input{display:block;width:100%;height:50px;background:#f8faff;color:#172b4d;border:1px solid #dce4f0;border-radius:12px;padding:0 14px 0 42px;font-size:16px;box-shadow:none}
 .dms-signin-form input::placeholder{color:#7a879a;font-size:14px}
 .dms-signin-form input:focus{background:#fff;border-color:#4778d5;outline:none;box-shadow:0 0 0 3px #2563eb14}
 .dms-signin-form button:focus-visible{outline:3px solid #7da7ed;outline-offset:3px}
-#login-button{display:block;width:100%;min-height:46px;background:#245ac7;background-image:none;color:white;font-size:14px;font-weight:650;border:0;border-radius:9px;margin:6px 0 0;box-shadow:none;touch-action:manipulation}
+#login-button{display:block;width:100%;min-height:50px;background:linear-gradient(105deg,#2f67d9,#2455bf);color:white;font-size:14px;font-weight:650;border:0;border-radius:12px;margin:7px 0 0;box-shadow:0 5px 14px #245ac71a;touch-action:manipulation}
 #login-button:hover:not(:disabled){background:#1949a5}
 #login-button:disabled{opacity:.65;cursor:wait}
-@media(max-width:420px){.dms-signin{padding:26px 22px;border-radius:16px}}
+@media(max-width:420px){.dms-signin{padding:28px 24px;border-radius:20px}}
 body.app-logged-in #view-login{display:none!important}
 
 #main-app{display:none!important}
@@ -1660,7 +1660,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-07-login-v153';
+        const APP_CACHE_VERSION = '2026-11-07-login-v154';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -6389,7 +6389,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-07-login-v153';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-07-login-v154';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
