@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-07-logo-v157">
+    <meta name="dms-app-version" content="2026-11-07-logo-v158">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -949,7 +949,7 @@ body:not(.app-logged-in) #view-login{display:grid!important;place-items:center;v
 .dms-signin{width:min(100%,420px);padding:36px 32px 32px;background:#fff;border:1px solid #e0e7f1;border-radius:24px;box-shadow:0 18px 60px #203b6510,0 2px 6px #203b6504}
 .dms-signin-brand{text-align:center;padding-bottom:22px}
 .dms-signin-logo{display:flex;flex-direction:column;align-items:center;gap:14px}
-.dms-signin-logo img{display:block;width:58px;height:58px;border-radius:15px;box-shadow:0 0 0 8px #f0f5ff,0 8px 20px #245ac718;margin:8px 0}
+.dms-signin-logo img{display:block;width:58px;height:58px;border:0;outline:0;border-radius:0;box-shadow:none;margin:8px 0}
 .dms-signin-logo strong{display:block;color:#172b4d;font-size:24px;font-weight:750;letter-spacing:.04em}
 .dms-signin-logo small{display:block;color:#64748b;font-size:12px;margin-top:5px}
 .dms-signin-intro h1{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;font-weight:500;line-height:1.5;color:#52627b;margin:14px auto 0;max-width:240px;letter-spacing:0}
@@ -1656,7 +1656,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-07-logo-v157';
+        const APP_CACHE_VERSION = '2026-11-07-logo-v158';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -6385,7 +6385,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-07-logo-v157';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-07-logo-v158';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
