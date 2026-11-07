@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-07-logo-v160">
+    <meta name="dms-app-version" content="2026-11-07-login-v161">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -915,7 +915,7 @@ body:has(#view-kyc-status.active) #app-copyright,body:has(#view-kyc-status.activ
 <div id="view-login" class="page login-visible active">
   <div class="dms-signin">
     <div class="dms-signin-brand"><div class="dms-signin-logo"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiB2aWV3Qm94PSIwIDAgNTEyIDUxMiI+PHRpdGxlPkRNUzwvdGl0bGU+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJiZyIgeDI9IjEiIHkyPSIxIj48c3RvcCBzdG9wLWNvbG9yPSIjMjU2M2ViIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMTQzYjk1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIHJ4PSIxMTYiIGZpbGw9InVybCgjYmcpIi8+PHBhdGggZmlsbD0iI2ZmZiIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTEyIDExMkgyMjZDMzM0IDExMiA0MDIgMTY0IDQwMiAyNTZTMzM0IDQwMCAyMjYgNDAwSDExMlYxMTJaTTE3MiAxNzJWMzQwSDIyNEMyOTYgMzQwIDM0MCAzMTAgMzQwIDI1NlMyOTYgMTcyIDIyNCAxNzJIMTcyWiIvPjxyZWN0IHg9IjE5OCIgeT0iMjU5IiB3aWR0aD0iMjkiIGhlaWdodD0iNTMiIHJ4PSI4IiBmaWxsPSIjNWVlYWQ0Ii8+PHJlY3QgeD0iMjQwIiB5PSIyMjYiIHdpZHRoPSIyOSIgaGVpZ2h0PSI4NiIgcng9IjgiIGZpbGw9IiM1ZWVhZDQiLz48cmVjdCB4PSIyODIiIHk9IjE5MiIgd2lkdGg9IjI5IiBoZWlnaHQ9IjEyMCIgcng9IjgiIGZpbGw9IiM1ZWVhZDQiLz48L3N2Zz4K" width="48" height="48" alt="DMS logo"></div></div>
-    <form class="dms-signin-form" onsubmit="event.preventDefault();login(true)">
+    <form class="dms-signin-form" onsubmit="event.preventDefault();return false">
       
       <div id="login-alert" class="alert" role="status" aria-live="polite"></div>
       <div class="form-group">
@@ -926,7 +926,7 @@ body:has(#view-kyc-status.active) #app-copyright,body:has(#view-kyc-status.activ
         <label for="login-pass">Password</label>
         <div class="dms-signin-field"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></svg><input type="password" id="login-pass" autocomplete="current-password" enterkeyhint="go" placeholder="Password"></div>
       </div>
-      <button type="submit" class="btn" id="login-button">Sign in</button>
+      <button type="button" class="btn" id="login-button" onclick="login(true,event)">Sign in</button>
     </form>
   </div>
 </div>
@@ -1656,7 +1656,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-07-logo-v160';
+        const APP_CACHE_VERSION = '2026-11-07-login-v161';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -2391,8 +2391,9 @@ body.app-logged-in #view-login{display:none!important}
             if (notice) notice.style.display = mustChangeDefaultPassword ? 'block' : 'none';
             if (cancel) cancel.style.display = mustChangeDefaultPassword ? 'none' : '';
         }
-        async function login(confirmed = false) {
-            if (confirmed !== true) return false;
+        async function login(confirmed = false, activationEvent = null) {
+            const signInButton = document.getElementById('login-button');
+            if (confirmed !== true || !activationEvent || activationEvent.isTrusted !== true || activationEvent.type !== 'click' || activationEvent.currentTarget !== signInButton) return false;
             if (loginInProgress) return false;
             const userEl = document.getElementById('login-user');
             const passEl = document.getElementById('login-pass');
@@ -4978,6 +4979,17 @@ let firebaseListenersStarted = false;
                 });
             }
 
+            const p = document.getElementById('login-pass');
+            if (p && !p.dataset.enterBound) {
+                p.dataset.enterBound = '1';
+                p.addEventListener('keydown', e => {
+                    if (e.key === 'Enter' && !e.isComposing) {
+                        e.preventDefault();
+                        document.getElementById('login-button')?.focus();
+                    }
+                });
+            }
+
             try { updateVisitSubmitState(); } catch (e) {}
         }
 
@@ -6385,7 +6397,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-07-logo-v160';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-07-login-v161';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
