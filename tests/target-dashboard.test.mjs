@@ -34,3 +34,13 @@ test('projects month-end amount and target percentage from report date',()=>{
  const s=globalThis.DmsTargets.summarize({targets:{801:1000},history:{'2026-11-10':{801:400}}},'2026-11','2026-11-12');
  assert.equal(s.trend,1200);assert.equal(s.trendPct,120);assert.equal(s.pct,40);
 });
+test('Morning Report uses previous completed day and corrects across month boundaries',()=>{
+ assert.equal(DmsTargets.morningAsOf('2026-11-07'),'2026-11-06');
+ assert.equal(DmsTargets.morningAsOf('2026-11-01'),'2026-10-31');
+ assert.throws(()=>DmsTargets.morningAsOf('2026-11-31'));
+ const patch=DmsTargets.historyUpdates('2026-11-07',{801:100},{ci:{801:60}},true);
+ assert.equal(patch['dms_target_tracking/2026-11/history/2026-11-07'],null);
+ assert.deepEqual(patch['dms_target_tracking/2026-11/history/2026-11-06'],{801:100});
+ const summary=DmsTargets.summarize({targets:{801:130696735},history:{'2026-11-06':{801:23737207.64}}},'2026-11','2026-11-07');
+ assert.equal(summary.trendPct.toFixed(2),'90.81');
+});

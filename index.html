@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-05-trend-v148">
+    <meta name="dms-app-version" content="2026-11-05-trend-date-v149">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1277,7 +1277,7 @@ body.app-logged-in #view-login{display:none!important}
                     <div class="morning-actions">
                         <div><label>Excel File (.xlsx / .xls / .csv)</label><input type="file" id="morning-excel-file" accept=".xlsx,.xls,.csv" onchange="previewMorningExcel(this)"></div>
                     </div>
-                    <label>MTD as-of date <input type="date" id="morning-target-date" required></label>
+                    <label>Morning Report date <input type="date" id="morning-target-date" required></label><small>Achievement is counted through the previous day. For 7 November, MTD is through 6 November.</small><details style="margin:10px 0"><summary>Correct a previously saved achievement date</summary><button type="button" class="btn btn-sm btn-sec" onclick="DmsTargets.correctMorningDate()">Correct using current Morning Report</button></details>
                     <div id="morning-upload-preview" class="morning-status">Select an Excel file to preview.</div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
                         <button type="button" class="btn" id="btn-save-morning-excel" onclick="saveMorningExcel()" disabled>📤 Upload Morning File</button>
@@ -1662,7 +1662,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-05-trend-v148';
+        const APP_CACHE_VERSION = '2026-11-05-trend-date-v149';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -4287,7 +4287,7 @@ function deferVisiblePageWork(tab,task){
             if (tab === 'notices') renderNotices();
             if (tab === 'dashboard') window.DmsTargets?.open();
             if (tab === 'uploads') { const month=document.getElementById('target-upload-month'); if(!month.value)month.value=getDhakaToday().slice(0,7); }
-            if (tab === 'morning-upload') { const input=document.getElementById('morning-target-date'); const today=getDhakaToday(); input.max=today; if(!input.value)input.value=new Date(Date.parse(today+'T00:00:00Z')-86400000).toISOString().slice(0,10); }
+            if (tab === 'morning-upload') { const input=document.getElementById('morning-target-date'); const today=getDhakaToday(); input.max=today; if(!input.value)input.value=today; }
         }
 
         function populateDsoFilter(){
@@ -5340,8 +5340,9 @@ async function saveMorningExcel(){
         setMorningStatus('morning-upload-preview','Database is not connected. Check internet connection and try again.','error');
         return;
     }
-    const date=document.getElementById('morning-target-date').value;
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date>getDhakaToday()){alert('Select the correct MTD as-of date.');return;}
+    const reportDate=document.getElementById('morning-target-date').value;
+    let date;try{date=DmsTargets.morningAsOf(reportDate);}catch(e){alert(e.message);return;}
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||reportDate>getDhakaToday()){alert('Select the correct Morning Report date.');return;}
     let groups, metrics;
     try{const map=morningColumnMap(pendingMorningExcel.headers);groups=DmsTargets.snapshot(pendingMorningExcel,map);metrics=DmsTargets.achievementMetrics(pendingMorningExcel,map);if(!Object.keys(groups).length)throw Error('No valid DSO rows found.');}catch(e){alert(e.message);return;}
     const btn=document.getElementById('btn-save-morning-excel');if(btn)btn.disabled=true;
@@ -6390,7 +6391,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-05-trend-v148';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-05-trend-date-v149';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
@@ -6467,6 +6468,6 @@ function isOlderUploadedReport(candidate,current){
 }
 </script>
 
-<script src="performance/targets.js?v=148"></script><script src="performance/analytics.js?v=137"></script><script src="performance/app.js?v=144"></script>
+<script src="performance/targets.js?v=149"></script><script src="performance/analytics.js?v=137"></script><script src="performance/app.js?v=144"></script>
 </body>
 </html>
