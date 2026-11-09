@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-07-login-v161">
+    <meta name="dms-app-version" content="2026-11-09-login-design-v163">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -924,7 +924,7 @@ body:has(#view-kyc-status.active) #app-copyright,body:has(#view-kyc-status.activ
       </div>
       <div class="form-group">
         <label for="login-pass">Password</label>
-        <div class="dms-signin-field"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></svg><input type="password" id="login-pass" autocomplete="current-password" enterkeyhint="go" placeholder="Password"></div>
+        <div class="dms-signin-field"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></svg><input type="password" id="login-pass" autocomplete="current-password" enterkeyhint="go" placeholder="Password"><button type="button" class="dms-password-toggle" aria-label="Show password" aria-controls="login-pass" aria-pressed="false" onclick="toggleDmsLoginPassword(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path class="dms-eye-slash" d="m4 4 16 16"/></svg></button></div>
       </div>
       <button type="button" class="btn" id="login-button" onclick="login(true,event)">Sign in</button>
     </form>
@@ -1656,7 +1656,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-07-login-v161';
+        const APP_CACHE_VERSION = '2026-11-09-login-design-v163';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -6397,7 +6397,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-07-login-v161';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-09-login-design-v163';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
@@ -6475,5 +6475,38 @@ function isOlderUploadedReport(candidate,current){
 </script>
 
 <script src="performance/targets.js?v=152"></script><script src="performance/analytics.js?v=137"></script><script src="performance/app.js?v=144"></script>
+<style id="dms-login-design-v163">
+body:not(.app-logged-in){background:#f3f6fb}
+body:not(.app-logged-in) #view-login{background:radial-gradient(ellipse at 50% 0%,#e8eefb 0%,transparent 58%),#f3f6fb;padding:32px 20px 80px;min-height:100vh;min-height:100dvh}
+#view-login .dms-signin{width:min(100%,390px);padding:32px;background:#fff;border:1px solid #e6ebf3;border-radius:22px;box-shadow:0 16px 48px rgba(26,51,92,.07)}
+#view-login .dms-signin-brand{padding-bottom:26px}
+#view-login .dms-signin-logo img{width:64px;height:64px;margin:0;border:0;outline:0;box-shadow:none;background:transparent;border-radius:0}
+#view-login .dms-signin-form .form-group{margin:0 0 16px}
+#view-login .dms-signin-form label{position:static;display:block;width:auto;height:auto;overflow:visible;clip-path:none;white-space:normal;margin:0 0 7px;padding:0;color:#40516b;font-size:12px;font-weight:600}
+#view-login .dms-signin-field>svg{width:17px;height:17px;left:14px;color:#8693a9}
+#view-login .dms-signin-form input{height:46px;min-height:46px;width:100%;padding:0 14px 0 41px;border:1px solid #dde4ef;border-radius:10px;background:#f8fafd;color:#172c50;font-size:16px;transition:border-color .15s,box-shadow .15s}
+#view-login .dms-signin-form input::placeholder{color:#97a2b4;font-size:13px}
+#view-login .dms-signin-form input:focus{border-color:#4268a6;background:#fff;outline:none;box-shadow:0 0 0 3px rgba(47,87,151,.10)}
+#view-login #login-pass{padding-right:47px}
+#view-login .dms-password-toggle{position:absolute;right:4px;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;width:40px;height:38px;padding:0;margin:0;border:0;border-radius:8px;background:transparent;color:#7c8ba2;cursor:pointer;touch-action:manipulation}
+#view-login .dms-password-toggle:hover{color:#1d447c;background:#edf2f9}
+#view-login .dms-password-toggle svg{position:static;inset:auto;transform:none;width:19px;height:19px;pointer-events:none}
+#view-login .dms-eye-slash{display:none}
+#view-login .dms-password-toggle[aria-pressed="true"] .dms-eye-slash{display:block}
+#view-login #login-button{height:46px;min-height:46px;margin:22px 0 0;padding:0 16px;border-radius:10px;background:#1e437b;box-shadow:0 4px 10px rgba(30,67,123,.12);font-size:14px;font-weight:650;letter-spacing:.01em;transition:background .15s,box-shadow .15s}
+#view-login #login-button:hover:not(:disabled){background:#17365f;box-shadow:0 6px 14px rgba(30,67,123,.18)}
+#view-login #login-button:active:not(:disabled){background:#102b51}
+#view-login #login-alert{font-size:12px;line-height:1.5;margin-bottom:18px}
+@media(max-width:440px){#view-login .dms-signin{padding:28px 24px;border-radius:20px}}
+@media(prefers-reduced-motion:reduce){#view-login input,#view-login button{transition:none!important}}
+</style>
+<script>
+function toggleDmsLoginPassword(button){
+ const input=document.getElementById('login-pass');if(!input||!button)return;
+ const visible=input.type==='password';input.type=visible?'text':'password';
+ button.setAttribute('aria-pressed',String(visible));
+ button.setAttribute('aria-label',visible?'Hide password':'Show password');
+}
+</script>
 </body>
 </html>
