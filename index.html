@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-09-login-design-v164">
+    <meta name="dms-app-version" content="2026-11-10-kyc-submit-v165">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1382,7 +1382,7 @@ body.app-logged-in #view-login{display:none!important}
             <div id="view-kyc-collection" class="page">
                 <div class="section-head"><div><h2>New Uddokta KYC Collection</h2><small style="color:#64748b">Collect and submit new Uddokta KYC information</small></div></div>
                 <div id="kyc-alert" class="alert"></div>
-                <form id="kyc-form" class="card" style="text-align:left">
+                <form id="kyc-form" class="card" style="text-align:left" novalidate onsubmit="submitKyc(event);return false">
                     <div class="kyc-form-grid">
                         <div class="form-group"><label>DSO Wallet</label><select id="kyc-dso-wallet" required><option value="">Select DSO Wallet</option></select></div>
                         <div class="form-group"><label>Uddokta Number</label><input type="text" id="kyc-uddokta-number" required inputmode="numeric" maxlength="11" placeholder="01XXXXXXXXX"></div>
@@ -1656,7 +1656,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-09-login-design-v164';
+        const APP_CACHE_VERSION = '2026-11-10-kyc-submit-v165';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -5885,8 +5885,9 @@ function populateKycDsoWallets(){
 function kycAlert(message,type='success'){
     if(document.getElementById('view-kyc-status')?.classList.contains('active')){showLiveUpdateToast(message,type);return;}
     const el=document.getElementById('kyc-alert');if(!el)return;
-    el.className='alert alert-'+type;el.textContent=message;el.style.display='block';
-    setTimeout(()=>{el.style.display='none';},3000);
+    el.className='alert alert-'+type;el.textContent=message;el.style.display='block';el.setAttribute('role','status');el.setAttribute('aria-live','polite');
+    if(type==='error')el.scrollIntoView({behavior:'smooth',block:'center'});
+    clearTimeout(kycAlert.hideTimer);if(type!=='error')kycAlert.hideTimer=setTimeout(()=>{el.style.display='none';},5000);
 }
 function fileToCompressedKycImage(file){
     return new Promise((resolve,reject)=>{
@@ -5960,7 +5961,7 @@ function clearKycForm(){
 const kycAttemptTokens=new Map();
 let kycSubmitBusy=false;
 function normalizeKycNumber(value){let number=normalizeUddoktaNumber(value);if(number.length===13&&number.startsWith('880'))number=number.slice(2);if(number.length===15&&number.startsWith('00880'))number=number.slice(4);return number;}
-function kycAttempt(number){const key='dms-kyc-attempt:'+String(currentUser||'')+':'+number;let token=kycAttemptTokens.get(key);try{token=token||localStorage.getItem(key)}catch(_){}if(!token){token=crypto.randomUUID();kycAttemptTokens.set(key,token);try{localStorage.setItem(key,token)}catch(_){}}return {key,token};}
+function kycAttempt(number){const key='dms-kyc-attempt:'+String(currentUser||'')+':'+number;let token=kycAttemptTokens.get(key);try{token=token||localStorage.getItem(key)}catch(_){}if(!token){token=typeof crypto.randomUUID==='function'?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(24)),n=>n.toString(16).padStart(2,'0')).join('');kycAttemptTokens.set(key,token);try{localStorage.setItem(key,token)}catch(_){}}return {key,token};}
 function clearKycAttempt(attempt){kycAttemptTokens.delete(attempt.key);try{localStorage.removeItem(attempt.key)}catch(_){}}
 function kycIsOwnAttempt(record,token,user){return !!record&&record.submissionToken===token&&String(record.submittedBy||'')===String(user);}
 function assertKycNumberAvailable(records,number,id,token,user){for(const [key,record] of Object.entries(records||{})){if(!record||typeof record!=='object')continue;if(normalizeKycNumber(record.uddoktaNumber)!==number)continue;if(key===id&&kycIsOwnAttempt(record,token,user))continue;throw Error('এই Uddokta Number-এর KYC আগে জমা হয়েছে বা জমা হচ্ছে। একই নম্বর আবার নেওয়া যাবে না।');}}
@@ -5968,7 +5969,20 @@ async function readKycServer(path){const response=await visitRestRequest(path,'G
 async function claimUniqueKyc(record,user){const id=record.id,number=record.uddoktaNumber,token=record.submissionToken;const all=await readKycServer('new_uddokta_kyc');assertKycNumberAvailable(all,number,id,token,user);const existing=all?.[id];if(existing){if(!kycIsOwnAttempt(existing,token,user))throw Error('এই Uddokta Number আগে জমা হয়েছে।');return existing;}const result=await visitRestRequest('new_uddokta_kyc/'+id,'PUT',{...record,hasPhoto:false,submissionState:'pending'},{'if-match':'null_etag'},12000);if(result.status===412){const current=result.data;if(kycIsOwnAttempt(current,token,user))return current;throw Error('এই Uddokta Number অন্য submission-এ গ্রহণ করা হয়েছে। Duplicate নেওয়া যাবে না।');}return {...record,hasPhoto:false,submissionState:'pending'};}
 async function verifyKycSaved(id,token,user){try{const saved=await readKycServer('new_uddokta_kyc/'+id);return !!(saved&&saved.id===id&&saved.hasPhoto&&saved.submissionState==='complete'&&kycIsOwnAttempt(saved,token,user));}catch(_){return false;}}
 async function submitKyc(event){
- event.preventDefault();if(kycSubmitBusy)return;const form=document.getElementById('kyc-form');if(!form||!form.reportValidity())return;if(!db){kycAlert('Database is not connected.','error');return;}
+ event?.preventDefault();
+ try { return await submitKycCore(); }
+ catch(error){kycAlert('KYC submit হয়নি: '+(error?.message||'আবার চেষ্টা করুন।'),'error');}
+}
+async function submitKycCore(){
+ if(kycSubmitBusy){kycAlert('KYC জমা হচ্ছে। একটু অপেক্ষা করুন।','success');return;}
+ const form=document.getElementById('kyc-form');
+ if(!form){kycAlert('KYC form পাওয়া যায়নি। পেজ Refresh করুন।','error');return;}
+ if(!form.checkValidity()){
+  const field=Array.from(form.elements).find(el=>el.willValidate&&!el.validity.valid);
+  const label=field?.closest('.form-group')?.querySelector('label')?.textContent?.trim()||'প্রয়োজনীয় তথ্য';
+  kycAlert(label+' পূরণ করুন।','error');field?.focus();form.reportValidity();return;
+ }
+ if(!db){kycAlert('Database সংযোগ হয়নি। Internet চালু রেখে আবার চেষ্টা করুন।','error');return;}
  const contact=normalizeKycNumber(document.getElementById('kyc-owner-contact').value),uddoktaNumber=normalizeKycNumber(document.getElementById('kyc-uddokta-number').value),selectedDsoWallet=normalizeScopeWallet(document.getElementById('kyc-dso-wallet').value||'');
  if(!selectedDsoWallet){kycAlert('DSO Wallet নির্বাচন করুন।','error');return;}const role=getRoleInfo();if(role.role==='DSO'&&selectedDsoWallet!==normalizeScopeWallet(role.dsoWallet)){kycAlert('নিজের DSO Wallet ছাড়া submit করা যাবে না।','error');return;}if(role.role==='DSS'&&!getAssignedDsoWalletsForDss(role.dssName).has(selectedDsoWallet)){kycAlert('শুধু assigned DSO Wallet নির্বাচন করা যাবে।','error');return;}
  if(!/^01\d{9}$/.test(uddoktaNumber)){kycAlert('সঠিক ১১ সংখ্যার Uddokta Number দিন।','error');return;}if(!/^01\d{9}$/.test(contact)){kycAlert('সঠিক ১১ সংখ্যার Owner Contact Number দিন।','error');return;}if(!kycPictureData){kycAlert('Camera দিয়ে Shop Photo তুলুন।','error');return;}
@@ -6161,7 +6175,7 @@ async function showKycPicture(id){
         box.replaceChildren();if(photo){const img=document.createElement('img');img.src=photo;img.className='detail-photo';img.alt='KYC Picture';img.decoding='async';box.appendChild(img);}else box.textContent='Picture not found.';
     }catch(e){if(token===kycPhotoViewToken)box.textContent='Picture could not load. Please try again.';}
 }
-document.addEventListener('DOMContentLoaded',()=>{document.getElementById('kyc-form')?.addEventListener('submit',submitKyc);},{once:true});
+
 document.addEventListener('click',e=>{const panel=document.getElementById('kyc-menu-panel');const parent=e.target.closest&&e.target.closest('#nav-kyc');if(panel&&!parent&&!e.target.closest('#kyc-menu-panel'))panel.classList.remove('open');});
 
 // Central authoritative refresh. Realtime listeners remain the primary channel;
@@ -6397,7 +6411,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-09-login-design-v164';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-10-kyc-submit-v165';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
