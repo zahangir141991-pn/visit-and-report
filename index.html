@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="bn">
 <head>
+    <script src="assets/secure-data.js?v=166"></script>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-10-kyc-submit-v165">
+    <meta name="dms-app-version" content="2026-11-12-security-v166">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1604,6 +1605,7 @@ body.app-logged-in #view-login{display:none!important}
             prototype.dmsTracked=true;
         }
         function stopPrivateFirebaseSubscriptions(){
+            db?.stopScopedReads?.();
             if(window.closePerformance)window.closePerformance();
             window.DmsTargets?.close();
             for(const subscription of activeFirebaseSubscriptions){try{subscription.query.off(subscription.event,subscription.callback);}catch(_){}}
@@ -1627,7 +1629,7 @@ body.app-logged-in #view-login{display:none!important}
             try {
                 if (!window.firebase || typeof window.firebase.initializeApp !== 'function') return null;
                 if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
-                db = firebase.database();
+                db = DmsSecureData.database(firebase.database(),securePrivateRead);
                 installFirebaseSubscriptionTracking();
                 attachFirebaseConnectionMonitor();
                 if(currentUser)setTimeout(()=>recordLoginSession(),0);
@@ -1656,7 +1658,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-10-kyc-submit-v165';
+        const APP_CACHE_VERSION = '2026-11-12-security-v166';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -1885,11 +1887,7 @@ body.app-logged-in #view-login{display:none!important}
             const dsoWallet = normalizeScopeWallet(item && item[0]);
             const dssName = String((item && item[3]) || '').trim().toUpperCase();
 
-            if (info.role === 'DSS') {
-                const allowed = String(info.dssName || '').trim().toUpperCase();
-                if (!allowed || !dssName) return false;
-                return dssName === allowed || dssName.includes(allowed) || allowed.includes(dssName);
-            }
+            if (info.role === 'DSS') return false;
 
             if (info.role === 'DSO') {
                 // DSO can ONLY see Uddokta records assigned to that logged-in DSO wallet.
@@ -1993,6 +1991,13 @@ body.app-logged-in #view-login{display:none!important}
             const credential=await firebase.auth().signInWithCustomToken(result.token);
             if(credential.user.uid!=='dms_'+user){await firebase.auth().signOut();throw Error('Login identity verification failed');}
             return result;
+        }
+        async function securePrivateRead(path){
+            const user=currentUser,generation=appSessionGeneration,auth=firebase.auth().currentUser;
+            if(!user||!auth||auth.uid!=='dms_'+user)throw Error('Please sign in again');
+            const result=await authServerRequest('/data',{idToken:await auth.getIdToken(),path});
+            if(currentUser!==user||generation!==appSessionGeneration)throw Error('Login session changed');
+            return result.data;
         }
         async function authenticatedDatabaseUrl(raw,path=''){
             const url=new URL(raw);
@@ -2182,6 +2187,7 @@ body.app-logged-in #view-login{display:none!important}
             restReadsInFlight.set(key,task);return task;
         }
         async function fetchFirebaseRestFresh(path, queryString = '') {
+            if(DmsSecureData.isPrivate(path)){const params=new URLSearchParams(queryString.replace(/^\?/,'')),q={};for(const [key,value]of params){try{if(key==='orderBy')q.order=JSON.parse(value);if(key==='equalTo')q.equal=JSON.parse(value);if(key==='startAt')q.start=JSON.parse(value);if(key==='endAt')q.end=JSON.parse(value);if(key==='limitToLast')q.last=Number(value);if(key==='limitToFirst')q.first=Number(value);}catch(_){throw Error('Invalid data query');}}return DmsSecureData.select(await securePrivateRead(path),q);}
             const clean = String(path || '').split('/').filter(Boolean).map(encodeURIComponent).join('/');
             const base = String(firebaseConfig.databaseURL || '').replace(/\/$/, '');
             const url = await authenticatedDatabaseUrl(`${base}/${clean}.json${queryString || '?timeout=12s'}`,path);
@@ -3662,6 +3668,7 @@ function clearPrivateSessionData(){
         }
 
         async function visitRestRequest(path,method,body,headers={},timeout=15000){
+            if(method==='GET'&&DmsSecureData.isPrivate(path))return {status:200,data:await securePrivateRead(path)};
             const requestUrl=await authenticatedDatabaseUrl(String(firebaseConfig.databaseURL).replace(/\/$/,'')+'/'+String(path||'').split('/').filter(Boolean).map(encodeURIComponent).join('/')+'.json');
             return new Promise((resolve,reject)=>{
                 const xhr=new XMLHttpRequest(),base=String(firebaseConfig.databaseURL||'').replace(/\/$/,'');
@@ -3699,7 +3706,7 @@ function clearPrivateSessionData(){
                 const result=await visitRestRequest(path,'PUT',{token,reportId,user:currentUser,uddoktaNumber:normalized,reservedAt:firebase.database.ServerValue.TIMESTAMP},{'if-match':'null_etag'},12000);
                 return {committed:result.status!==412||result.data?.token===token,ref:null,supported:true};
             }catch(e){
-                if(e.status===401||e.status===403){console.warn('Legacy rules do not allow the duplicate lock:',e);return {committed:true,ref:null,supported:false};}
+                if(e.status===401||e.status===403)throw Error('Visit reservation অনুমোদিত হয়নি। আবার Login করে চেষ্টা করুন।');
                 throw e;
             }
         }
@@ -4199,6 +4206,7 @@ function deferVisiblePageWork(tab,task){
  if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>requestAnimationFrame(run));else setTimeout(run,0);
 }
         function switchTab(tab) {
+            if(getRoleInfo().role==='DSS'&&['uddokta','morning-report','afternoon-report'].includes(tab)){showAlert('এই রিপোর্ট দেখার অনুমতি নেই। KYC দেখতে পারবেন।','error');tab='kyc-status';}
             if (tab === 'settings') tab = 'change-pass';
             closeVisitMenu();
             if(typeof closeReportsMenu==='function')closeReportsMenu();
@@ -5370,7 +5378,7 @@ async function saveMorningExcel(){
 function canSeeMorningRow(row, headers){
     const role=getRoleInfo(), map=morningColumnMap(headers);
     if(role.role==='Admin'||role.role==='DM')return true;
-    if(role.role==='DSS')return map.dso>=0 && dssHasAssignedDso(role.dssName,row[map.dso]);
+    if(role.role==='DSS')return false;
     if(role.role==='DSO')return map.dso>=0 && normalizeScopeWallet(row[map.dso])===normalizeScopeWallet(role.dsoWallet);
     return false;
 }
@@ -5745,7 +5753,7 @@ async function saveAfternoonExcel(){
 function canSeeAfternoonRow(row,headers){
     const role=getRoleInfo(),map=afternoonColumnMap(headers),wallet=map.dso>=0?normalizeScopeWallet(row[map.dso]):'';
     if(role.role==='Admin'||role.role==='DM')return true;
-    if(role.role==='DSS')return getAssignedDsoWalletsForDss(role.dssName).has(wallet);
+    if(role.role==='DSS')return false;
     if(role.role==='DSO')return wallet===normalizeScopeWallet(role.dsoWallet);
     return false;
 }
@@ -6411,7 +6419,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-10-kyc-submit-v165';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-12-security-v166';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
@@ -6517,3 +6525,4 @@ body:not(.app-logged-in) #view-login{background:radial-gradient(ellipse at 50% 0
 
 </body>
 </html>
+
