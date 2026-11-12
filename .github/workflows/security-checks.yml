@@ -14,11 +14,5 @@ jobs:
       - run: node --test tests/security.test.mjs tests/login-worker.test.mjs tests/security-scope.test.mjs
       - name: Test rules against isolated Firebase emulator
         run: |
-          printf '%s\n' '{"database":{"rules":"server/DMS_DATABASE_RULES.json"},"emulators":{"database":{"port":19005},"ui":{"enabled":false}}}' > /tmp/dms-emulator-config.json
-          # Resolve the rules file from the repository; namespace is always demo-only.
-          python - <<'PY'
-          import json, pathlib
-          p=pathlib.Path('/tmp/dms-emulator-config.json')
-          c=json.loads(p.read_text());c['database']['rules']=str(pathlib.Path('server/DMS_DATABASE_RULES.json').resolve());p.write_text(json.dumps(c))
-          PY
-          npx --yes firebase-tools@13.35.1 emulators:exec --only database --project demo-dms-rules --config /tmp/dms-emulator-config.json 'python3 tests/firebase-rules-emulator.py'
+          printf '%s\n' '{"database":{"rules":"server/DMS_DATABASE_RULES.json"},"emulators":{"database":{"port":19005},"ui":{"enabled":false}}}' > dms-security-emulator.json
+          npx --yes firebase-tools@13.35.1 emulators:exec --only database --project demo-dms-rules --config dms-security-emulator.json 'python3 tests/firebase-rules-emulator.py'
