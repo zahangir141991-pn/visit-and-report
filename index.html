@@ -6199,6 +6199,7 @@ function startLiveUpdateSignal(){
         const signal=snap.val();
         if(!liveUpdateSignalReady){liveUpdateSignalReady=true;return;}
         if(!signal||!document.body?.classList.contains('app-logged-in'))return;
+        db.refreshScopedReads?.();
         try { scopedReportLoads.clear(); } catch (_) {}
         setTimeout(()=>{
             refreshVisiblePageDataFast().then(()=>showLiveUpdateToast('নতুন data স্বয়ংক্রিয়ভাবে update হয়েছে ✓')).catch(err=>console.warn('Visible realtime refresh failed:',err));

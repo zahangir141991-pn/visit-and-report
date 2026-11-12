@@ -11,11 +11,11 @@
     child:p=>ref(path+'/'+p,q),get key(){return path.split('/').pop();},toString:()=>target.toString(),
     orderByChild:order=>ref(path,{...q,order}),orderByKey:()=>ref(path,{...q,order:'$key'}),equalTo:equal=>ref(path,{...q,equal}),startAt:start=>ref(path,{...q,start}),endAt:end=>ref(path,{...q,end}),limitToFirst:first=>ref(path,{...q,first,order:q.order||'$key'}),limitToLast:last=>ref(path,{...q,last,order:q.order||'$key'}),
     once:async(event,ok,fail)=>{try{if(event!=='value')throw Error('Unsupported scoped event');const value=snapshot(select(await request(path),q),result.key);ok?.(value);return value;}catch(e){fail?.(e);throw e;}},
-    on:(event,callback,fail)=>{if(event!=='value')throw Error('Unsupported scoped event');const h={active:true,timer:null};own.add(h);subscriptions.add(h);let previous;const poll=async()=>{try{const value=select(await request(path),q),encoded=JSON.stringify(value);if(h.active&&encoded!==previous){previous=encoded;callback(snapshot(value,result.key));}}catch(e){if(h.active)fail?.(e);}finally{if(h.active)h.timer=setTimeout(poll,15000);}};h.callback=callback;poll();return callback;},
+    on:(event,callback,fail)=>{if(event!=='value')throw Error('Unsupported scoped event');const h={active:true,timer:null};own.add(h);subscriptions.add(h);let previous;const poll=async()=>{if(!h.active)return;if(h.busy){h.pending=true;return;}h.busy=true;clearTimeout(h.timer);try{const value=select(await request(path),q),encoded=JSON.stringify(value);if(h.active&&encoded!==previous){previous=encoded;callback(snapshot(value,result.key));}}catch(e){if(h.active)fail?.(e);}finally{h.busy=false;if(h.active){h.timer=setTimeout(poll,h.pending?0:15000);h.pending=false;}}};h.refresh=poll;h.callback=callback;poll();return callback;},
     off:(event,callback)=>{for(const h of own)if(!callback||h.callback===callback){h.active=false;clearTimeout(h.timer);subscriptions.delete(h);own.delete(h);}},
    };for(const method of ['set','update','push','transaction','onDisconnect'])result[method]=(...args)=>target[method](...args);return result;
   }
-  return {ref,goOffline:()=>native.goOffline(),goOnline:()=>native.goOnline(),stopScopedReads:()=>{for(const h of subscriptions){h.active=false;clearTimeout(h.timer);}subscriptions.clear();}};
+  return {ref,refreshScopedReads:()=>{for(const h of subscriptions)h.refresh?.();},goOffline:()=>native.goOffline(),goOnline:()=>native.goOnline(),stopScopedReads:()=>{for(const h of subscriptions){h.active=false;clearTimeout(h.timer);}subscriptions.clear();}};
  }
  global.DmsSecureData={database,isPrivate:path=>roots.has(String(path).split('/')[0]),snapshot,select};
 })(globalThis);
