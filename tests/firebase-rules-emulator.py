@@ -3,9 +3,9 @@ import urllib.request, urllib.error, json, base64, time
 from pathlib import Path
 base='http://127.0.0.1:19005/'
 ns='demo-dms-rules'
-def req(path,method='GET',value=None,token=None):
+def req(path,method='GET',value=None,token=None,extra_headers=None):
  url=base+path+('.json' if not path.endswith('.json') else '')+'?ns='+ns
- headers={'Content-Type':'application/json'}
+ headers={'Content-Type':'application/json',**(extra_headers or {})}
  if token=='owner':headers['Authorization']='Bearer owner'
  elif token:url+='&auth='+token
  try:
@@ -13,7 +13,7 @@ def req(path,method='GET',value=None,token=None):
  except urllib.error.HTTPError as e:return e.code,e.read().decode()
 def jwt(user,change=False,attendance=False,version=0):
  b=lambda v:base64.urlsafe_b64encode(json.dumps(v).encode()).decode().rstrip('=')
- claims={'iss':'https://securetoken.google.com/'+ns,'aud':ns,'auth_time':int(time.time()),'user_id':'dms_'+user,'sub':'dms_'+user,'iat':int(time.time()),'exp':int(time.time())+3600,'firebase':{'sign_in_provider':'custom'},'dmsUserId':user,'attendanceAdmin':user in ['admin','zahangir'] and not change,'dmsCredentialVersion':version,'dmsWallets':{'801':True}if user in ['01332517801','rubel']else {}}
+ claims={'iss':'https://securetoken.google.com/'+ns,'aud':ns,'auth_time':int(time.time()),'user_id':'dms_'+user,'sub':'dms_'+user,'iat':int(time.time()),'exp':int(time.time())+3600,'firebase':{'sign_in_provider':'custom'},'dmsUserId':user,'attendanceAdmin':user in ['admin','zahangir'] and not change,'dmsCredentialVersion':version,'dmsWallets':{user[-3:]:True}if user.startswith('01332517')else {'801':True}if user=='rubel'else {}}
  if not attendance:claims.update(dmsAuthenticated=True,dmsPasswordChangeRequired=change)
  return b({'alg':'none','typ':'JWT'})+'.'+b(claims)+'.'
 def check(label,path,method='GET',value=None,user=None,want=401,token=None):
@@ -21,6 +21,7 @@ def check(label,path,method='GET',value=None,user=None,want=401,token=None):
 rules=json.loads((Path(__file__).resolve().parents[1]/'server/DMS_DATABASE_RULES.json').read_text())
 code,body=req('.settings/rules','PUT',rules,'owner');assert code==200,body
 seed={'user_auth':{u:{'enabled':True}for u in ['admin','zahangir','rubel','01332517801','01332517802']},'dms_app_release':{'version':'test'},'visit_reports':{'old':{'user':'01332517801','dsoWallet':'801','uddoktaNumber':'01700000001','date':'2026-11-12'}},'new_uddokta_kyc':{'legacy':{'submittedBy':'01332517801','dsoWallet':'801','status':'Collected'}},'uddokta_master':{'a':{'dsoWallet':'801'}},'attendance':{'records':{'a':{'kind':'employee'}}}}
+seed['user_auth'].update({'01332517'+str(n):{'enabled':True}for n in range(801,847)})
 assert req('','PUT',seed,'owner')[0]==200
 for path in ['visit_reports','uddokta_master','new_uddokta_kyc','user_auth','attendance_server','unknown_section']:
  check('anonymous denied '+path,path)
@@ -54,6 +55,40 @@ check('legacy KYC status update preserved','new_uddokta_kyc/legacy/status','PUT'
 check('forced password token denied','visit_reports',token=jwt('admin',change=True))
 check('attendance-only token cannot read visits','visit_reports',token=jwt('admin',attendance=True))
 check('attendance-only token reads attendance','attendance/records',token=jwt('admin',attendance=True),want=200)
+# Exercise the real client protocol: rules-enforced unique claim, resolved clock,
+# separate atomic photo completion, and retries for all 46 DSO wallets.
+for wallet in range(801,847):
+ user='01332517'+str(wallet);rid='clock_'+str(wallet)
+ pending={**k,'id':rid,'submittedBy':user,'dsoWallet':str(wallet),'createdAt':{'.sv':'timestamp'}}
+ if wallet==817:
+  code,body=req('new_uddokta_kyc/'+rid,'PUT',pending,jwt(user),{'If-Match':'null_etag'})
+  assert code==401,('ETag correctly requires direct read permission',code,body)
+ code,body=req('new_uddokta_kyc/'+rid,'PUT',pending,jwt(user))
+ assert code==200,('rules-enforced unique claim',wallet,code,body)
+ claimed=json.loads(body);assert isinstance(claimed.get('createdAt'),(int,float)),('unresolved clock',wallet)
+ if wallet==817:
+  # The old client sent the unresolved timestamp placeholder again. That changes
+  # the immutable creation time at completion and must be rejected by the rules.
+  time.sleep(.01)
+  bad={**pending,'hasPhoto':True,'submissionState':'complete'}
+  code,body=req('','PATCH',{'new_uddokta_kyc/'+rid:bad,'new_uddokta_kyc_photos/'+rid:'photo'},jwt(user))
+  assert code==401,('immutable creation time regression',code,body)
+ complete={**claimed,'hasPhoto':True,'submissionState':'complete','updatedAt':{'.sv':'timestamp'}}
+ code,body=req('','PATCH',{'new_uddokta_kyc/'+rid:complete,'new_uddokta_kyc_photos/'+rid:'data:image/jpeg;base64,TEST'},jwt(user))
+ assert code==200,('atomic completion with real timestamp',wallet,code,body)
+ print('PASS unique KYC claim and real-clock completion DSO',wallet)
+# Concurrent submissions must not overwrite one another without an ETag header.
+from concurrent.futures import ThreadPoolExecutor
+race_id='race_claim'
+def race(token):
+ value={**k,'id':race_id,'submissionToken':token,'createdAt':{'.sv':'timestamp'}}
+ return token,req('new_uddokta_kyc/'+race_id,'PUT',value,jwt('01332517801'))[0]
+with ThreadPoolExecutor(max_workers=2)as pool: results=list(pool.map(race,['attempt-a','attempt-b']))
+assert sorted(code for _,code in results)==[200,401],('duplicate race protection',results)
+code,body=req('new_uddokta_kyc/'+race_id,token='owner');saved=json.loads(body)
+assert saved['submissionToken']==next(token for token,code in results if code==200)
+print('PASS concurrent claims: only one accepted, winner preserved')
+check('completed KYC cannot be replaced by own DSO','new_uddokta_kyc/clock_817','PUT',{**k,'id':'clock_817','submittedBy':'01332517817','dsoWallet':'817'},'01332517817')
 check('disabled account setup','user_auth/01332517801/disabled','PUT',True,token='owner',want=200)
 check('disabled account write denied','visit_reports/disabled','PUT',visit,'01332517801')
 check('reset account setup','user_auth/admin/updatedAt','PUT',42,token='owner',want=200)
