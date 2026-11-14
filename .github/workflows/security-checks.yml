@@ -1,0 +1,18 @@
+name: DMS security checks
+on:
+  pull_request:
+    paths: ['index.html', 'assets/secure-data.js', 'server/**', 'tests/**', '.github/workflows/security-checks.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - run: node --test tests/security.test.mjs tests/login-worker.test.mjs tests/security-scope.test.mjs
+      - name: Test rules against isolated Firebase emulator
+        run: |
+          printf '%s\n' '{"database":{"rules":"server/DMS_DATABASE_RULES.json"},"emulators":{"database":{"port":19005},"ui":{"enabled":false}}}' > dms-security-emulator.json
+          npx --yes firebase-tools@13.35.1 emulators:exec --only database --project demo-dms-rules --config dms-security-emulator.json 'python3 tests/firebase-rules-emulator.py'

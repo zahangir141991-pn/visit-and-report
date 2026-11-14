@@ -1,27 +1,62 @@
-# Requires a local Firebase Database emulator at 127.0.0.1:19005. Seeds only demo-dms-rules.
-import urllib.request,urllib.error,json,base64,time
+# Local emulator ONLY. Never uses production credentials or a production namespace.
+import urllib.request, urllib.error, json, base64, time
 from pathlib import Path
 base='http://127.0.0.1:19005/'
 ns='demo-dms-rules'
 def req(path,method='GET',value=None,token=None):
  url=base+path+('.json' if not path.endswith('.json') else '')+'?ns='+ns
  headers={'Content-Type':'application/json'}
- if token == 'owner':headers['Authorization']='Bearer owner'
+ if token=='owner':headers['Authorization']='Bearer owner'
  elif token:url+='&auth='+token
- r=urllib.request.Request(url,data=None if value is None else json.dumps(value).encode(),method=method,headers=headers)
  try:
-  with urllib.request.urlopen(r,timeout=10) as x:return x.status,x.read().decode()
+  with urllib.request.urlopen(urllib.request.Request(url,data=None if value is None else json.dumps(value).encode(),method=method,headers=headers),timeout=10) as x:return x.status,x.read().decode()
  except urllib.error.HTTPError as e:return e.code,e.read().decode()
-def jwt(user,attendance=False,change=False):
+def jwt(user,change=False,attendance=False,version=0):
  b=lambda v:base64.urlsafe_b64encode(json.dumps(v).encode()).decode().rstrip('=')
- claims={'iss':'https://securetoken.google.com/demo-dms-rules','aud':'demo-dms-rules','auth_time':int(time.time()),'user_id':'dms_'+user,'sub':'dms_'+user,'iat':int(time.time()),'exp':int(time.time())+3600,'firebase':{'sign_in_provider':'custom'},'dmsUserId':user,'attendanceAdmin':user in ['admin','zahangir'] and not change}
+ claims={'iss':'https://securetoken.google.com/'+ns,'aud':ns,'auth_time':int(time.time()),'user_id':'dms_'+user,'sub':'dms_'+user,'iat':int(time.time()),'exp':int(time.time())+3600,'firebase':{'sign_in_provider':'custom'},'dmsUserId':user,'attendanceAdmin':user in ['admin','zahangir'] and not change,'dmsCredentialVersion':version,'dmsWallets':{'801':True}if user in ['01332517801','rubel']else {}}
  if not attendance:claims.update(dmsAuthenticated=True,dmsPasswordChangeRequired=change)
  return b({'alg':'none','typ':'JWT'})+'.'+b(claims)+'.'
-rules=json.load(open(Path(__file__).resolve().parents[1]/'server/DMS_DATABASE_RULES.json'));code,body=req('.settings/rules',method='PUT',value=rules,token='owner');print('RULE COMPILE',code,body[:100]);assert code==200
-assert req('',method='PUT',value={'user_auth':{'secret':'private'},'visit_reports':{'r1':{'date':'2026-10-28'}},'monthly_performance':{'2026-09':{'groups':{'801':{'txn':123}}}},'dms_app_release':{'version':'test'},'attendance':{'records':{'test':{'kind':'device'}}}},token='owner')[0]==200
-checks=[('anonymous visit denied',req('visit_reports')[0],401),('anonymous write denied',req('visit_reports/test','PUT',{},None)[0],401),('release public',req('dms_app_release')[0],200),('main user read',req('visit_reports',token=jwt('01332517801'))[0],200),('credential denied to admin',req('user_auth',token=jwt('admin'))[0],401),('admin monthly read',req('monthly_performance',token=jwt('admin'))[0],200),('DM monthly read',req('monthly_performance',token=jwt('zahangir'))[0],200),('DSO monthly denied',req('monthly_performance',token=jwt('01332517801'))[0],401),('DM monthly write denied',req('monthly_performance/2026-10','PUT',{},jwt('zahangir'))[0],401),('admin monthly write',req('monthly_performance/2026-10','PUT',{},jwt('admin'))[0],200),('password change required denied',req('visit_reports',token=jwt('admin',change=True))[0],401),('attendance-only token attendance works',req('attendance/records',token=jwt('zahangir',attendance=True))[0],200),('attendance-only token main denied',req('visit_reports',token=jwt('zahangir',attendance=True))[0],401),('attendance server client denied',req('attendance_server',token=jwt('admin'))[0],401)]
-for label,got,want in checks:print(label,got,'PASS' if got==want else 'FAIL')
-assert all(got==want for _,got,want in checks)
-
-for user,expected in [('admin',200),('zahangir',401),('alamin',401),('01332517801',401)]:
- code,_=req('uddokta_master/test','PUT',{'dsoWallet':'801','dssName':'RUBEL'},jwt(user));print('master authority',user,code);assert code==expected
+def check(label,path,method='GET',value=None,user=None,want=401,token=None):
+ code,body=req(path,method,value,token or (jwt(user)if user else None));assert code==want,(label,code,body);print('PASS',label)
+rules=json.loads((Path(__file__).resolve().parents[1]/'server/DMS_DATABASE_RULES.json').read_text())
+code,body=req('.settings/rules','PUT',rules,'owner');assert code==200,body
+seed={'user_auth':{u:{'enabled':True}for u in ['admin','zahangir','rubel','01332517801','01332517802']},'dms_app_release':{'version':'test'},'visit_reports':{'old':{'user':'01332517801','dsoWallet':'801','uddoktaNumber':'01700000001','date':'2026-11-12'}},'new_uddokta_kyc':{'legacy':{'submittedBy':'01332517801','dsoWallet':'801','status':'Collected'}},'uddokta_master':{'a':{'dsoWallet':'801'}},'attendance':{'records':{'a':{'kind':'employee'}}}}
+assert req('','PUT',seed,'owner')[0]==200
+for path in ['visit_reports','uddokta_master','new_uddokta_kyc','user_auth','attendance_server','unknown_section']:
+ check('anonymous denied '+path,path)
+ check('DSO direct read denied '+path,path,user='01332517801')
+check('public release','dms_app_release',want=200)
+for user in ['admin','zahangir']:
+ check('manager visits read '+user,'visit_reports',user=user,want=200)
+ check('credential read denied '+user,'user_auth',user=user)
+for user in ['zahangir','rubel','01332517801']:
+ check('master overwrite denied '+user,'uddokta_master','PUT',{'evil':{}},user)
+check('admin master upload','uddokta_master','PUT',{'a':{'dsoWallet':'801'}},'admin',200)
+for user in ['admin','zahangir','01332517801']:
+ check('visit deletion denied '+user,'visit_reports/old','DELETE',user=user)
+ check('KYC deletion denied '+user,'new_uddokta_kyc/legacy','DELETE',user=user)
+ check('root deletion denied '+user,'','DELETE',user=user)
+check('spoofed login history','user_login_history/2026-11-12/x','PUT',{'userId':'admin'},'01332517801')
+check('foreign sessions read denied','user_login_sessions/01332517802',user='01332517801')
+visit={'user':'01332517801','dsoWallet':'801','uddoktaNumber':'01700000001','date':'2026-11-12'}
+check('own visit creation','visit_reports/new','PUT',visit,'01332517801',200)
+check('visit foreign wallet denied','visit_reports/spoof','PUT',{**visit,'dsoWallet':'802'},'01332517801')
+check('visit owner spoof denied','visit_reports/spoof','PUT',{**visit,'user':'01332517802'},'01332517801')
+k={'id':'k','submittedBy':'01332517801','dsoWallet':'801','uddoktaNumber':'01700000001','status':'Collected','submissionState':'pending','submissionToken':'random-test-token','createdAt':1,'hasPhoto':False}
+check('KYC pending claim','new_uddokta_kyc/k','PUT',k,'01332517801',200)
+check('KYC foreign wallet denied','new_uddokta_kyc/foreign','PUT',{**k,'id':'foreign','dsoWallet':'802'},'01332517801')
+check('KYC atomic completion','','PATCH',{'new_uddokta_kyc/k':{**k,'hasPhoto':True,'submissionState':'complete'},'new_uddokta_kyc_photos/k':'data:image/jpeg;base64,TEST'},'01332517801',200)
+check('DSO cannot change KYC status','new_uddokta_kyc/k/status','PUT','Active','01332517801')
+check('admin status with history','new_uddokta_kyc/k','PATCH',{'status':'Active','statusHistory/event1':{'status':'Active','at':'now','by':'admin','timestamp':2}},'admin',200)
+check('history removal denied','new_uddokta_kyc/k/statusHistory/event1','DELETE',user='admin')
+check('history overwrite denied','new_uddokta_kyc/k/statusHistory/event1','PUT',{'status':'Rejection','at':'later','by':'admin','timestamp':3},'admin')
+check('legacy KYC status update preserved','new_uddokta_kyc/legacy/status','PUT','Active','admin',200)
+check('forced password token denied','visit_reports',token=jwt('admin',change=True))
+check('attendance-only token cannot read visits','visit_reports',token=jwt('admin',attendance=True))
+check('attendance-only token reads attendance','attendance/records',token=jwt('admin',attendance=True),want=200)
+check('disabled account setup','user_auth/01332517801/disabled','PUT',True,token='owner',want=200)
+check('disabled account write denied','visit_reports/disabled','PUT',visit,'01332517801')
+check('reset account setup','user_auth/admin/updatedAt','PUT',42,token='owner',want=200)
+check('pre-reset token denied','visit_reports',user='admin')
+check('new credential token allowed','visit_reports',token=jwt('admin',version=42),want=200)
+print('All emulator security checks passed')

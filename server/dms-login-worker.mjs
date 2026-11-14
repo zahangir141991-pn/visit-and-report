@@ -1,3 +1,4 @@
+import {secureData,securityScope} from './security-data.mjs';
 // Cloudflare module Worker. Secrets belong in Cloudflare Settings, never in this file.
 const encoder=new TextEncoder();let credentialCache=null,oauthCache=null;
 const b64=v=>btoa(String.fromCharCode(...new Uint8Array(v))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
@@ -58,7 +59,8 @@ export async function newPasswordRecord(id,password){
 }
 export function loginClaims(id,account,attendanceOnly=false){
  const mustChange=account.forceChange===true;
- return {dmsUserId:id,attendanceAdmin:['admin','zahangir'].includes(id)&&!mustChange,
+ const scope=securityScope(id,account.dmsAssignments||{});
+ return {dmsUserId:id,dmsCredentialVersion:Number(account.updatedAt||0),dmsRole:scope.all?(id==='admin'?'Admin':'DM'):scope.dss?'DSS':scope.own?'DSO':'Field',dmsWallet:scope.own||'',dmsWallets:Object.fromEntries([...scope.wallets].map(w=>[w,true])),attendanceAdmin:['admin','zahangir'].includes(id)&&!mustChange,
   ...(attendanceOnly?{}:{dmsAuthenticated:true,dmsPasswordChangeRequired:mustChange})};
 }
 async function readInput(req){
@@ -71,8 +73,11 @@ async function readInput(req){
  if(!input||typeof input!=='object'||Array.isArray(input))throw Object.assign(Error('Invalid JSON'),{status:400});return input;
 }
 async function issueToken(env,id,account,attendanceOnly){
+ const assignmentResponse=performanceDssUsers[id]?await firebase(env,'dss_dso_assignments_common'):null;
+ if(assignmentResponse&&!assignmentResponse.ok)throw Error('FIREBASE_ACCESS_DENIED');
+ const dmsAssignments=assignmentResponse?await assignmentResponse.json():{};
  const now=Math.floor(Date.now()/1000),c=serviceAccount(env);
- return signedJwt(env,{iss:c.account.client_email,sub:c.account.client_email,aud:'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit',iat:now,exp:now+3600,uid:'dms_'+id,claims:loginClaims(id,account,attendanceOnly)});
+ return signedJwt(env,{iss:c.account.client_email,sub:c.account.client_email,aud:'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit',iat:now,exp:now+3600,uid:'dms_'+id,claims:loginClaims(id,{...account,dmsAssignments},attendanceOnly)});
 }
 // Read-only monthly access: verify Firebase session before selecting server-owned scope.
 const performanceDssUsers={sohag:'MOHOSIN HOSSAIN SOHAG',alamin:'MD. ALAMIN',imran:'MD. IMRAN HOSSAIN',rubel:'RUBEL',shofiq:'MD. SHOFIQ'};
@@ -94,7 +99,7 @@ async function performanceSession(env,input){
  let claims;try{const part=token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');claims=JSON.parse(atob(part.padEnd(Math.ceil(part.length/4)*4,'=')))}catch{throw Object.assign(Error('Invalid session'),{status:401})}
  const id=claims.dmsUserId;
  if(!user||user.disabled===true||!approvedUser(id)||claims.aud!=='visit-report-ea224'||claims.iss!=='https://securetoken.google.com/visit-report-ea224'||claims.sub!=='dms_'+id||user.localId!==claims.sub||claims.dmsAuthenticated!==true||claims.dmsPasswordChangeRequired!==false||claims.exp<=Date.now()/1000)throw Object.assign(Error('Report permission required'),{status:403});
- const account=await readAccount(env,id);if(!account||account.enabled===false||account.disabled===true||account.forceChange===true)throw Object.assign(Error('Sign in again'),{status:403});return id;
+ const account=await readAccount(env,id);if(!account||account.enabled===false||account.disabled===true||account.forceChange===true||Number(claims.dmsCredentialVersion||0)!==Number(account.updatedAt||0))throw Object.assign(Error('Sign in again'),{status:403});return id;
 }
 async function performanceReport(env,input){const id=await performanceSession(env,input);if(!['admin','zahangir',...Object.keys(performanceDssUsers)].includes(id)&&!/^013325178(?:0[1-9]|[1-3]\d|4[0-6])$/.test(id))throw Object.assign(Error('Report permission required'),{status:403});const [r,m]=await Promise.all([firebase(env,'monthly_performance'),firebase(env,'uddokta_master')]);if(!r.ok||!m.ok)throw Error('FIREBASE_ACCESS_DENIED');return scopedPerformance(id,await r.json(),await m.json());}
 export function scopedTargets(id,data,assignments,master){
@@ -117,16 +122,17 @@ export default {async fetch(req,env){
  const u=new URL(req.url),origin=req.headers.get('Origin')||'';
  if(req.method==='GET'&&['/','/health'].includes(u.pathname)){
   try{serviceAccount(env);databaseUrl(env);await credentialCache.key;
-   return json({ok:true,service:'DMS Secure Login',version:'147',configured:true,capabilities:['attendance-token','dms-login','password-change'],note:'Configuration validated only; authenticated login and database rules must be tested separately.'});
+   return json({ok:true,service:'DMS Secure Login',version:'166',configured:true,capabilities:['attendance-token','dms-login','password-change','scoped-data-v1'],note:'Configuration validated only; authenticated login and database rules must be tested separately.'});
   }catch(e){return json({ok:false,configured:false,error:errors[e.message]||'Login server configuration error'},503)}
  }
- if(!['/','/token','/login','/password','/admin/password','/performance','/targets'].includes(u.pathname))return json({error:'Not found'},404);
+ if(!['/','/token','/login','/password','/admin/password','/performance','/targets','/data'].includes(u.pathname))return json({error:'Not found'},404);
  if(!origin||!origins(env).includes(origin))return json({error:'Website is not permitted'},403);
  if(req.method==='OPTIONS')return new Response(null,{status:204,headers:{'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Methods':'POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type',Vary:'Origin','Access-Control-Max-Age':'600'}});
  if(req.method!=='POST')return json({error:'POST required'},405,origin);
  if(!req.headers.get('Content-Type')?.toLowerCase().startsWith('application/json'))return json({error:'JSON required'},415,origin);
  try{
   const input=await readInput(req);
+  if(u.pathname==='/data'){const id=await performanceSession(env,input);const data=await secureData(input,id,async path=>{const r=await firebase(env,path);if(!r.ok)throw Error('FIREBASE_ACCESS_DENIED');return r.json();});return json({data},200,origin);}
   if(u.pathname==='/targets')return json(await targetReport(env,input),200,origin);
   if(u.pathname==='/performance')return json(await performanceReport(env,input),200,origin);
   const id=normalizeUser(input.userId),password=input.password;
@@ -169,3 +175,4 @@ export default {async fetch(req,env){
   return json({token,...(attendanceOnly?{}:{userId:id,forceChange:account.forceChange===true||password==='1234'})},200,origin);
  }catch(e){return json({error:e.status?e.message:errors[e.message]||'Login server temporarily unavailable'},e.status||503,origin)}
 }};
+
