@@ -55,13 +55,16 @@ check('legacy KYC status update preserved','new_uddokta_kyc/legacy/status','PUT'
 check('forced password token denied','visit_reports',token=jwt('admin',change=True))
 check('attendance-only token cannot read visits','visit_reports',token=jwt('admin',attendance=True))
 check('attendance-only token reads attendance','attendance/records',token=jwt('admin',attendance=True),want=200)
-# Exercise the real client protocol: conditional claim, Firebase-resolved clock,
+# Exercise the real client protocol: rules-enforced unique claim, resolved clock,
 # separate atomic photo completion, and retries for all 46 DSO wallets.
 for wallet in range(801,847):
  user='01332517'+str(wallet);rid='clock_'+str(wallet)
  pending={**k,'id':rid,'submittedBy':user,'dsoWallet':str(wallet),'createdAt':{'.sv':'timestamp'}}
- code,body=req('new_uddokta_kyc/'+rid,'PUT',pending,jwt(user),{'If-Match':'null_etag'})
- assert code==200,('conditional claim',wallet,code,body)
+ if wallet==817:
+  code,body=req('new_uddokta_kyc/'+rid,'PUT',pending,jwt(user),{'If-Match':'null_etag'})
+  assert code==401,('ETag correctly requires direct read permission',code,body)
+ code,body=req('new_uddokta_kyc/'+rid,'PUT',pending,jwt(user))
+ assert code==200,('rules-enforced unique claim',wallet,code,body)
  claimed=json.loads(body);assert isinstance(claimed.get('createdAt'),(int,float)),('unresolved clock',wallet)
  if wallet==817:
   # The old client sent the unresolved timestamp placeholder again. That changes
@@ -73,7 +76,19 @@ for wallet in range(801,847):
  complete={**claimed,'hasPhoto':True,'submissionState':'complete','updatedAt':{'.sv':'timestamp'}}
  code,body=req('','PATCH',{'new_uddokta_kyc/'+rid:complete,'new_uddokta_kyc_photos/'+rid:'data:image/jpeg;base64,TEST'},jwt(user))
  assert code==200,('atomic completion with real timestamp',wallet,code,body)
- print('PASS conditional KYC claim and real-clock completion DSO',wallet)
+ print('PASS unique KYC claim and real-clock completion DSO',wallet)
+# Concurrent submissions must not overwrite one another without an ETag header.
+from concurrent.futures import ThreadPoolExecutor
+race_id='race_claim'
+def race(token):
+ value={**k,'id':race_id,'submissionToken':token,'createdAt':{'.sv':'timestamp'}}
+ return token,req('new_uddokta_kyc/'+race_id,'PUT',value,jwt('01332517801'))[0]
+with ThreadPoolExecutor(max_workers=2)as pool: results=list(pool.map(race,['attempt-a','attempt-b']))
+assert sorted(code for _,code in results)==[200,401],('duplicate race protection',results)
+code,body=req('new_uddokta_kyc/'+race_id,token='owner');saved=json.loads(body)
+assert saved['submissionToken']==next(token for token,code in results if code==200)
+print('PASS concurrent claims: only one accepted, winner preserved')
+check('completed KYC cannot be replaced by own DSO','new_uddokta_kyc/clock_817','PUT',{**k,'id':'clock_817','submittedBy':'01332517817','dsoWallet':'817'},'01332517817')
 check('disabled account setup','user_auth/01332517801/disabled','PUT',True,token='owner',want=200)
 check('disabled account write denied','visit_reports/disabled','PUT',visit,'01332517801')
 check('reset account setup','user_auth/admin/updatedAt','PUT',42,token='owner',want=200)

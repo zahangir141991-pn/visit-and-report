@@ -6015,8 +6015,19 @@ async function claimUniqueKyc(record,user){
  const all=await readKycServer('new_uddokta_kyc');assertKycNumberAvailable(all,number,id,token,user);
  const existing=all?.[id];
  if(existing){if(!kycIsOwnAttempt(existing,token,user))throw Error('এই Uddokta Number আগে জমা হয়েছে।');return existing;}
- const result=await visitRestRequest(path,'PUT',{...record,hasPhoto:false,submissionState:'pending'},{'if-match':'null_etag'},12000);
- if(result.status===412){const current=result.data;if(kycIsOwnAttempt(current,token,user))return current;throw Error('এই Uddokta Number অন্য submission-এ গ্রহণ করা হয়েছে। Duplicate নেওয়া যাবে না।');}
+ let result;
+ try{
+  // The database write rule atomically allows only a new claim or the same
+  // pending attempt. If-Match would also require direct read permission, which
+  // field users intentionally do not have. Never open reads to obtain an ETag.
+  result=await visitRestRequest(path,'PUT',{...record,hasPhoto:false,submissionState:'pending'},{},12000);
+ }catch(error){
+  if(![401,403].includes(Number(error?.status)))throw error;
+  const current=await readKycServer(path);
+  if(current&&kycIsOwnAttempt(current,token,user))return current;
+  throw Error('এই নম্বরে KYC আগে জমা আছে অথবা নির্বাচিত Wallet-এ অনুমতি নেই। Admin-এর সঙ্গে যাচাই করুন।');
+ }
+
  // Firebase resolves ServerValue.TIMESTAMP on this first write. Reusing the
  // request's placeholder on completion changes immutable createdAt and is denied.
  let claimed=result.data;
