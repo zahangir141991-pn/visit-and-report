@@ -3,7 +3,7 @@
 <head>
     <script src="assets/secure-data.js?v=166"></script>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-12-security-v166">
+    <meta name="dms-app-version" content="2026-11-14-kyc-clock-v168">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1658,7 +1658,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-12-security-v166';
+        const APP_CACHE_VERSION = '2026-11-14-kyc-clock-v168';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -1980,7 +1980,7 @@ body.app-logged-in #view-login{display:none!important}
             const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),25000);
             try{const response=await fetch(DMS_AUTH_SERVER+path,{method:'POST',cache:'no-store',credentials:'omit',headers:{'Content-Type':'application/json'},body:JSON.stringify(input),signal:controller.signal});
                 let data;try{data=await response.json();}catch(_){throw Error('Login server response invalid');}
-                if(!response.ok)throw Error(data.error||'Login server unavailable');return data;
+                if(!response.ok){const error=Error(data.error||'Login server unavailable');error.status=response.status;throw error;}return data;
             }finally{clearTimeout(timer);}
         }
         async function signInDmsServer(user,password){
@@ -1999,13 +1999,42 @@ body.app-logged-in #view-login{display:none!important}
             if(currentUser!==user||generation!==appSessionGeneration)throw Error('Login session changed');
             return result.data;
         }
+        let dmsWriteSessionRenewal=null;
+        async function renewDmsSessionForWrite(user,generation){
+            if(!user||currentUser!==user||appSessionGeneration!==generation)throw Error('Login session changed');
+            if(dmsWriteSessionRenewal?.user===user&&dmsWriteSessionRenewal.generation===generation)return dmsWriteSessionRenewal.promise;
+            const password=userPasswords[user];
+            if(typeof password!=='string'||!password)throw Error('Session শেষ হয়েছে। Logout করে আবার Sign in করুন।');
+            const job={user,generation,promise:null};
+            job.promise=(async()=>{
+                const result=await signInDmsServer(user,password);
+                if(currentUser!==user||appSessionGeneration!==generation){
+                    if(firebase.auth().currentUser?.uid==='dms_'+user)await firebase.auth().signOut();
+                    throw Error('Login session changed');
+                }
+                if(result.forceChange)throw Error('আগে আপনার password পরিবর্তন করুন।');
+                return true;
+            })().finally(()=>{if(dmsWriteSessionRenewal===job)dmsWriteSessionRenewal=null;});
+            dmsWriteSessionRenewal=job;return job.promise;
+        }
+        async function retryDmsSessionWrite(task){
+            const user=currentUser,generation=appSessionGeneration;
+            try{return await task();}
+            catch(error){
+                if(![401,403].includes(Number(error?.status))||!user||currentUser!==user||appSessionGeneration!==generation)throw error;
+                // One verified session renewal, never a permission bypass or network retry.
+                await renewDmsSessionForWrite(user,generation);
+                if(currentUser!==user||appSessionGeneration!==generation)throw Error('Login session changed');
+                return task();
+            }
+        }
         async function authenticatedDatabaseUrl(raw,path=''){
             const url=new URL(raw);
             if(url.origin!==new URL(firebaseConfig.databaseURL).origin)throw Error('Unexpected database server');
             if(path==='dms_app_release'&&!currentUser)return url.href;
             const sessionUser=currentUser,generation=appSessionGeneration;
             const authUser=window.firebase&&typeof firebase.auth==='function'?firebase.auth().currentUser:null;
-            if(!sessionUser||!authUser||authUser.uid!=='dms_'+sessionUser)throw Error('Please sign in again');
+            if(!sessionUser||!authUser||authUser.uid!=='dms_'+sessionUser){const error=Error('Please sign in again');error.status=401;throw error;}
             const token=await authUser.getIdToken();
             if(!currentUser||currentUser!==sessionUser||generation!==appSessionGeneration)throw Error('Login session changed');
             url.searchParams.set('auth',token);return url.href;
@@ -3668,6 +3697,10 @@ function clearPrivateSessionData(){
         }
 
         async function visitRestRequest(path,method,body,headers={},timeout=15000){
+            const task=()=>visitRestRequestOnce(path,method,body,headers,timeout);
+            return method==='GET'?task():retryDmsSessionWrite(task);
+        }
+        async function visitRestRequestOnce(path,method,body,headers={},timeout=15000){
             if(method==='GET'&&DmsSecureData.isPrivate(path))return {status:200,data:await securePrivateRead(path)};
             const requestUrl=await authenticatedDatabaseUrl(String(firebaseConfig.databaseURL).replace(/\/$/,'')+'/'+String(path||'').split('/').filter(Boolean).map(encodeURIComponent).join('/')+'.json');
             return new Promise((resolve,reject)=>{
@@ -5192,6 +5225,9 @@ async function saveReportInParallelChunks(reportType,payload,targetSnapshot){
 }
 
 async function firebaseRestWrite(path,body,method='PUT',onProgress,timeoutMs=45000){
+    return retryDmsSessionWrite(()=>firebaseRestWriteOnce(path,body,method,onProgress,timeoutMs));
+}
+async function firebaseRestWriteOnce(path,body,method='PUT',onProgress,timeoutMs=45000){
     const requestUrl=await authenticatedDatabaseUrl(String(firebaseConfig.databaseURL).replace(/\/$/,'')+'/'+String(path||'').split('/').filter(Boolean).map(encodeURIComponent).join('/')+'.json');
     return new Promise((resolve,reject)=>{
         const clean=String(path||'').split('/').filter(Boolean).map(encodeURIComponent).join('/');
@@ -5201,7 +5237,7 @@ async function firebaseRestWrite(path,body,method='PUT',onProgress,timeoutMs=450
         xhr.setRequestHeader('Content-Type','application/json;charset=UTF-8');
         xhr.timeout=timeoutMs;
         if(xhr.upload&&onProgress)xhr.upload.onprogress=e=>onProgress(e.loaded,e.lengthComputable?e.total:body.length);
-        xhr.onload=()=>xhr.status>=200&&xhr.status<300?resolve(xhr.responseText):reject(new Error('Server upload failed ('+xhr.status+')'));
+        xhr.onload=()=>{if(xhr.status>=200&&xhr.status<300)return resolve(xhr.responseText);const error=new Error('Server upload failed ('+xhr.status+')');error.status=xhr.status;reject(error);};
         xhr.onerror=()=>reject(new Error('Network upload failed'));
         xhr.ontimeout=()=>reject(new Error('Upload timeout. Internet connection check করুন।'));
         xhr.send(body);
@@ -5974,7 +6010,20 @@ function clearKycAttempt(attempt){kycAttemptTokens.delete(attempt.key);try{local
 function kycIsOwnAttempt(record,token,user){return !!record&&record.submissionToken===token&&String(record.submittedBy||'')===String(user);}
 function assertKycNumberAvailable(records,number,id,token,user){for(const [key,record] of Object.entries(records||{})){if(!record||typeof record!=='object')continue;if(normalizeKycNumber(record.uddoktaNumber)!==number)continue;if(key===id&&kycIsOwnAttempt(record,token,user))continue;throw Error('এই Uddokta Number-এর KYC আগে জমা হয়েছে বা জমা হচ্ছে। একই নম্বর আবার নেওয়া যাবে না।');}}
 async function readKycServer(path){const response=await visitRestRequest(path,'GET',null,{},12000);return response.data;}
-async function claimUniqueKyc(record,user){const id=record.id,number=record.uddoktaNumber,token=record.submissionToken;const all=await readKycServer('new_uddokta_kyc');assertKycNumberAvailable(all,number,id,token,user);const existing=all?.[id];if(existing){if(!kycIsOwnAttempt(existing,token,user))throw Error('এই Uddokta Number আগে জমা হয়েছে।');return existing;}const result=await visitRestRequest('new_uddokta_kyc/'+id,'PUT',{...record,hasPhoto:false,submissionState:'pending'},{'if-match':'null_etag'},12000);if(result.status===412){const current=result.data;if(kycIsOwnAttempt(current,token,user))return current;throw Error('এই Uddokta Number অন্য submission-এ গ্রহণ করা হয়েছে। Duplicate নেওয়া যাবে না।');}return {...record,hasPhoto:false,submissionState:'pending'};}
+async function claimUniqueKyc(record,user){
+ const id=record.id,number=record.uddoktaNumber,token=record.submissionToken,path='new_uddokta_kyc/'+id;
+ const all=await readKycServer('new_uddokta_kyc');assertKycNumberAvailable(all,number,id,token,user);
+ const existing=all?.[id];
+ if(existing){if(!kycIsOwnAttempt(existing,token,user))throw Error('এই Uddokta Number আগে জমা হয়েছে।');return existing;}
+ const result=await visitRestRequest(path,'PUT',{...record,hasPhoto:false,submissionState:'pending'},{'if-match':'null_etag'},12000);
+ if(result.status===412){const current=result.data;if(kycIsOwnAttempt(current,token,user))return current;throw Error('এই Uddokta Number অন্য submission-এ গ্রহণ করা হয়েছে। Duplicate নেওয়া যাবে না।');}
+ // Firebase resolves ServerValue.TIMESTAMP on this first write. Reusing the
+ // request's placeholder on completion changes immutable createdAt and is denied.
+ let claimed=result.data;
+ if(!claimed||claimed.id!==id||!kycIsOwnAttempt(claimed,token,user)||!Number.isFinite(claimed.createdAt))claimed=await readKycServer(path);
+ if(!claimed||claimed.id!==id||!kycIsOwnAttempt(claimed,token,user)||!Number.isFinite(claimed.createdAt))throw Error('KYC reservation যাচাই হয়নি। একই form রেখে আবার Submit করুন।');
+ return claimed;
+}
 async function verifyKycSaved(id,token,user){try{const saved=await readKycServer('new_uddokta_kyc/'+id);return !!(saved&&saved.id===id&&saved.hasPhoto&&saved.submissionState==='complete'&&kycIsOwnAttempt(saved,token,user));}catch(_){return false;}}
 async function submitKyc(event){
  event?.preventDefault();
@@ -6002,7 +6051,7 @@ async function submitKycCore(){
   const record={id,collectionDate:getDhakaToday(),dsoWallet:selectedDsoWallet,uddoktaNumber,shopName:document.getElementById('kyc-shop-name').value.trim(),ownerName:document.getElementById('kyc-owner-name').value.trim(),ownerContact:contact,thana:document.getElementById('kyc-thana').value.trim(),bazarName:document.getElementById('kyc-bazar-name').value.trim(),locationName,gps,submittedBy:user,submitterRole:role.role,dmId:'zahangir',dssName,status:'Collected',collectedAt,submittedAt:collectedAt,rejectionReason:'',hasPhoto:true,submissionToken:attempt.token,submissionState:'complete',createdAt:firebase.database.ServerValue.TIMESTAMP,updatedAt:firebase.database.ServerValue.TIMESTAMP};
   const claimed=await claimUniqueKyc(record,user);if(submitGeneration!==appSessionGeneration)return;
   let saved=claimed.submissionState==='complete'&&claimed.hasPhoto===true;
-  if(!saved){if(btn)btn.textContent='Saving KYC…';const updates={};updates['new_uddokta_kyc/'+id]={...record,createdAt:claimed.createdAt||record.createdAt};updates['new_uddokta_kyc_photos/'+id]=kycPictureData;try{await visitRestRequest('','PATCH',updates,{},18000);saved=true;}catch(_){saved=await verifyKycSaved(id,attempt.token,user);if(!saved)throw Error('Server confirmation পাওয়া যায়নি। একই নম্বরের form রেখে আবার Submit করুন; duplicate হবে না।');}}
+  if(!saved){if(btn)btn.textContent='Saving KYC…';const updates={};updates['new_uddokta_kyc/'+id]={...record,createdAt:claimed.createdAt};updates['new_uddokta_kyc_photos/'+id]=kycPictureData;try{await visitRestRequest('','PATCH',updates,{},18000);saved=true;}catch(_){saved=await verifyKycSaved(id,attempt.token,user);if(!saved)throw Error('Server confirmation পাওয়া যায়নি। একই নম্বরের form রেখে আবার Submit করুন; duplicate হবে না।');}}
   if(submitGeneration!==appSessionGeneration)return;clearKycAttempt(attempt);db.ref('dms_live_update_signal').set({type:'kyc',revision:firebase.database.ServerValue.TIMESTAMP,recordId:id}).catch(()=>{});clearKycForm();kycAlert('KYC successfully submitted. Current Status: Collected','success');setTimeout(()=>{if(submitGeneration===appSessionGeneration)switchTab('kyc-status');},350);
  }catch(e){if(submitGeneration===appSessionGeneration)kycAlert('KYC submit হয়নি: '+e.message,'error');}finally{kycSubmitBusy=false;if(btn){btn.disabled=false;btn.textContent='Submit KYC';}}
 }
@@ -6420,7 +6469,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-12-security-v166';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-14-kyc-clock-v168';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');

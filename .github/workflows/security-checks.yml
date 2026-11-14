@@ -11,7 +11,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - run: node --test tests/security.test.mjs tests/login-worker.test.mjs tests/security-scope.test.mjs tests/backup.test.mjs
+      - run: node --test tests/security.test.mjs tests/login-worker.test.mjs tests/security-scope.test.mjs tests/backup.test.mjs tests/kyc-submit-clock.test.mjs
       - name: Test rules against isolated Firebase emulator
         run: |
           printf '%s\n' '{"database":{"rules":"server/DMS_DATABASE_RULES.json"},"emulators":{"database":{"port":19005},"ui":{"enabled":false}}}' > dms-security-emulator.json
