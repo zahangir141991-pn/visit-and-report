@@ -1,3 +1,4 @@
+import {handleBackupExport} from './backup-export.mjs';
 import {secureData,securityScope} from './security-data.mjs';
 // Cloudflare module Worker. Secrets belong in Cloudflare Settings, never in this file.
 const encoder=new TextEncoder();let credentialCache=null,oauthCache=null;
@@ -120,9 +121,10 @@ async function targetReport(env,input){
 }
 export default {async fetch(req,env){
  const u=new URL(req.url),origin=req.headers.get('Origin')||'';
+ if(u.pathname==='/backup/export')return handleBackupExport(req,env,{firebase,rateLimit});
  if(req.method==='GET'&&['/','/health'].includes(u.pathname)){
   try{serviceAccount(env);databaseUrl(env);await credentialCache.key;
-   return json({ok:true,service:'DMS Secure Login',version:'166',configured:true,capabilities:['attendance-token','dms-login','password-change','scoped-data-v1'],note:'Configuration validated only; authenticated login and database rules must be tested separately.'});
+   return json({ok:true,service:'DMS Secure Login',version:'167',configured:true,capabilities:['attendance-token','dms-login','password-change','scoped-data-v1','encrypted-backup-export-v1'],note:'Configuration validated only; authenticated login and database rules must be tested separately.'});
   }catch(e){return json({ok:false,configured:false,error:errors[e.message]||'Login server configuration error'},503)}
  }
  if(!['/','/token','/login','/password','/admin/password','/performance','/targets','/data'].includes(u.pathname))return json({error:'Not found'},404);

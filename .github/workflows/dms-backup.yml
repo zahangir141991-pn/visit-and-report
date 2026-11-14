@@ -1,0 +1,28 @@
+name: DMS encrypted daily backup
+on:
+  schedule:
+    # 03:37 Bangladesh time (GitHub may start later than the scheduled time).
+    - cron: '37 21 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: dms-encrypted-daily-backup
+  cancel-in-progress: false
+jobs:
+  backup:
+    if: github.repository == 'zahangir141991-pn/visit-and-report' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Export, encrypt, verify and save the latest seven successful snapshots
+        env:
+          DMS_BACKUP_TOKEN: ${{ secrets.DMS_BACKUP_TOKEN }}
+          DMS_BACKUP_KEY: ${{ secrets.DMS_BACKUP_KEY }}
+        run: node scripts/dms-backup.mjs
+      - name: Remove runner-local encrypted temporary files
+        if: always()
+        run: rm -rf -- .dms-backup-private
