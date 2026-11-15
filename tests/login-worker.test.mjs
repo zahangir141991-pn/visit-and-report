@@ -2,6 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import {web
 import worker,{normalizeUser,approvedUser,passwordMatches,newPasswordRecord,loginClaims} from '../server/dms-login-worker.mjs';
 if(!globalThis.crypto)globalThis.crypto=webcrypto;
 const origin='https://zahangir141991-pn.github.io';
+let lookupUser=null,lookupOk=true;
 let account,limits=new Map(),writes=[],env;
 const sha=async(id,p)=>Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('dms-v1|'+id+'|'+p))).toString('hex');
 const key=await crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);
@@ -9,6 +10,7 @@ const der=await crypto.subtle.exportKey('pkcs8',key.privateKey);
 env={FIREBASE_SERVICE_ACCOUNT:JSON.stringify({type:'service_account',project_id:'visit-report-ea224',client_email:'test@visit-report-ea224.iam.gserviceaccount.com',private_key:'-----BEGIN PRIVATE KEY-----\n'+Buffer.from(der).toString('base64')+'\n-----END PRIVATE KEY-----'})};
 async function run(path,input,options={}){
  const old=globalThis.fetch;globalThis.fetch=async(url,opts={})=>{
+  if(String(url).includes('accounts:lookup'))return Response.json({users:lookupUser?[lookupUser]:[]},{status:lookupOk?200:400});
   if(String(url)==='https://oauth2.googleapis.com/token')return Response.json({access_token:'mock',expires_in:3600});
   if(String(url).includes('/attendance_server/limits/')){const path=String(url);if(opts.method==='PUT'){limits.set(path,JSON.parse(opts.body));return Response.json(true)}return Response.json(limits.get(path)||null,{headers:{etag:'"limit"'}})}
   if(String(url).includes('/user_auth/')){if(opts.method==='PUT'){writes.push(JSON.parse(opts.body));return Response.json(true)}return Response.json(account,{headers:{etag:'"account"'}})}
@@ -20,7 +22,7 @@ test('approved IDs are exact and legacy 801–846 IDs normalize',()=>{assert.equ
 test('hash verification rejects disabled, missing, unknown algorithms and wrong passwords',async()=>{const hash=await sha('admin','known-password');const a={passwordHash:hash};assert.ok(await passwordMatches(a,'admin','known-password'));for(const b of [null,{...a,disabled:true},{...a,enabled:false},{...a,passwordAlgorithm:'unknown'}])assert.ok(!await passwordMatches(b,'admin','known-password'));assert.ok(!await passwordMatches(a,'admin','wrong'));});
 test('new password hashes have unique salts and verify only for the correct account',async()=>{const a=await newPasswordRecord('admin','new-long-password'),b=await newPasswordRecord('admin','new-long-password');assert.notEqual(a.passwordHash,b.passwordHash);assert.ok(await passwordMatches(a,'admin','new-long-password'));assert.ok(!await passwordMatches(a,'zahangir','new-long-password'));assert.ok(!await passwordMatches({...a,passwordIterations:1},'admin','new-long-password'));});
 test('claims separate Attendance authority from DSO and forced-change users',()=>{assert.equal(loginClaims('admin',{}).attendanceAdmin,true);assert.equal(loginClaims('01332517801',{}).attendanceAdmin,false);assert.equal(loginClaims('admin',{forceChange:true}).attendanceAdmin,false);assert.equal(loginClaims('admin',{forceChange:true}).dmsPasswordChangeRequired,true);assert.ok(!('dmsAuthenticated' in loginClaims('admin',{},true)));});
-test('health identifies staged version; cross-project configuration fails closed',async()=>{let r=await worker.fetch(new Request('https://test.workers.dev/health'),env);assert.equal(r.status,200);assert.equal((await r.json()).version,'167');r=await worker.fetch(new Request('https://test.workers.dev/health'),{...env,FIREBASE_DATABASE_URL:'https://other.firebaseio.com'});assert.equal(r.status,503);});
+test('health identifies staged version; cross-project configuration fails closed',async()=>{let r=await worker.fetch(new Request('https://test.workers.dev/health'),env);assert.equal(r.status,200);assert.equal((await r.json()).version,'171');r=await worker.fetch(new Request('https://test.workers.dev/health'),{...env,FIREBASE_DATABASE_URL:'https://other.firebaseio.com'});assert.equal(r.status,503);});
 test('routes reject foreign origins, bad bodies and unauthorized accounts',async()=>{assert.equal((await run('/login',{userId:'admin',password:'a'},{origin:'https://evil.example'})).status,403);assert.equal((await run('/login',{userId:'unknown',password:'a'})).status,401);assert.equal((await run('/token',{userId:'01332517801',password:'a'})).status,401);assert.equal((await run('/login',{padding:'x'.repeat(5000)})).status,413);});
 test('valid DSO login issues a restricted signed token and returns no account hash',async()=>{limits.clear();account={passwordHash:await sha('01332517801','known-password')};const r=await run('/login',{userId:'801',password:'known-password'});assert.equal(r.status,200);const data=await r.json();assert.ok(!('passwordHash' in data));const [head,payload,signature]=data.token.split('.');assert.ok(await crypto.subtle.verify('RSASSA-PKCS1-v1_5',key.publicKey,Buffer.from(signature,'base64url'),new TextEncoder().encode(head+'.'+payload)));const claims=JSON.parse(Buffer.from(payload,'base64url')).claims;assert.equal(claims.dmsUserId,'01332517801');assert.equal(claims.attendanceAdmin,false);});
 test('wrong password never grants a token and attempts are throttled',async()=>{limits.clear();account={passwordHash:await sha('admin','known-password')};for(let i=0;i<10;i++)assert.equal((await run('/login',{userId:'admin',password:'wrong'})).status,401);assert.equal((await run('/login',{userId:'admin',password:'known-password'})).status,429);});
@@ -36,3 +38,16 @@ test('admin cannot set a short custom password or reset to a different default',
  for(const [newPassword,forceChange]of [['abc',false],['arbitrary',true]]){limits.clear();writes=[];account={passwordHash:await sha('admin','admin-secret')};assert.equal((await run('/admin/password',{userId:'admin',password:'admin-secret',targetUser:'834',newPassword,forceChange})).status,400);assert.equal(writes.length,0);}
 });
 
+
+test('saved sessions receive Attendance-only tokens only for verified enabled administrators',async()=>{
+ const token=(id,extra={})=>'header.'+Buffer.from(JSON.stringify({aud:'visit-report-ea224',iss:'https://securetoken.google.com/visit-report-ea224',sub:'dms_'+id,dmsUserId:id,dmsAuthenticated:true,dmsPasswordChangeRequired:false,exp:Date.now()/1000+3600,...extra})).toString('base64url')+'.verified-by-firebase-mock';
+ for(const id of ['admin','zahangir','01332517801']){
+  account={enabled:true};lookupOk=true;lookupUser={localId:'dms_'+id};
+  const r=await run('/token',{idToken:token(id)});assert.equal(r.status,id==='01332517801'?403:200);
+  if(r.status===200){const claims=JSON.parse(Buffer.from((await r.json()).token.split('.')[1],'base64url')).claims;assert.equal(claims.attendanceAdmin,true);assert.ok(!claims.dmsAuthenticated);}
+ }
+ lookupUser={localId:'dms_admin'};account={disabled:true};assert.equal((await run('/token',{idToken:token('admin')})).status,403);
+ account={enabled:true,updatedAt:123};assert.equal((await run('/token',{idToken:token('admin')})).status,403);
+ account={enabled:true};lookupOk=false;assert.equal((await run('/token',{idToken:token('admin')})).status,401);
+ lookupOk=true;assert.equal((await run('/token',{idToken:token('admin',{dmsPasswordChangeRequired:true})})).status,403);
+});

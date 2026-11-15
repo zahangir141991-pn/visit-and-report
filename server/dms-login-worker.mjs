@@ -124,7 +124,7 @@ export default {async fetch(req,env){
  if(u.pathname==='/backup/export')return handleBackupExport(req,env,{firebase,rateLimit});
  if(req.method==='GET'&&['/','/health'].includes(u.pathname)){
   try{serviceAccount(env);databaseUrl(env);await credentialCache.key;
-   return json({ok:true,service:'DMS Secure Login',version:'167',configured:true,capabilities:['attendance-token','dms-login','password-change','scoped-data-v1','encrypted-backup-export-v1'],note:'Configuration validated only; authenticated login and database rules must be tested separately.'});
+   return json({ok:true,service:'DMS Secure Login',version:'171',configured:true,capabilities:['attendance-token','dms-login','password-change','scoped-data-v1','encrypted-backup-export-v1','session-attendance-token-v1'],note:'Configuration validated only; authenticated login and database rules must be tested separately.'});
   }catch(e){return json({ok:false,configured:false,error:errors[e.message]||'Login server configuration error'},503)}
  }
  if(!['/','/token','/login','/password','/admin/password','/performance','/targets','/data'].includes(u.pathname))return json({error:'Not found'},404);
@@ -134,6 +134,13 @@ export default {async fetch(req,env){
  if(!req.headers.get('Content-Type')?.toLowerCase().startsWith('application/json'))return json({error:'JSON required'},415,origin);
  try{
   const input=await readInput(req);
+  if(u.pathname==='/token'&&typeof input.idToken==='string'){
+   const id=await performanceSession(env,input);
+   if(!['admin','zahangir'].includes(id))return json({error:'Attendance permission required'},403,origin);
+   const account=await readAccount(env,id);
+   const token=await issueToken(env,id,account,true);
+   return json({token},200,origin);
+  }
   if(u.pathname==='/data'){const id=await performanceSession(env,input);const data=await secureData(input,id,async path=>{const r=await firebase(env,path);if(!r.ok)throw Error('FIREBASE_ACCESS_DENIED');return r.json();});return json({data},200,origin);}
   if(u.pathname==='/targets')return json(await targetReport(env,input),200,origin);
   if(u.pathname==='/performance')return json(await performanceReport(env,input),200,origin);
