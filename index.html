@@ -3,7 +3,7 @@
 <head>
     <script src="assets/secure-data.js?v=166"></script>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-15-active-morning-v170">
+    <meta name="dms-app-version" content="2026-11-15-persistent-session-v171">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1605,14 +1605,14 @@ body.app-logged-in #view-login{display:none!important}
             };
             prototype.dmsTracked=true;
         }
-        function stopPrivateFirebaseSubscriptions(){
+        function stopPrivateFirebaseSubscriptions(signOutAuth=true){
             db?.stopScopedReads?.();
             if(window.closePerformance)window.closePerformance();
             window.DmsTargets?.close();
             for(const subscription of activeFirebaseSubscriptions){try{subscription.query.off(subscription.event,subscription.callback);}catch(_){}}
             activeFirebaseSubscriptions.clear();firebaseListenersStarted=false;firebaseConnectionMonitorStarted=false;
             morningReportRealtimeRef=null;afternoonReportRealtimeRef=null;kycRealtimeRef=null;
-            try{dmsSignOutPromise=firebase.auth().signOut().catch(()=>{});}catch(_){}
+            if(signOutAuth)try{dmsSignOutPromise=firebase.auth().signOut().catch(()=>{});}catch(_){}
         }
         function attachFirebaseConnectionMonitor() {
             if (!db || firebaseConnectionMonitorStarted) return;
@@ -1650,7 +1650,7 @@ body.app-logged-in #view-login{display:none!important}
                 return null;
             }
         }
-        // Login is entirely local; heavy SDK loading starts only after success.
+        // Firebase initializes before session restoration; private data stays hidden until verified.
         initializeFirebaseServices();
 
         // ----------------------------------------------------
@@ -1659,7 +1659,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-15-active-morning-v170';
+        const APP_CACHE_VERSION = '2026-11-15-persistent-session-v171';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -1984,14 +1984,77 @@ body.app-logged-in #view-login{display:none!important}
                 if(!response.ok){const error=Error(data.error||'Login server unavailable');error.status=response.status;throw error;}return data;
             }finally{clearTimeout(timer);}
         }
+        async function setDmsSessionPersistence(auth){
+            try{await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);}
+            catch(error){await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);}
+        }
         async function signInDmsServer(user,password){
             const [result]=await Promise.all([authServerRequest('/login',{userId:user,password}),ensureFirebaseSdk()]);
             if(result.userId!==user||typeof result.token!=='string'||!result.token)throw Error('Login identity verification failed');
             await dmsSignOutPromise;
-            await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE);
+            await setDmsSessionPersistence(firebase.auth());
             const credential=await firebase.auth().signInWithCustomToken(result.token);
             if(credential.user.uid!=='dms_'+user){await firebase.auth().signOut();throw Error('Login identity verification failed');}
             return result;
+        }
+        let dmsSessionRestoreRevision=0,dmsSessionRestoreJob=null,dmsAuthWatcher=null,dmsSessionRestoreRetry=false;
+        function restoredDmsIdentity(authUser,tokenResult){
+            const claims=tokenResult?.claims||{},id=String(claims.dmsUserId||'');
+            if(!authUser||authUser.uid!=='dms_'+id||claims.dmsAuthenticated!==true||claims.dmsPasswordChangeRequired!==false||(!fixedUserIds.includes(id)&&!/^013325178(?:0[1-9]|[1-3]\d|4[0-6])$/.test(id))){const error=Error('Saved session is not valid');error.status=401;throw error;}
+            return id;
+        }
+        function waitForInitialDmsAuth(auth){
+            return new Promise((resolve,reject)=>{
+                let unsubscribe=()=>{},settled=false;
+                const timer=setTimeout(()=>finish(Error('Saved session check timed out')),12000);
+                function finish(error,user){if(settled)return;settled=true;clearTimeout(timer);Promise.resolve().then(()=>unsubscribe());error?reject(error):resolve(user);}
+                unsubscribe=auth.onAuthStateChanged(user=>finish(null,user),error=>finish(error));
+            });
+        }
+        function installDmsAuthWatcher(){
+            if(dmsAuthWatcher)return;
+            dmsAuthWatcher=firebase.auth().onAuthStateChanged(authUser=>{
+                if(!currentUser||loginInProgress||dmsWriteSessionRenewal)return;
+                if(!authUser||authUser.uid!=='dms_'+currentUser)logout(false);
+            });
+        }
+        async function restoreDmsSession(){
+            if(currentUser||loginInProgress)return false;
+            if(dmsSessionRestoreJob)return dmsSessionRestoreJob;
+            const attempt=++dmsSessionRestoreRevision,generation=appSessionGeneration;
+            const valid=()=>attempt===dmsSessionRestoreRevision&&generation===appSessionGeneration&&!currentUser&&!loginInProgress;
+            const button=document.getElementById('login-button');let auth=null,savedUser=null,checking=false;
+            const job=(async()=>{
+                try{
+                    await ensureFirebaseSdk();
+                    if(!valid())return false;
+                    auth=firebase.auth();savedUser=await waitForInitialDmsAuth(auth);
+                    if(!valid()||!savedUser)return false;
+                    checking=true;if(button){button.disabled=true;button.textContent='Checking session…';}
+                    const result=await savedUser.getIdTokenResult();
+                    const id=restoredDmsIdentity(savedUser,result);
+                    // Existing Worker endpoint verifies the signed token, current
+                    // account enabled state, forced change and credential version.
+                    // Never trust a stored username or restore through /login.
+                    await authServerRequest('/data',{idToken:result.token,path:'dss_dso_assignments_common'});
+                    if(!valid()||auth.currentUser?.uid!==savedUser.uid)return false;
+                    await setDmsSessionPersistence(auth);
+                    if(!valid()||auth.currentUser?.uid!==savedUser.uid)return false;
+                    dmsSessionRestoreRetry=false;
+                    enterAuthenticatedDmsSession(id,{forceChange:false});
+                    return true;
+                }catch(error){
+                    if(!valid())return false;
+                    const invalid=[401,403].includes(Number(error?.status))||['auth/user-disabled','auth/user-token-expired','auth/invalid-user-token','auth/user-not-found'].includes(error?.code);
+                    if(invalid){if(auth&&savedUser&&auth.currentUser?.uid===savedUser.uid)await auth.signOut().catch(()=>{});dmsSessionRestoreRetry=false;showLoginAlert('Session-এর মেয়াদ বা অনুমতি বদলেছে। আবার Sign in করুন।','error');}
+                    else{dmsSessionRestoreRetry=true;showLoginAlert('আগের session যাচাই করা যায়নি। Internet ঠিক হলে Refresh করুন; সংরক্ষিত login মুছে যায়নি।','error');}
+                    return false;
+                }finally{
+                    if(checking&&button&&!loginInProgress){button.disabled=false;button.textContent='Sign in';}
+                }
+            })();
+            dmsSessionRestoreJob=job;
+            try{return await job;}finally{if(dmsSessionRestoreJob===job)dmsSessionRestoreJob=null;}
         }
         async function securePrivateRead(path){
             const user=currentUser,generation=appSessionGeneration,auth=firebase.auth().currentUser;
@@ -2005,9 +2068,17 @@ body.app-logged-in #view-login{display:none!important}
             if(!user||currentUser!==user||appSessionGeneration!==generation)throw Error('Login session changed');
             if(dmsWriteSessionRenewal?.user===user&&dmsWriteSessionRenewal.generation===generation)return dmsWriteSessionRenewal.promise;
             const password=userPasswords[user];
-            if(typeof password!=='string'||!password)throw Error('Session শেষ হয়েছে। Logout করে আবার Sign in করুন।');
             const job={user,generation,promise:null};
             job.promise=(async()=>{
+                if(typeof password!=='string'||!password){
+                    const authUser=firebase.auth().currentUser;
+                    if(!authUser||authUser.uid!=='dms_'+user)throw Error('Session শেষ হয়েছে। আবার Sign in করুন।');
+                    const refreshed=await authUser.getIdTokenResult(true);
+                    if(restoredDmsIdentity(authUser,refreshed)!==user)throw Error('Login session changed');
+                    await authServerRequest('/data',{idToken:refreshed.token,path:'dss_dso_assignments_common'});
+                    if(currentUser!==user||appSessionGeneration!==generation)throw Error('Login session changed');
+                    return true;
+                }
                 const result=await signInDmsServer(user,password);
                 if(currentUser!==user||appSessionGeneration!==generation){
                     if(firebase.auth().currentUser?.uid==='dms_'+user)await firebase.auth().signOut();
@@ -2431,31 +2502,8 @@ body.app-logged-in #view-login{display:none!important}
             if (notice) notice.style.display = mustChangeDefaultPassword ? 'block' : 'none';
             if (cancel) cancel.style.display = mustChangeDefaultPassword ? 'none' : '';
         }
-        async function login(confirmed = false, activationEvent = null) {
-            const signInButton = document.getElementById('login-button');
-            if (confirmed !== true || !activationEvent || activationEvent.isTrusted !== true || activationEvent.type !== 'click' || activationEvent.currentTarget !== signInButton) return false;
-            if (loginInProgress) return false;
-            const userEl = document.getElementById('login-user');
-            const passEl = document.getElementById('login-pass');
-            const loginAlert = document.getElementById('login-alert');
-            const loginButton = document.getElementById('login-button') || document.querySelector('#view-login button[onclick="login(true)"]');
-
-            const rawUser = userEl ? userEl.value : '';
-            const user = normalizeLoginUserId(rawUser);
-            const pass = passEl ? String(passEl.value || '') : '';
-            if(!user||!pass){showLoginAlert('User ID এবং Password দিন।','error');return false;}
-            if(!fixedUserIds.includes(user)&&!/^013325178(?:0[1-9]|[1-3]\d|4[0-6])$/.test(user)){showLoginAlert('অনুমোদিত User ID দিন।','error');return false;}
-            loginInProgress = true;
-            if(loginButton){loginButton.disabled=true;loginButton.textContent='Checking...';}
-
-            try{
-            let cloudAuth;
-            try{cloudAuth=await signInDmsServer(user,pass);}catch(e){showLoginAlert(e.name==='AbortError'?'Login server সময়মতো উত্তর দেয়নি। আবার চেষ্টা করুন।':e.message,'error');return false;}
-            userPasswords[user]=pass;savePasswords();
-
-
-            // Login itself must never depend on Firebase/network/table loading.
-            // Enter the app first, then initialize optional data services safely.
+        function enterAuthenticatedDmsSession(user,cloudAuth,pass=''){
+            const loginAlert=document.getElementById('login-alert'),loginButton=document.getElementById('login-button');
             appSessionGeneration++;currentUser = user;syncReportUploadClock();
             mustChangeDefaultPassword = cloudAuth&&typeof cloudAuth.forceChange==='boolean'?cloudAuth.forceChange:(pass==='1234');
             clearRuntimeDataCaches();
@@ -2541,6 +2589,36 @@ body.app-logged-in #view-login{display:none!important}
                 loginInProgress = false;
                 if (loginButton) { loginButton.disabled = false; loginButton.textContent='Sign in'; }
             }
+
+            installDmsAuthWatcher();
+        }
+        async function login(confirmed = false, activationEvent = null) {
+            const signInButton = document.getElementById('login-button');
+            if (confirmed !== true || !activationEvent || activationEvent.isTrusted !== true || activationEvent.type !== 'click' || activationEvent.currentTarget !== signInButton) return false;
+            if (loginInProgress) return false;
+            const userEl = document.getElementById('login-user');
+            const passEl = document.getElementById('login-pass');
+            const loginAlert = document.getElementById('login-alert');
+            const loginButton = document.getElementById('login-button') || document.querySelector('#view-login button[onclick="login(true)"]');
+
+            const rawUser = userEl ? userEl.value : '';
+            const user = normalizeLoginUserId(rawUser);
+            const pass = passEl ? String(passEl.value || '') : '';
+            if(!user||!pass){showLoginAlert('User ID এবং Password দিন।','error');return false;}
+            if(!fixedUserIds.includes(user)&&!/^013325178(?:0[1-9]|[1-3]\d|4[0-6])$/.test(user)){showLoginAlert('অনুমোদিত User ID দিন।','error');return false;}
+            dmsSessionRestoreRevision++;
+            loginInProgress = true;
+            if(loginButton){loginButton.disabled=true;loginButton.textContent='Checking...';}
+
+            try{
+            let cloudAuth;
+            try{cloudAuth=await signInDmsServer(user,pass);}catch(e){showLoginAlert(e.name==='AbortError'?'Login server সময়মতো উত্তর দেয়নি। আবার চেষ্টা করুন।':e.message,'error');return false;}
+            userPasswords[user]=pass;savePasswords();
+
+
+            // Login itself must never depend on Firebase/network/table loading.
+            // Enter the app first, then initialize optional data services safely.
+            enterAuthenticatedDmsSession(user,cloudAuth,pass);
             return false;
             }catch(error){showLoginAlert('Login সম্পন্ন হয়নি। আবার চেষ্টা করুন।','error');console.warn('Login failed:',error);return false;}
             finally{loginInProgress=false;if(loginButton){loginButton.disabled=false;loginButton.textContent='Sign in';}}
@@ -2597,14 +2675,15 @@ function clearPrivateSessionData(){
  for(const id of ['morning-report-body','afternoon-report-body','kyc-status-body','reports-table-body','visit-details-content','kyc-summary']){const el=document.getElementById(id);if(el)el.replaceChildren();}
  document.querySelectorAll('#main-app input:not([type=hidden]),#main-app textarea').forEach(el=>{if(el.type==='checkbox'||el.type==='radio')el.checked=false;else el.value='';});
 }
-        function logout() {
+        function logout(signOutAuth=true) {
+            dmsSessionRestoreRevision++;
             closeDmsAttendance();
             appSessionGeneration++;kycPhotoViewToken++;visitPhotoMemoryCache.clear();kycPhotoRequests.clear();kycAttemptTokens.clear();closeVisitDetails();stopKycShopCamera();clearKycForm();resetSessionFilters();
             closeMobileNav();
             stopServerUpdatePolling();
             markCurrentLoginOffline();
             lastServerUpdateSignature = '';
-            currentUser = null;stopPrivateFirebaseSubscriptions();clearPrivateSessionData();syncReportUploadClock();
+            currentUser = null;stopPrivateFirebaseSubscriptions(signOutAuth);clearPrivateSessionData();syncReportUploadClock();
             mustChangeDefaultPassword = false;
             initializedLoginUser = '';
             document.body.classList.remove('app-logged-in');
@@ -4991,7 +5070,7 @@ let firebaseListenersStarted = false;
             // Check code/design updates even while the user is still on the login page.
             startAppUpdateMonitor();
 
-            // Fresh page = login screen only.
+            // Keep the login shell visible until a saved session is server-verified.
             if (!currentUser) {
                 closeMobileNav();
                 if (loginView) {
@@ -5037,6 +5116,7 @@ let firebaseListenersStarted = false;
             }
 
             try { updateVisitSubmitState(); } catch (e) {}
+            restoreDmsSession().catch(()=>{});
         }
 
         // Mobile-safe logout. A swipe/drag must never trigger logout.
@@ -5118,6 +5198,7 @@ let firebaseListenersStarted = false;
             }, {passive:false});
         }
 
+        window.addEventListener('online',()=>{if(dmsSessionRestoreRetry&&!currentUser&&!loginInProgress)restoreDmsSession().catch(()=>{});});
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initializeAuthAndFormUI, { once:true });
         } else {
@@ -6502,7 +6583,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-15-active-morning-v170';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-15-persistent-session-v171';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
@@ -6526,7 +6607,7 @@ window.addEventListener('message',async event=>{
   // Send login credentials only to the explicitly configured application server.
   if(endpoint.origin!=='https://dms-attendance-login.zahangir-ithome.workers.dev')throw Error('Attendance সার্ভারের ঠিকানা অনুমোদিত নয়।');
   if(!isCurrent())return;
-  const response=await fetch(endpoint.href,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:user,password:String(userPasswords[user]||'')}),signal:controller.signal});
+  const response=await fetch(endpoint.href,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(userPasswords[user]?{userId:user,password:String(userPasswords[user])}:{idToken:await firebase.auth().currentUser.getIdToken()}),signal:controller.signal});
   let data;try{data=await response.json();}catch(_){throw Error('Attendance সার্ভার সঠিক উত্তর দেয়নি।');}
   if(!response.ok||typeof data.token!=='string'||!data.token)throw Error(data.error||'Attendance অনুমতি যাচাই হয়নি।');
   if(isCurrent())reply({type:'DMS_ATTENDANCE_TOKEN',token:data.token,identity:{userId:user,role:getRoleInfo().role}});
@@ -6608,5 +6689,6 @@ body:not(.app-logged-in) #view-login{background:radial-gradient(ellipse at 50% 0
 
 </body>
 </html>
+
 
 
