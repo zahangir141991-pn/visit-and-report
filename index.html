@@ -3,7 +3,7 @@
 <head>
     <script src="assets/secure-data.js?v=166"></script>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-15-morning-dashboard-v169">
+    <meta name="dms-app-version" content="2026-11-15-active-morning-v170">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1299,9 +1299,10 @@ body.app-logged-in #view-login{display:none!important}
                     </div>
                     <div id="morning-report-status" class="morning-status hidden" aria-hidden="true">Morning Report is loading...</div>
                 </div>
+                <p id="morning-active-notice" hidden style="font-size:12px;color:#92400e;margin:6px 0" role="status"></p>
                 <p id="morning-zero-notice" hidden style="font-size:12px;color:#92400e;margin:6px 0"></p>
                 <div class="morning-summary">
-                    <div class="card"><span>AGENT COUNT</span><b id="morning-kpi-agent-count">0</b></div>
+                    <div class="card"><span>ACTIVE AGENT COUNT</span><b id="morning-kpi-agent-count">0</b></div>
                     <div class="card"><span>TOTAL MTD_TXN</span><b id="morning-kpi-mtd">0</b></div>
                     <div class="card zero-b2b-kpi"><span>Last Day ZERO B2B</span><b id="morning-kpi-zero-last-day">0</b></div><div class="card zero-b2b-kpi"><span>MTD ZERO B2B</span><b id="morning-kpi-zero-mtd">0</b></div>
                     <div class="card"><span>LAST_DAY_TXN</span><b id="morning-kpi-last-day-card">0</b></div>
@@ -1658,7 +1659,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-15-morning-dashboard-v169';
+        const APP_CACHE_VERSION = '2026-11-15-active-morning-v170';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -5180,6 +5181,7 @@ function morningColumnMap(headers){
         dss: morningHeaderIndex(headers,['DSS Name','DSS','DSS নাম']),
         agent: morningHeaderIndex(headers,['AGENT','Agent Number','Uddokta Number','Uddokta No','Uddokta Mobile','উদ্যোক্তা নম্বর','উদ্যোক্তা নাম্বার']),
         agentName: morningHeaderIndex(headers,['AGENTNAME','Agent Name','Uddokta Name','Outlet Name','উদ্যোক্তার নাম','উদ্যোক্তা নাম']),
+        status: morningHeaderIndex(headers,['Uddokta Account Status','Agent Account Status','Account Status','Uddokta Status','Agent Status','Status','উদ্যোক্তা স্ট্যাটাস','অ্যাকাউন্ট স্ট্যাটাস']),
         mtdTxn: morningHeaderIndex(headers,['MTD_TXN','MTD Txn','MTD Transaction','MTD TXN Count','MTD Transaction Count']),
         mtdCashIn: morningHeaderIndex(headers,['MTD_CASH_IN','MTD Cash In','MTD CashIn']),
         mtdCashOut: morningHeaderIndex(headers,['MTD_CASH_OUT','MTD Cash Out','MTD CashOut']),
@@ -5193,6 +5195,9 @@ function morningColumnMap(headers){
         balance: morningHeaderIndex(headers,['BALANCE','Balance','Opening Balance','Morning Balance','E-Money Balance','E Money Balance','ব্যালেন্স'])
     };
     morningColumnMaps.set(headers,result);return result;
+}
+function morningRowIsActive(row,map){
+    return map.status>=0&&String(row[map.status]??'').normalize('NFKC').trim().toUpperCase()==='ACTIVE';
 }
 function setMorningStatus(id, message, type){
     const el=document.getElementById(id); if(!el) return;
@@ -5603,7 +5608,7 @@ function renderMorningReport(){
     if(dssValue&&map.dso>=0){const allowed=getAssignedDsoWalletsForDss(dssValue);filtered=filtered.filter(r=>allowed.has(normalizeScopeWallet(r[map.dso])));}
     if(dsoValue&&map.dso>=0)filtered=filtered.filter(r=>normalizeScopeWallet(r[map.dso])===dsoValue);
     if(q)filtered=filtered.filter(r=>[map.agent>=0?r[map.agent]:'',map.agentName>=0?r[map.agentName]:''].some(v=>String(v).toLowerCase().includes(q)));
-    const zeroCardRows=filtered.slice();
+    const zeroCardRows=filtered.filter(r=>morningRowIsActive(r,map));
     if(typeValue==='cash-in')filtered=filtered.filter(r=>!ratioFor(r).isCashOut);
     if(typeValue==='cash-out')filtered=filtered.filter(r=>ratioFor(r).isCashOut);
     const zeroPeriod=typeValue==='zero-b2b-mtd'?'mtd':'last-day';
@@ -5616,10 +5621,13 @@ function renderMorningReport(){
         if(ar.isCashOut!==br.isCashOut)return ar.isCashOut?-1:1;
         return ar.isCashOut?(br.outPercent-ar.outPercent):(br.inPercent-ar.inPercent);
     });
+    // Activity restricts the table/counts only. Amounts keep every account
+    // within the existing role, DSO, search and Uddokta-type selection.
+    const amountRows=filtered;
+    filtered=filtered.filter(r=>morningRowIsActive(r,map));
     let mtd=0,lastDay=0,totalCashIn=0,totalCashOut=0,balance=0;
-    const agents=new Set();
-    filtered.forEach(r=>{
-        if(map.agent>=0&&String(r[map.agent]??'').trim())agents.add(String(r[map.agent]).trim());
+    const agents=new Set(filtered.map(r=>map.agent>=0?String(r[map.agent]??'').trim():'').filter(Boolean));
+    amountRows.forEach(r=>{
         if(map.mtdTxn>=0)mtd+=parseMorningNumber(r[map.mtdTxn]);
         if(map.lastDayTxn>=0)lastDay+=parseMorningNumber(r[map.lastDayTxn]);
         if(map.mtdCashIn>=0)totalCashIn+=parseMorningNumber(r[map.mtdCashIn]);
@@ -5630,10 +5638,12 @@ function renderMorningReport(){
     const totalCashOutPercent=mtd>0?(totalCashOut/mtd)*100:0;
     const totalCashInPercent=mtd>0?(totalCashIn/mtd)*100:0;
     const formatPercent=n=>Number(n.toFixed(2)).toLocaleString('en-US',{maximumFractionDigits:2})+'%';
-    set('morning-kpi-agent-count',formatMorningNumber(agents.size));
+    set('morning-kpi-agent-count',map.status>=0?formatMorningNumber(agents.size):'—');
+    const activeNotice=document.getElementById('morning-active-notice');
+    if(activeNotice){activeNotice.hidden=!rows.length||map.status>=0;activeNotice.textContent=map.status<0?'Active উদ্যোক্তা চেনার Status কলাম পাওয়া যায়নি। Uddokta Account Status / Account Status কলামসহ Morning Report Upload করুন। Amount-গুলো সব উদ্যোক্তা থেকে হিসাব করা হয়েছে।':'';}
     const zeroCount=period=>new Set(zeroCardRows.filter(r=>morningZeroB2B(r,map,period)).map((r,i)=>map.agent>=0?reportAgentKey(r[map.agent])||('__row_'+i):('__row_'+i))).size;
-    set('morning-kpi-zero-last-day',map.lastDayB2bs>=0&&map.lastDayB2br>=0?formatMorningNumber(zeroCount('last-day')):'—');
-    set('morning-kpi-zero-mtd',map.mtdB2bs>=0&&map.mtdB2br>=0?formatMorningNumber(zeroCount('mtd')):'—');
+    set('morning-kpi-zero-last-day',map.status>=0&&map.lastDayB2bs>=0&&map.lastDayB2br>=0?formatMorningNumber(zeroCount('last-day')):'—');
+    set('morning-kpi-zero-mtd',map.status>=0&&map.mtdB2bs>=0&&map.mtdB2br>=0?formatMorningNumber(zeroCount('mtd')):'—');
     const missingB2B=[['LAST_DAY_B2BS',map.lastDayB2bs],['LAST_DAY_B2BR',map.lastDayB2br],['MTD_B2BS',map.mtdB2bs],['MTD_B2BR',map.mtdB2br]].filter(x=>x[1]<0).map(x=>x[0]);
     const zeroNotice=document.getElementById('morning-zero-notice');if(zeroNotice){zeroNotice.hidden=!rows.length||!missingB2B.length;zeroNotice.textContent=missingB2B.length?'ZERO B2B হিসাবের কলাম নেই: '+missingB2B.join(', ')+'. Morning Excel আবার Upload করুন।':'';}
     set('morning-kpi-mtd',formatMorningNumber(mtd));
@@ -5660,7 +5670,7 @@ function renderMorningReport(){
     const table=document.getElementById('morning-report-table');if(table){table.style.setProperty('--agent-left',showWallet?'var(--dso-width)':'0px');table.style.setProperty('--name-left',showWallet?'calc(var(--dso-width) + var(--agent-width))':'var(--agent-width)');}
     if(head)head.innerHTML=reportHeaderHtml('morning',reportCols);
     const visibleRows=reportPageRows('morning',filtered);
-    if(body)body.innerHTML=filtered.length?visibleRows.map(r=>'<tr class="'+(isMorningZero(r)?'zero-b2b-row':'')+'">'+reportCols.map(c=>reportCellHtml(c,r)).join('')+'</tr>').join(''):'<tr><td colspan="'+reportCols.length+'">No matching data found.</td></tr>';
+    if(body)body.innerHTML=filtered.length?visibleRows.map(r=>'<tr class="'+(isMorningZero(r)?'zero-b2b-row':'')+'">'+reportCols.map(c=>reportCellHtml(c,r)).join('')+'</tr>').join(''):'<tr><td colspan="'+reportCols.length+'">'+(map.status>=0?'No matching active Uddokta found.':'Active status column is missing from this report.')+'</td></tr>';
     const dl=document.getElementById('btn-download-morning');if(dl)dl.disabled=!filtered.length;
     currentMorningReport.filteredRows=filtered;currentMorningReport.reportCols=reportCols;
 }
@@ -6492,7 +6502,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-15-morning-dashboard-v169';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-15-active-morning-v170';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
