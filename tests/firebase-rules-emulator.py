@@ -89,6 +89,13 @@ code,body=req('new_uddokta_kyc/'+race_id,token='owner');saved=json.loads(body)
 assert saved['submissionToken']==next(token for token,code in results if code==200)
 print('PASS concurrent claims: only one accepted, winner preserved')
 check('completed KYC cannot be replaced by own DSO','new_uddokta_kyc/clock_817','PUT',{**k,'id':'clock_817','submittedBy':'01332517817','dsoWallet':'817'},'01332517817')
+# Morning metadata and achievement history publish in one authorized root PATCH.
+morning={'headers':['DSO','MTD_TXN'],'rows':[],'chunked':True,'reportDate':'2026-11-15','asOf':'2026-11-14','uploadedAt':{'.sv':'timestamp'}}
+update={'morning_report_current':morning,'dms_target_tracking/2026-11/history/2026-11-14':{'801':400,'817':600},'dms_target_tracking/2026-11/metrics/ci/history/2026-11-14':{'801':250,'817':400}}
+check('Admin can atomically publish Morning and Dashboard achievement','','PATCH',update,'admin',200)
+check('Admin read access is valid, not a reason to skip achievement','dms_target_tracking',user='admin',want=200)
+check('DSO cannot upload Morning or target history','','PATCH',update,'01332517801')
+code,body=req('dms_target_tracking/2026-11/history/2026-11-14',token='owner');assert json.loads(body)=={'801':400,'817':600}
 check('disabled account setup','user_auth/01332517801/disabled','PUT',True,token='owner',want=200)
 check('disabled account write denied','visit_reports/disabled','PUT',visit,'01332517801')
 check('reset account setup','user_auth/admin/updatedAt','PUT',42,token='owner',want=200)
