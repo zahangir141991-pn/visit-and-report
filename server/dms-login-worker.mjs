@@ -124,7 +124,7 @@ export default {async fetch(req,env){
  if(u.pathname==='/backup/export')return handleBackupExport(req,env,{firebase,rateLimit});
  if(req.method==='GET'&&['/','/health'].includes(u.pathname)){
   try{serviceAccount(env);databaseUrl(env);await credentialCache.key;
-   return json({ok:true,service:'DMS Secure Login',version:'167',configured:true,capabilities:['attendance-token','dms-login','password-change','scoped-data-v1','encrypted-backup-export-v1'],note:'Configuration validated only; authenticated login and database rules must be tested separately.'});
+   return json({ok:true,service:'DMS Secure Login',version:'183',configured:true,capabilities:['attendance-token','dms-login','password-change','scoped-data-v1','encrypted-backup-export-v1'],note:'Configuration validated only; authenticated login and database rules must be tested separately.'});
   }catch(e){return json({ok:false,configured:false,error:errors[e.message]||'Login server configuration error'},503)}
  }
  if(!['/','/token','/login','/password','/admin/password','/performance','/targets','/data'].includes(u.pathname))return json({error:'Not found'},404);
@@ -149,7 +149,7 @@ export default {async fetch(req,env){
   if(u.pathname==='/admin/password'){
    if(id!=='admin'||account.forceChange===true||password==='1234')return json({error:'Admin permission required'},403,origin);
    const target=normalizeUser(input.targetUser),next=input.newPassword,reset=input.forceChange===true;
-   if(!approvedUser(target)||typeof next!=='string'||next.length>256||(!reset&&next.length<8)||(reset&&next!=='1234'))return json({error:'Select a valid user and use at least 8 characters, or reset to 1234'},400,origin);
+   if(!approvedUser(target)||typeof next!=='string'||next.length>256||next.length<8||next==='1234')return json({error:'Select a valid user and use at least 8 characters. Default password 1234 is not allowed.'},400,origin);
    const response=await firebase(env,'user_auth/'+target,{headers:{'X-Firebase-ETag':'true'}});
    if(!response.ok)throw Error('FIREBASE_ACCESS_DENIED');
    const latest=await response.json(),etag=response.headers.get('etag');
