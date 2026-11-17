@@ -3,7 +3,7 @@
 <head>
     <script src="assets/secure-data.js?v=166"></script>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-17-dashboard-small-cards-v180">
+    <meta name="dms-app-version" content="2026-11-17-login-info-fix-v181">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1699,7 +1699,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-17-dashboard-small-cards-v180';
+        const APP_CACHE_VERSION = '2026-11-17-login-info-fix-v181';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -2096,6 +2096,7 @@ body.app-logged-in #view-login{display:none!important}
         // Browsers do not expose phone IMEI. A persistent random Device ID provides
         // privacy-safe multi-device login detection.
         const DEVICE_ID_KEY = 'dms_private_device_id_v1';
+        let adminLoginRefreshTimer=null;
         let loginHeartbeatTimer = null, adminLoginSessionsRef = null, adminLoginAlertRef = null, registeredLoginUser = '';
         let memoryDeviceId='';
         function getDeviceId(){
@@ -2115,10 +2116,10 @@ body.app-logged-in #view-login{display:none!important}
             try{const root=db.ref('user_login_sessions/'+userId),now=Date.now();let existing={};try{const snap=await Promise.race([root.once('value'),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Session read timed out')),2500))]);existing=snap.val()||{};}catch(readError){console.warn('Existing login sessions unavailable; saving current session:',readError);}if(generation!==appSessionGeneration||String(currentUser)!==userId)return false;const otherIds=Object.keys(existing).filter(id=>id!==deviceId&&existing[id]&&existing[id].active&&now-Number(existing[id].lastSeen||0)<180000),session={userId,deviceId,deviceLabel:getDeviceLabel(),userAgent:String(navigator.userAgent||'').slice(0,220),loginAt:firebase.database.ServerValue.TIMESTAMP,loginTime:loginTimeText(now),lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText(now),active:true};session.loginEventId=userId+'-'+deviceId+'-'+now;await root.child(deviceId).set(session);if(generation!==appSessionGeneration||String(currentUser)!==userId){root.child(deviceId).update({active:false}).catch(()=>{});return false;}
                 db.ref('user_login_history/'+getDhakaToday()).push().set(Object.assign({},session,{loginDate:getDhakaToday()})).catch(e=>console.warn('Daily login history could not save:',e));try{root.child(deviceId).onDisconnect().update({active:false,lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText()});}catch(_){}if(otherIds.length)await db.ref('admin_login_alerts').push().set({userId,deviceId,deviceLabel:session.deviceLabel,otherDeviceCount:otherIds.length,loginTime:session.loginTime,createdAt:firebase.database.ServerValue.TIMESTAMP,read:false,message:'একই User ID অন্য একটি Device ID থেকে login করেছে।'});if(generation!==appSessionGeneration||String(currentUser)!==userId)return false;loginHeartbeatTimer=setInterval(updateLoginHeartbeat,60000);if(userId==='admin'){startAdminLoginMonitoring();loadAdminLoginInfo();}return true;}catch(e){registeredLoginUser='';console.warn('Login device information could not be saved:',e);return false;}
         }
-        function markCurrentLoginOffline(){if(adminLoginSessionsRef){adminLoginSessionsRef.off();adminLoginSessionsRef=null;}if(adminLoginAlertRef){adminLoginAlertRef.off();adminLoginAlertRef=null;}kycPhotoViewToken++;kycPhotoCache.clear();if(loginHistoryRef){loginHistoryRef.off();loginHistoryRef=null;}loginLoadGeneration++;loginHistoryData={};loginSessionsData={};loginCurrentSessions={};stopLoginHeartbeat();if(db&&currentUser&&registeredLoginUser===String(currentUser))db.ref('user_login_sessions/'+String(currentUser)+'/'+getDeviceId()).update({active:false,lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText()}).catch(()=>{});registeredLoginUser='';}
-        function renderAdminLoginInfo(data){loginSessionsData=data||{};setupReportFilters('login');const body=document.getElementById('admin-login-info-body');if(!body)return;const rows=[];Object.keys(data||{}).forEach(userId=>Object.keys(data[userId]||{}).forEach(deviceId=>rows.push(Object.assign({userId,deviceId},data[userId][deviceId]||{}))));const date=document.getElementById('login-filter-date').value,dss=document.getElementById('login-filter-dss').value,dso=document.getElementById('login-filter-dso').value;
+        function markCurrentLoginOffline(){if(adminLoginRefreshTimer)clearInterval(adminLoginRefreshTimer);adminLoginRefreshTimer=null;if(adminLoginSessionsRef){adminLoginSessionsRef.off();adminLoginSessionsRef=null;}if(adminLoginAlertRef){adminLoginAlertRef.off();adminLoginAlertRef=null;}kycPhotoViewToken++;kycPhotoCache.clear();if(loginHistoryRef){loginHistoryRef.off();loginHistoryRef=null;}loginLoadGeneration++;loginHistoryData={};loginSessionsData={};loginCurrentSessions={};stopLoginHeartbeat();if(db&&currentUser&&registeredLoginUser===String(currentUser))db.ref('user_login_sessions/'+String(currentUser)+'/'+getDeviceId()).update({active:false,lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText()}).catch(()=>{});registeredLoginUser='';}
+        function renderAdminLoginInfo(data){if(String(currentUser)!=='admin')return;loginSessionsData=data||{};setupReportFilters('login');const body=document.getElementById('admin-login-info-body');if(!body)return;const rows=[];Object.keys(data||{}).forEach(userId=>Object.keys(data[userId]||{}).forEach(deviceId=>rows.push(Object.assign({userId,deviceId},data[userId][deviceId]||{}))));const date=document.getElementById('login-filter-date').value,dss=document.getElementById('login-filter-dss').value,dso=document.getElementById('login-filter-dso').value;
             const filtered=rows.filter(r=>(!date||dhakaDateOf(r.loginAt)===date)&&(!dss||loginDss(r.userId)===dss)&&(!dso||normalizeScopeWallet(r.userId)===dso));
-            rows.length=0;rows.push(...filtered);rows.sort((a,b)=>Number(b.loginAt||0)-Number(a.loginAt||0));body.innerHTML=rows.length?rows.map(r=>{const active=!!r.active&&Date.now()-Number(r.lastSeen||0)<150000;return '<tr><td data-label="User ID">'+escapeMorningHtml(r.userId||'')+'</td><td data-label="Login Time">'+escapeMorningHtml(r.loginTime||loginTimeText(r.loginAt))+'</td><td data-label="Last Active">'+escapeMorningHtml(r.lastActiveTime||loginTimeText(r.lastSeen))+'</td><td data-label="Device ID"><span title="'+escapeMorningHtml(r.deviceId||'')+'">'+escapeMorningHtml(String(r.deviceId||'').slice(0,16))+'...</span></td><td data-label="Device / Browser">'+escapeMorningHtml(r.deviceLabel||'Unknown')+'</td><td data-label="Status"><span class="status-badge">'+(active?'Online':'Offline')+'</span></td></tr>';}).join(''):'<tr><td colspan="6" class="empty-state">No login information found.</td></tr>';}
+            rows.length=0;rows.push(...filtered);rows.sort((a,b)=>Number(b.loginAt||0)-Number(a.loginAt||0));body.innerHTML=rows.length?rows.map(r=>{const age=Date.now()-Number(r.lastSeen||0),active=r.active===true&&Number(r.lastSeen)>0&&age>=-30000&&age<150000;return '<tr><td data-label="User ID">'+escapeMorningHtml(r.userId||'')+'</td><td data-label="Login Time">'+escapeMorningHtml(loginTimestampLabel(r.loginAt,r.loginTime))+'</td><td data-label="Last Active">'+escapeMorningHtml(loginTimestampLabel(r.lastSeen,r.lastActiveTime))+'</td><td data-label="Device ID"><span title="'+escapeMorningHtml(r.deviceId||'')+'">'+escapeMorningHtml(String(r.deviceId||'').slice(0,16))+(String(r.deviceId||'').length>16?'…':'')+'</span></td><td data-label="Device / Browser">'+escapeMorningHtml(r.deviceLabel||'Unknown')+'</td><td data-label="Status"><span class="status-badge">'+(active?'Online':'Offline')+'</span></td></tr>';}).join(''):'<tr><td colspan="6" class="empty-state">No login information found.</td></tr>';}
         let adminLoginLoadInFlight=null;
         async function loadAdminLoginInfo(){
             if(String(currentUser)!=='admin')return;
@@ -2127,10 +2128,10 @@ body.app-logged-in #view-login{display:none!important}
             const note=document.getElementById('login-history-note');note.textContent='';
             if(loginHistoryRef){loginHistoryRef.off();loginHistoryRef=null;}
             try{
-                const history=await firebaseRestReadFresh('user_login_history/'+date);
+                const [history,sessions]=await Promise.all([firebaseRestReadFresh('user_login_history/'+date),firebaseRestReadFresh('user_login_sessions')]);
                 if(generation!==loginLoadGeneration)return;
                 loginHistoryData=history||{};
-                if(!db||!Object.keys(loginHistoryData).length){loginCurrentSessions=await firebaseRestReadFresh('user_login_sessions');if(generation!==loginLoadGeneration)return;}
+                loginCurrentSessions=sessions||{};
                 renderLoginDay();
                 if(!Object.keys(loginHistoryData).length)note.textContent='আগের login ইতিহাস সংরক্ষিত ছিল না; পাওয়া সর্বশেষ login দেখানো হচ্ছে।';
             }catch(e){if(generation!==loginLoadGeneration)return;loginHistoryData={};note.textContent='Login history পড়া যায়নি। Database permission / connection পরীক্ষা করুন।';renderLoginDay();}
@@ -2142,7 +2143,7 @@ body.app-logged-in #view-login{display:none!important}
         }
         function openLoginInformation(){if(String(currentUser)!=='admin')return;switchTab('login-info');}
         async function loadAdminLatestLoginAlert(){if(!db||String(currentUser)!=='admin')return;try{const generation=appSessionGeneration,snap=await db.ref('admin_login_alerts').limitToLast(1).once('value');if(generation!==appSessionGeneration||String(currentUser)!=='admin')return;let latest=null;snap.forEach(c=>{latest=c.val()||{};});if(latest&&String(latest.userId||'')!=='admin'){const box=document.getElementById('admin-multi-device-alert');if(box){box.textContent='⚠️ '+String(latest.userId||'User')+' একাধিক active device থেকে login করেছে। সর্বশেষ: '+String(latest.deviceLabel||latest.deviceId||'Unknown')+' · '+String(latest.loginTime||'');box.style.display='block';}}}catch(e){}}
-        function startAdminLoginMonitoring(){if(!db||String(currentUser)!=='admin')return;if(!adminLoginSessionsRef){adminLoginSessionsRef=db.ref('user_login_sessions');adminLoginSessionsRef.on('value',s=>{if(String(currentUser)!=='admin')return;loginCurrentSessions=s.val()||{};renderLoginDay();},e=>{console.warn('Login information realtime unavailable:',e);adminLoginSessionsRef=null;});}if(!adminLoginAlertRef){adminLoginAlertRef=db.ref('admin_login_alerts').limitToLast(1);const watched=adminLoginAlertRef;watched.once('value').then(initial=>{if(String(currentUser)!=='admin'||adminLoginAlertRef!==watched)return;let latest=0;initial.forEach(c=>{latest=Math.max(latest,Number((c.val()||{}).createdAt||0));});adminLoginAlertRef.on('child_added',snap=>{if(String(currentUser)!=='admin')return;const a=snap.val()||{};if(Number(a.createdAt||0)<=latest||String(a.userId||'')==='admin')return;const box=document.getElementById('admin-multi-device-alert'),msg='⚠️ '+String(a.userId||'User')+' অন্য device থেকে login করেছে। Device: '+String(a.deviceLabel||a.deviceId||'Unknown')+' · '+String(a.loginTime||'');if(box){box.textContent=msg;box.style.display='block';}alert(msg);});}).catch(()=>{});}}
+        function startAdminLoginMonitoring(){if(!db||String(currentUser)!=='admin')return;if(!adminLoginRefreshTimer)adminLoginRefreshTimer=setInterval(()=>{if(String(currentUser)==='admin'&&document.getElementById('view-login-info')?.classList.contains('active'))renderLoginDay();},30000);if(!adminLoginSessionsRef){adminLoginSessionsRef=db.ref('user_login_sessions');adminLoginSessionsRef.on('value',s=>{if(String(currentUser)!=='admin')return;loginCurrentSessions=s.val()||{};renderLoginDay();},e=>{console.warn('Login information realtime unavailable:',e);adminLoginSessionsRef=null;});}if(!adminLoginAlertRef){adminLoginAlertRef=db.ref('admin_login_alerts').limitToLast(1);const watched=adminLoginAlertRef;watched.once('value').then(initial=>{if(String(currentUser)!=='admin'||adminLoginAlertRef!==watched)return;let latest=0;initial.forEach(c=>{latest=Math.max(latest,Number((c.val()||{}).createdAt||0));});adminLoginAlertRef.on('child_added',snap=>{if(String(currentUser)!=='admin')return;const a=snap.val()||{};if(Number(a.createdAt||0)<=latest||String(a.userId||'')==='admin')return;const box=document.getElementById('admin-multi-device-alert'),msg='⚠️ '+String(a.userId||'User')+' অন্য device থেকে login করেছে। Device: '+String(a.deviceLabel||a.deviceId||'Unknown')+' · '+String(a.loginTime||'');if(box){box.textContent=msg;box.style.display='block';}alert(msg);});}).catch(()=>{});}}
 
         // App code/design updates are mandatory. Live data continues updating
         // without a reload, while a newer deployed app locks the UI until updated.
@@ -6499,15 +6500,31 @@ function setupReportFilters(prefix){
  }
 
 }
+function loginTimestampLabel(timestamp,legacy){
+ const n=Number(timestamp);
+ return Number.isFinite(n)&&n>0?loginTimeText(n):String(legacy||'—');
+}
+function buildLoginInformationRows(history,current){
+ const grouped={},seen=new Set();
+ const eventKey=(u,d,r)=>String(r.loginEventId||u+'|'+d+'|'+r.loginAt);
+ for(const [id,record]of Object.entries(history||{})){
+  if(!record||typeof record!=='object'||!record.userId)continue;
+  const u=String(record.userId),d=String(record.deviceId||''),r={...record,active:false};
+  const live=current?.[u]?.[d];
+  if(live&&eventKey(u,d,r)===eventKey(u,d,live)){
+   r.active=live.active===true;r.lastSeen=live.lastSeen;r.lastActiveTime=live.lastActiveTime;
+  }
+  if(!grouped[u])grouped[u]={};grouped[u]['history:'+id]=r;seen.add(eventKey(u,d,r));
+ }
+ for(const [u,devices]of Object.entries(current||{}))for(const [d,record]of Object.entries(devices||{})){
+  if(!record||typeof record!=='object'||seen.has(eventKey(u,d,record)))continue;
+  if(!grouped[u])grouped[u]={};grouped[u]['device:'+d]={...record,userId:u,deviceId:d};
+ }
+ return grouped;
+}
 function renderLoginDay(){
  if(String(currentUser)!=='admin')return;
- const grouped={},seen=new Set();
- Object.entries(loginHistoryData).forEach(([id,r])=>{const u=r.userId||'';if(!grouped[u])grouped[u]={};grouped[u][id]=r;seen.add(r.loginEventId||u+'|'+r.deviceId+'|'+r.loginAt);});
- Object.entries(loginCurrentSessions).forEach(([u,devices])=>Object.entries(devices||{}).forEach(([d,r])=>{
-  for(const history of Object.values(grouped[u]||{}))if(history.deviceId===d){if(history.loginEventId?history.loginEventId===r.loginEventId:history.loginAt===r.loginAt)Object.assign(history,{active:r.active,lastSeen:r.lastSeen,lastActiveTime:r.lastActiveTime});else history.active=false;}
-  if(!seen.has(r.loginEventId||u+'|'+d+'|'+r.loginAt)){if(!grouped[u])grouped[u]={};grouped[u][d]=r;}
- }));
- renderAdminLoginInfo(grouped);
+ renderAdminLoginInfo(buildLoginInformationRows(loginHistoryData,loginCurrentSessions));
 }
 async function getKycPhoto(id){
  if(kycPhotoCache.has(id))return kycPhotoCache.get(id);
@@ -6556,7 +6573,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-17-dashboard-small-cards-v180';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-17-login-info-fix-v181';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
