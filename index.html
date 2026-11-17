@@ -3,7 +3,7 @@
 <head>
     <script src="assets/secure-data.js?v=166"></script>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-17-executive-dashboard-v172">
+    <meta name="dms-app-version" content="2026-11-17-dashboard-banner-hidden-v173">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1017,7 +1017,6 @@ body.app-logged-in #view-login{display:none!important}
 
             <!-- Dashboard Page -->
             <div id="view-dashboard" class="page active">
-                <header class="executive-heading"><div><span class="executive-eyebrow">M/S. MOSTAFA · DMS</span><h2>Distribution Performance Dashboard</h2><p>Monthly targets, achievement and your team's progress</p></div><span class="executive-badge">PERFORMANCE OVERVIEW</span></header>
                 <section class="executive-board target-card" aria-labelledby="target-title">
                     <aside class="executive-filters"><div class="executive-filter-title">Refine overview <span>☷</span></div>
                         <label>Reporting month<input type="month" id="target-month" onchange="DmsTargets.load()"></label>
@@ -1670,7 +1669,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-17-executive-dashboard-v172';
+        const APP_CACHE_VERSION = '2026-11-17-dashboard-banner-hidden-v173';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -6513,7 +6512,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-17-executive-dashboard-v172';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-17-dashboard-banner-hidden-v173';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
