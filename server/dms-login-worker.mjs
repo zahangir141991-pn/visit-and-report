@@ -119,12 +119,21 @@ async function targetReport(env,input){
  const master=performanceDssUsers[id]&&!Object.values(assignments||{}).some(row=>performanceWallet(row?.dso)&&performanceDss(row?.dss))?await read('uddokta_master'):null;
  return {...scopedTargets(id,data,assignments,master),metric};
 }
+async function recordVerifiedLogin(env,id,input,requiresPasswordChange){
+ const now=Date.now(),date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dhaka',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(now));
+ const eventKey=now+'_'+crypto.randomUUID(),deviceId=typeof input.deviceId==='string'&&/^[A-Za-z0-9_-]{8,100}$/.test(input.deviceId)?input.deviceId:'server-'+crypto.randomUUID();
+ const record={userId:id,deviceId,deviceLabel:typeof input.deviceLabel==='string'?input.deviceLabel.slice(0,100):'Device information unavailable',userAgent:typeof input.userAgent==='string'?input.userAgent.slice(0,220):'',loginAt:now,lastSeen:now,active:false,loginDate:date,loginEventId:eventKey,auditSource:'login-server',passwordChangeRequired:requiresPasswordChange};
+ const patch={['user_login_history/'+date+'/'+eventKey]:record,['user_login_sessions/'+id+'/'+deviceId]:record};
+ const saved=await firebase(env,'',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)});
+ if(!saved.ok)throw Object.assign(Error('Login information could not be saved. Please try again.'),{status:503});
+ return {eventKey,date,deviceId,userId:id,loginAt:now};
+}
 export default {async fetch(req,env){
  const u=new URL(req.url),origin=req.headers.get('Origin')||'';
  if(u.pathname==='/backup/export')return handleBackupExport(req,env,{firebase,rateLimit});
  if(req.method==='GET'&&['/','/health'].includes(u.pathname)){
   try{serviceAccount(env);databaseUrl(env);await credentialCache.key;
-   return json({ok:true,service:'DMS Secure Login',version:'183',configured:true,capabilities:['attendance-token','dms-login','password-change','scoped-data-v1','encrypted-backup-export-v1'],note:'Configuration validated only; authenticated login and database rules must be tested separately.'});
+   return json({ok:true,service:'DMS Secure Login',version:'184',configured:true,capabilities:['attendance-token','dms-login','password-change','scoped-data-v1','encrypted-backup-export-v1','server-login-audit-v1'],note:'Configuration validated only; authenticated login and database rules must be tested separately.'});
   }catch(e){return json({ok:false,configured:false,error:errors[e.message]||'Login server configuration error'},503)}
  }
  if(!['/','/token','/login','/password','/admin/password','/performance','/targets','/data'].includes(u.pathname))return json({error:'Not found'},404);
@@ -174,7 +183,8 @@ export default {async fetch(req,env){
    return json({ok:true,requireLogin:true},200,origin);
   }
   const token=await issueToken(env,id,{...account,forceChange:account.forceChange===true||password==='1234'},attendanceOnly);
-  return json({token,...(attendanceOnly?{}:{userId:id,forceChange:account.forceChange===true||password==='1234'})},200,origin);
+  const loginAudit=attendanceOnly?null:await recordVerifiedLogin(env,id,input,account.forceChange===true||password==='1234');
+  return json({token,...(attendanceOnly?{}:{userId:id,forceChange:account.forceChange===true||password==='1234',loginAudit})},200,origin);
  }catch(e){return json({error:e.status?e.message:errors[e.message]||'Login server temporarily unavailable'},e.status||503,origin)}
 }};
 
