@@ -3,7 +3,7 @@
 <head>
     <script src="assets/secure-data.js?v=166"></script>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-17-kyc-compact-table-v179">
+    <meta name="dms-app-version" content="2026-11-17-dashboard-small-cards-v180">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -923,6 +923,18 @@ body:has(#view-kyc-status.active) #app-copyright,body:has(#view-kyc-status.activ
  #main-app #view-kyc-status td[data-label="Picture"] .btn{min-height:30px;padding:4px 7px;font-size:11px}
 }
 </style>
+<style id="dashboard-compact-kpis">
+#view-dashboard .executive-kpis{gap:8px}
+#view-dashboard .executive-kpis>div{padding:10px 12px;border-radius:10px}
+#view-dashboard .executive-kpis span{font-size:11px;line-height:1.35}
+#view-dashboard .executive-kpis strong{font-size:17px;line-height:1.25;margin-top:5px;letter-spacing:-.2px}
+#view-dashboard .executive-kpis small{font-size:9px;line-height:1.35;margin-top:4px}
+@media(max-width:600px){
+ #view-dashboard .executive-kpis>div{padding:9px 10px}
+ #view-dashboard .executive-kpis strong{font-size:15px}
+ #view-dashboard .executive-kpis span{font-size:10px}
+}
+</style>
 </head>
 <body style="margin:0;background:#f8fafc;color:#0f172a;min-height:100vh;">
 <header id="app-header" style="display:block;background:#2563eb;color:#fff;padding:18px 20px;text-align:center;">
@@ -1687,7 +1699,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-17-kyc-compact-table-v179';
+        const APP_CACHE_VERSION = '2026-11-17-dashboard-small-cards-v180';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -6544,7 +6556,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-17-kyc-compact-table-v179';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-17-dashboard-small-cards-v180';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
