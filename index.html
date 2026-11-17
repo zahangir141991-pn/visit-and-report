@@ -3,7 +3,7 @@
 <head>
     <script src="assets/secure-data.js?v=166"></script>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-17-kyc-active-pending-v177">
+    <meta name="dms-app-version" content="2026-11-17-kyc-short-date-v178">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -905,6 +905,7 @@ body:has(#view-kyc-status.active) #app-copyright,body:has(#view-kyc-status.activ
 .uploads-detail{text-align:left;margin-bottom:10px}.uploads-detail summary{font-weight:700;cursor:pointer;padding:5px 0}
 .uploads-detail[open] summary{margin-bottom:12px}
 </style><link rel="stylesheet" href="assets/executive-dashboard.css?v=172">
+<style>#view-kyc-status .kyc-table td.kyc-collection-date{white-space:nowrap!important;word-break:normal!important;overflow-wrap:normal!important;min-width:88px}</style>
 </head>
 <body style="margin:0;background:#f8fafc;color:#0f172a;min-height:100vh;">
 <header id="app-header" style="display:block;background:#2563eb;color:#fff;padding:18px 20px;text-align:center;">
@@ -1669,7 +1670,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-17-kyc-active-pending-v177';
+        const APP_CACHE_VERSION = '2026-11-17-kyc-short-date-v178';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -6173,6 +6174,14 @@ function showKycStatusHistory(id){kycPhotoViewToken++;
     box.innerHTML='<h3 style="margin:0 0 4px">Status History</h3><div style="color:#64748b;font-size:.84rem">'+title+' · '+escapeMorningHtml(r.uddoktaNumber||'')+'</div><div class="kyc-history-popup-list">'+(items.length?items.map(x=>'<div class="kyc-history-popup-row"><b>'+escapeMorningHtml(x[0])+'</b><span>'+escapeMorningHtml(x[1])+'</span></div>').join(''):'<div class="empty-state">No history found.</div>')+'</div>';
     modal.classList.remove('hidden');
 }
+function kycShortCollectionDate(value){
+ const raw=String(value||''),match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+ if(!match)return raw||'—';
+ const year=Number(match[1]),month=Number(match[2]),day=Number(match[3]);
+ const date=new Date(Date.UTC(year,month-1,day));
+ if(date.getUTCFullYear()!==year||date.getUTCMonth()!==month-1||date.getUTCDate()!==day)return raw;
+ return match[3]+'-'+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][month-1]+'-'+match[1].slice(-2);
+}
 function kycTruncated(value,maxLength){const text=String(value||'—'),short=maxLength&&text.length>maxLength?text.slice(0,maxLength-1)+'…':text;return '<span class="kyc-truncate" title="'+escapeMorningHtml(text)+'">'+escapeMorningHtml(short)+'</span>';}
 function getFilteredKycRows(applyStatus=true){
  const value=id=>String((document.getElementById(id)||{}).value||'');
@@ -6216,7 +6225,7 @@ function renderKycStatus(){
     const pages=Math.max(1,Math.ceil(rows.length/kycStatusPageSize));kycStatusPage=Math.min(kycStatusPage,pages);
     document.getElementById('kyc-page-controls').innerHTML='<label>Rows <select aria-label="KYC rows per page" onchange="kycStatusPageSize=Number(this.value);kycStatusPage=1;renderKycStatus()">'+[25,50,100].map(n=>'<option value="'+n+'"'+(n===kycStatusPageSize?' selected':'')+'>'+n+'</option>').join('')+'</select></label><button type="button" class="btn btn-sm btn-sec" '+(kycStatusPage===1?'disabled':'')+' onclick="kycStatusPage--;renderKycStatus()">Previous</button><span>'+kycStatusPage+' / '+pages+' · '+rows.length+' records</span><button type="button" class="btn btn-sm btn-sec" '+(kycStatusPage===pages?'disabled':'')+' onclick="kycStatusPage++;renderKycStatus()">Next</button>';
     rows=rows.slice((kycStatusPage-1)*kycStatusPageSize,kycStatusPage*kycStatusPageSize);
-    body.innerHTML=rows.length?rows.map(r=>'<tr><td data-label="Collection Date">'+escapeMorningHtml(r.collectionDate||'')+'</td><td data-label="DSO Wallet">'+escapeMorningHtml(r.dsoWallet?String(r.dsoWallet).slice(-3):'')+'</td><td data-label="Uddokta Number">'+escapeMorningHtml(r.uddoktaNumber||'')+'</td><td data-label="Shop Name">'+kycTruncated(r.shopName)+'</td><td data-label="Owner Name">'+kycTruncated(r.ownerName,22)+'</td><td data-label="Contact Number">'+escapeMorningHtml(r.ownerContact||'')+'</td><td data-label="Thana">'+kycTruncated(r.thana)+'</td><td data-label="Bazar Name">'+kycTruncated(r.bazarName,22)+'</td><td data-label="Picture">'+(r.hasPhoto?'<button type="button" class="btn btn-sm btn-sec" onclick="showKycPicture(\''+escapeMorningHtml(r.id)+'\')">View</button>':'—')+'</td><td data-label="Location">'+kycTruncated(r.locationName||r.gps)+'</td><td data-label="Submitted By">'+escapeMorningHtml(r.submittedBy||'')+'</td><td data-label="Current Status">'+kycStatusControl(r)+'</td><td data-label="Status Date">'+escapeMorningHtml(kycStatusDate(r))+'</td><td data-label="Status History" class="kyc-status-history">'+kycStatusHistoryHtml(r)+'</td><td data-label="Rejection Reason" class="kyc-reason">'+escapeMorningHtml(r.rejectionReason||'—')+'</td></tr>').join(''):'<tr><td colspan="15" class="empty-state">'+(kycSnapshotError?'KYC data load হয়নি: '+escapeMorningHtml(kycSnapshotError)+' — Refresh চাপুন।':!kycSnapshotLoaded?'Loading KYC records…':'No KYC record found.')+'</td></tr>';
+    body.innerHTML=rows.length?rows.map(r=>'<tr><td data-label="Collection Date" class="kyc-collection-date" title="'+escapeMorningHtml(r.collectionDate||'')+'">'+escapeMorningHtml(kycShortCollectionDate(r.collectionDate))+'</td><td data-label="DSO Wallet">'+escapeMorningHtml(r.dsoWallet?String(r.dsoWallet).slice(-3):'')+'</td><td data-label="Uddokta Number">'+escapeMorningHtml(r.uddoktaNumber||'')+'</td><td data-label="Shop Name">'+kycTruncated(r.shopName)+'</td><td data-label="Owner Name">'+kycTruncated(r.ownerName,22)+'</td><td data-label="Contact Number">'+escapeMorningHtml(r.ownerContact||'')+'</td><td data-label="Thana">'+kycTruncated(r.thana)+'</td><td data-label="Bazar Name">'+kycTruncated(r.bazarName,22)+'</td><td data-label="Picture">'+(r.hasPhoto?'<button type="button" class="btn btn-sm btn-sec" onclick="showKycPicture(\''+escapeMorningHtml(r.id)+'\')">View</button>':'—')+'</td><td data-label="Location">'+kycTruncated(r.locationName||r.gps)+'</td><td data-label="Submitted By">'+escapeMorningHtml(r.submittedBy||'')+'</td><td data-label="Current Status">'+kycStatusControl(r)+'</td><td data-label="Status Date">'+escapeMorningHtml(kycStatusDate(r))+'</td><td data-label="Status History" class="kyc-status-history">'+kycStatusHistoryHtml(r)+'</td><td data-label="Rejection Reason" class="kyc-reason">'+escapeMorningHtml(r.rejectionReason||'—')+'</td></tr>').join(''):'<tr><td colspan="15" class="empty-state">'+(kycSnapshotError?'KYC data load হয়নি: '+escapeMorningHtml(kycSnapshotError)+' — Refresh চাপুন।':!kycSnapshotLoaded?'Loading KYC records…':'No KYC record found.')+'</td></tr>';
 }
 function submitKycStatusUpdate(id,selectId,button){const select=document.getElementById(selectId);if(!select){kycAlert('Status selection পাওয়া যায়নি। আবার চেষ্টা করুন।','error');return;}updateKycStatus(id,select.value,button,select);}
 async function updateKycStatus(id,status,button,select){
@@ -6518,7 +6527,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-17-kyc-active-pending-v177';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-17-kyc-short-date-v178';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
