@@ -3,7 +3,7 @@
 <head>
     <script src="assets/secure-data.js?v=166"></script>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-17-login-info-fix-v181">
+    <meta name="dms-app-version" content="2026-11-17-login-tracking-retry-v182">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1661,7 +1661,7 @@ body.app-logged-in #view-login{display:none!important}
                 // Force one authoritative read after reconnect. This covers mobile
                 // browsers that resume a suspended tab without replaying every event.
                 if (snapshot.val() === true && document.body?.classList.contains('app-logged-in')) {
-                    setTimeout(() => { try { refreshAllLiveData(); } catch (_) {} }, 150);
+                    setTimeout(() => { try { recordLoginSession();refreshAllLiveData(); } catch (_) {} }, 150);
                 }
             }, err => console.warn('Firebase connection monitor error:', err));
         }
@@ -1699,7 +1699,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-17-login-info-fix-v181';
+        const APP_CACHE_VERSION = '2026-11-17-login-tracking-retry-v182';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -2096,6 +2096,7 @@ body.app-logged-in #view-login{display:none!important}
         // Browsers do not expose phone IMEI. A persistent random Device ID provides
         // privacy-safe multi-device login detection.
         const DEVICE_ID_KEY = 'dms_private_device_id_v1';
+        let loginTrackingState=null;
         let adminLoginRefreshTimer=null;
         let loginHeartbeatTimer = null, adminLoginSessionsRef = null, adminLoginAlertRef = null, registeredLoginUser = '';
         let memoryDeviceId='';
@@ -2110,13 +2111,54 @@ body.app-logged-in #view-login{display:none!important}
         function getDeviceLabel(){const ua=String(navigator.userAgent||''),p=/Android/i.test(ua)?'Android':(/iPhone|iPad|iPod/i.test(ua)?'iPhone/iPad':(/Windows/i.test(ua)?'Windows':(/Macintosh|Mac OS/i.test(ua)?'Mac':(/Linux/i.test(ua)?'Linux':'Other')))),b=/Edg\//i.test(ua)?'Edge':(/OPR\//i.test(ua)?'Opera':(/Firefox\//i.test(ua)?'Firefox':(/CriOS|Chrome\//i.test(ua)?'Chrome':(/Safari\//i.test(ua)?'Safari':'Browser'))));return p+' · '+b;}
         function loginTimeText(ts=Date.now()){return new Date(Number(ts)||Date.now()).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true});}
         function stopLoginHeartbeat(){if(loginHeartbeatTimer)clearInterval(loginHeartbeatTimer);loginHeartbeatTimer=null;}
-        function updateLoginHeartbeat(){if(!db||!currentUser||registeredLoginUser!==String(currentUser))return;db.ref('user_login_sessions/'+String(currentUser)+'/'+getDeviceId()).update({lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText(),active:true}).catch(()=>{});}
+        function updateLoginHeartbeat(){if(!db||!currentUser||registeredLoginUser!==String(currentUser))return;db.ref('user_login_sessions/'+String(currentUser)+'/'+getDeviceId()).update({lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText(),active:true}).catch(e=>console.warn('Login heartbeat failed; retrying on next tick:',e));}
         async function recordLoginSession(){
-            if(!db||!currentUser)return false;const userId=String(currentUser),deviceId=getDeviceId(),generation=appSessionGeneration;if(registeredLoginUser===userId){updateLoginHeartbeat();return true;}registeredLoginUser=userId;stopLoginHeartbeat();
-            try{const root=db.ref('user_login_sessions/'+userId),now=Date.now();let existing={};try{const snap=await Promise.race([root.once('value'),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Session read timed out')),2500))]);existing=snap.val()||{};}catch(readError){console.warn('Existing login sessions unavailable; saving current session:',readError);}if(generation!==appSessionGeneration||String(currentUser)!==userId)return false;const otherIds=Object.keys(existing).filter(id=>id!==deviceId&&existing[id]&&existing[id].active&&now-Number(existing[id].lastSeen||0)<180000),session={userId,deviceId,deviceLabel:getDeviceLabel(),userAgent:String(navigator.userAgent||'').slice(0,220),loginAt:firebase.database.ServerValue.TIMESTAMP,loginTime:loginTimeText(now),lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText(now),active:true};session.loginEventId=userId+'-'+deviceId+'-'+now;await root.child(deviceId).set(session);if(generation!==appSessionGeneration||String(currentUser)!==userId){root.child(deviceId).update({active:false}).catch(()=>{});return false;}
-                db.ref('user_login_history/'+getDhakaToday()).push().set(Object.assign({},session,{loginDate:getDhakaToday()})).catch(e=>console.warn('Daily login history could not save:',e));try{root.child(deviceId).onDisconnect().update({active:false,lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText()});}catch(_){}if(otherIds.length)await db.ref('admin_login_alerts').push().set({userId,deviceId,deviceLabel:session.deviceLabel,otherDeviceCount:otherIds.length,loginTime:session.loginTime,createdAt:firebase.database.ServerValue.TIMESTAMP,read:false,message:'একই User ID অন্য একটি Device ID থেকে login করেছে।'});if(generation!==appSessionGeneration||String(currentUser)!==userId)return false;loginHeartbeatTimer=setInterval(updateLoginHeartbeat,60000);if(userId==='admin'){startAdminLoginMonitoring();loadAdminLoginInfo();}return true;}catch(e){registeredLoginUser='';console.warn('Login device information could not be saved:',e);return false;}
+            if(!db||!currentUser||mustChangeDefaultPassword)return false;
+            const userId=String(currentUser),deviceId=getDeviceId(),generation=appSessionGeneration;
+            let state=loginTrackingState;
+            if(!state||state.userId!==userId||state.generation!==generation){
+                stopLoginHeartbeat();
+                const now=Date.now(),root=db.ref('user_login_sessions/'+userId);
+                state={userId,deviceId,generation,root,historyRef:db.ref('user_login_history/'+getDhakaToday()).push(),sessionSaved:false,historySaved:false,alertChecked:false,promise:null,
+                    session:{userId,deviceId,deviceLabel:getDeviceLabel(),userAgent:String(navigator.userAgent||'').slice(0,220),loginAt:firebase.database.ServerValue.TIMESTAMP,loginTime:loginTimeText(now),lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText(now),active:true,loginEventId:userId+'-'+deviceId+'-'+now,loginDate:getDhakaToday()}};
+                loginTrackingState=state;
+                // Start before optional reads/alerts; failed writes are retried without another Sign in.
+                loginHeartbeatTimer=setInterval(()=>{if(loginTrackingState!==state)return;if(!state.sessionSaved||!state.historySaved)recordLoginSession();else updateLoginHeartbeat();},20000);
+            }
+            if(state.promise)return state.promise;
+            const valid=()=>loginTrackingState===state&&currentUser===userId&&appSessionGeneration===generation;
+            const task=(async()=>{
+                try{
+                    if(!state.sessionSaved){
+                        await state.root.child(deviceId).set(state.session);
+                        if(!valid())return false;
+                        state.sessionSaved=true;registeredLoginUser=userId;
+                    }
+                    if(!valid())return false;
+                    updateLoginHeartbeat();
+                    try{state.root.child(deviceId).onDisconnect().update({active:false,lastSeen:firebase.database.ServerValue.TIMESTAMP});}catch(_){}
+                    if(!state.historySaved){
+                        await state.historyRef.set(state.session);
+                        if(!valid())return false;
+                        state.historySaved=true;
+                    }
+                    if(userId==='admin'){startAdminLoginMonitoring();}
+                    if(!state.alertChecked){
+                        state.alertChecked=true;
+                        // Duplicate-device notifications are optional and cannot stop tracking.
+                        state.root.once('value').then(async snap=>{
+                            if(!valid())return;
+                            const otherIds=Object.entries(snap.val()||{}).filter(([id,r])=>id!==deviceId&&r?.active===true&&Date.now()-Number(r.lastSeen||0)<180000);
+                            if(otherIds.length)await db.ref('admin_login_alerts').push().set({userId,deviceId,deviceLabel:state.session.deviceLabel,otherDeviceCount:otherIds.length,loginTime:state.session.loginTime,createdAt:firebase.database.ServerValue.TIMESTAMP,read:false,message:'একই User ID অন্য একটি Device ID থেকে login করেছে।'});
+                        }).catch(e=>console.warn('Duplicate-login alert unavailable:',e));
+                    }
+                    return true;
+                }catch(e){if(valid())console.warn('Login tracking will retry:',e);return false;}
+            })();
+            state.promise=task;
+            try{return await task;}finally{if(state.promise===task)state.promise=null;}
         }
-        function markCurrentLoginOffline(){if(adminLoginRefreshTimer)clearInterval(adminLoginRefreshTimer);adminLoginRefreshTimer=null;if(adminLoginSessionsRef){adminLoginSessionsRef.off();adminLoginSessionsRef=null;}if(adminLoginAlertRef){adminLoginAlertRef.off();adminLoginAlertRef=null;}kycPhotoViewToken++;kycPhotoCache.clear();if(loginHistoryRef){loginHistoryRef.off();loginHistoryRef=null;}loginLoadGeneration++;loginHistoryData={};loginSessionsData={};loginCurrentSessions={};stopLoginHeartbeat();if(db&&currentUser&&registeredLoginUser===String(currentUser))db.ref('user_login_sessions/'+String(currentUser)+'/'+getDeviceId()).update({active:false,lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText()}).catch(()=>{});registeredLoginUser='';}
+        function markCurrentLoginOffline(){loginTrackingState=null;if(adminLoginRefreshTimer)clearInterval(adminLoginRefreshTimer);adminLoginRefreshTimer=null;if(adminLoginSessionsRef){adminLoginSessionsRef.off();adminLoginSessionsRef=null;}if(adminLoginAlertRef){adminLoginAlertRef.off();adminLoginAlertRef=null;}kycPhotoViewToken++;kycPhotoCache.clear();if(loginHistoryRef){loginHistoryRef.off();loginHistoryRef=null;}loginLoadGeneration++;loginHistoryData={};loginSessionsData={};loginCurrentSessions={};stopLoginHeartbeat();if(db&&currentUser&&registeredLoginUser===String(currentUser))db.ref('user_login_sessions/'+String(currentUser)+'/'+getDeviceId()).update({active:false,lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText()}).catch(()=>{});registeredLoginUser='';}
         function renderAdminLoginInfo(data){if(String(currentUser)!=='admin')return;loginSessionsData=data||{};setupReportFilters('login');const body=document.getElementById('admin-login-info-body');if(!body)return;const rows=[];Object.keys(data||{}).forEach(userId=>Object.keys(data[userId]||{}).forEach(deviceId=>rows.push(Object.assign({userId,deviceId},data[userId][deviceId]||{}))));const date=document.getElementById('login-filter-date').value,dss=document.getElementById('login-filter-dss').value,dso=document.getElementById('login-filter-dso').value;
             const filtered=rows.filter(r=>(!date||dhakaDateOf(r.loginAt)===date)&&(!dss||loginDss(r.userId)===dss)&&(!dso||normalizeScopeWallet(r.userId)===dso));
             rows.length=0;rows.push(...filtered);rows.sort((a,b)=>Number(b.loginAt||0)-Number(a.loginAt||0));body.innerHTML=rows.length?rows.map(r=>{const age=Date.now()-Number(r.lastSeen||0),active=r.active===true&&Number(r.lastSeen)>0&&age>=-30000&&age<150000;return '<tr><td data-label="User ID">'+escapeMorningHtml(r.userId||'')+'</td><td data-label="Login Time">'+escapeMorningHtml(loginTimestampLabel(r.loginAt,r.loginTime))+'</td><td data-label="Last Active">'+escapeMorningHtml(loginTimestampLabel(r.lastSeen,r.lastActiveTime))+'</td><td data-label="Device ID"><span title="'+escapeMorningHtml(r.deviceId||'')+'">'+escapeMorningHtml(String(r.deviceId||'').slice(0,16))+(String(r.deviceId||'').length>16?'…':'')+'</span></td><td data-label="Device / Browser">'+escapeMorningHtml(r.deviceLabel||'Unknown')+'</td><td data-label="Status"><span class="status-badge">'+(active?'Online':'Offline')+'</span></td></tr>';}).join(''):'<tr><td colspan="6" class="empty-state">No login information found.</td></tr>';}
@@ -6573,7 +6615,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-17-login-info-fix-v181';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-17-login-tracking-retry-v182';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
