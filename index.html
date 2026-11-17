@@ -3,7 +3,7 @@
 <head>
     <script src="assets/secure-data.js?v=166"></script>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-17-kyc-admin-in-hand-v175">
+    <meta name="dms-app-version" content="2026-11-17-kyc-active-pending-v177">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1669,7 +1669,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-17-kyc-admin-in-hand-v175';
+        const APP_CACHE_VERSION = '2026-11-17-kyc-active-pending-v177';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -6202,7 +6202,7 @@ function getKycSummaryCards(rows){
     const count=status=>states.filter(x=>x===status).length;
     const adminReceived=count('Admin Receive'),mailSent=count('Mail Send'),active=count('Active'),rejection=count('Rejection');
     const totalAdminReceived=adminReceived+mailSent+active+rejection;
-    return [['Total Collection',rows.length],['Total Admin Received',totalAdminReceived],['Admin Received Pending',rows.length-totalAdminReceived],['Admin In Hand',adminReceived],['Mail Send',mailSent],['Active',active],['Active Pending',states.filter(x=>!['Active','Rejection'].includes(x)).length],['Rejection',rejection]];
+    return [['Total Collection',rows.length],['Total Admin Received',totalAdminReceived],['Admin Received Pending',rows.length-totalAdminReceived],['Admin In Hand',adminReceived],['Mail Send',mailSent],['Active',active],['Active Pending',totalAdminReceived-active],['Rejection',rejection]];
 }
 function renderKycStatus(){
     const body=document.getElementById('kyc-status-body');if(!body)return;setupReportFilters('kyc');
@@ -6518,7 +6518,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-17-kyc-admin-in-hand-v175';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-17-kyc-active-pending-v177';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
