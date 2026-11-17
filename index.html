@@ -3,7 +3,7 @@
 <head>
     <script src="assets/secure-data.js?v=166"></script>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-17-dashboard-banner-hidden-v173">
+    <meta name="dms-app-version" content="2026-11-17-kyc-received-summary-v174">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -776,7 +776,7 @@ img,video,canvas,svg{max-width:100%;height:auto}
 #main-app :is(.quick-grid,.cards-grid,.morning-summary,.report-summary-cards,.chart-kpi-grid,.kyc-summary){
  gap:7px!important;margin-top:8px!important;margin-bottom:11px!important;
 }
-#main-app .kyc-summary{grid-template-columns:repeat(6,minmax(0,1fr))!important}
+#main-app .kyc-summary{grid-template-columns:repeat(4,minmax(0,1fr))!important}
 #main-app :is(.quick-grid,.cards-grid,.morning-summary,.kyc-summary)>.card,
 #main-app :is(.report-kpi,.chart-kpi){
  --kpi-color:#2563eb;--kpi-tint:#eff6ff;
@@ -1669,7 +1669,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-17-dashboard-banner-hidden-v173';
+        const APP_CACHE_VERSION = '2026-11-17-kyc-received-summary-v174';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -6197,13 +6197,19 @@ async function downloadKycExcel(button){
  }catch(e){console.warn('KYC Excel download failed:',e);kycAlert('Excel download হয়নি। Internet পরীক্ষা করে আবার চেষ্টা করুন।','error');}
  finally{if(button){button.disabled=false;button.textContent='↓ Excel';}}
 }
+function getKycSummaryCards(rows){
+    const states=rows.map(r=>normalizeKycStatus(r.status));
+    const count=status=>states.filter(x=>x===status).length;
+    const adminReceived=count('Admin Receive'),mailSent=count('Mail Send'),active=count('Active'),rejection=count('Rejection');
+    const totalAdminReceived=adminReceived+mailSent+active+rejection;
+    return [['Total Collection',rows.length],['Total Admin Received',totalAdminReceived],['Admin Received Pending',rows.length-totalAdminReceived],['Admin Received',adminReceived],['Mail Send',mailSent],['Active',active],['Active Pending',states.filter(x=>!['Active','Rejection'].includes(x)).length],['Rejection',rejection]];
+}
 function renderKycStatus(){
     const body=document.getElementById('kyc-status-body');if(!body)return;setupReportFilters('kyc');
     const date=String((document.getElementById('kyc-filter-date')||{}).value||''),month=String((document.getElementById('kyc-filter-month')||{}).value||''),status=String((document.getElementById('kyc-filter-status')||{}).value||''),q=String((document.getElementById('kyc-filter-search')||{}).value||'').trim().toLowerCase();
     const dss=document.getElementById('kyc-filter-dss').value,dso=document.getElementById('kyc-filter-dso').value,dm=document.getElementById('kyc-filter-dm').value;
     let rows=getFilteredKycRows();
-    const states=rows.map(r=>normalizeKycStatus(r.status));
-    const cards=[['Total Collection',rows.length],['Admin Received',states.filter(x=>x==='Admin Receive').length],['Mail Send',states.filter(x=>x==='Mail Send').length],['Active',states.filter(x=>x==='Active').length],['Active Pending',states.filter(x=>!['Active','Rejection'].includes(x)).length],['Rejection',states.filter(x=>x==='Rejection').length]];
+    const cards=getKycSummaryCards(rows);
     document.getElementById('kyc-summary').innerHTML=cards.map(([label,count])=>'<div class="card"><span>'+label+'</span><b>'+count+'</b></div>').join('');
     if(status)rows=rows.filter(r=>normalizeKycStatus(r.status)===status);
     const signature=[date,month,status,q,dss,dso,dm,kycStatusPageSize].join('|');if(signature!==kycFilterSignature){kycStatusPage=1;kycFilterSignature=signature;}
@@ -6512,7 +6518,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-17-dashboard-banner-hidden-v173';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-17-kyc-received-summary-v174';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
