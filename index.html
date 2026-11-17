@@ -3,7 +3,7 @@
 <head>
     <script src="assets/secure-data.js?v=166"></script>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-17-kyc-short-date-v178">
+    <meta name="dms-app-version" content="2026-11-17-kyc-compact-table-v179">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -906,6 +906,23 @@ body:has(#view-kyc-status.active) #app-copyright,body:has(#view-kyc-status.activ
 .uploads-detail[open] summary{margin-bottom:12px}
 </style><link rel="stylesheet" href="assets/executive-dashboard.css?v=172">
 <style>#view-kyc-status .kyc-table td.kyc-collection-date{white-space:nowrap!important;word-break:normal!important;overflow-wrap:normal!important;min-width:88px}</style>
+<style id="kyc-compact-cells">
+@media(min-width:768px){
+ #main-app #view-kyc-status table.kyc-table{width:max-content!important;min-width:100%!important;table-layout:auto!important;border-collapse:collapse}
+ #main-app #view-kyc-status table.kyc-table th,#main-app #view-kyc-status table.kyc-table td{padding:6px 8px!important;font-family:Arial,sans-serif;font-size:12px!important;line-height:1.4!important;vertical-align:middle;letter-spacing:0;word-break:normal;overflow-wrap:normal}
+ #main-app #view-kyc-status table.kyc-table th{font-size:11px!important;font-weight:700;white-space:nowrap}
+ #main-app #view-kyc-status table.kyc-table td{color:#172b40;font-weight:400}
+ #main-app #view-kyc-status table.kyc-table td:is([data-label="Collection Date"],[data-label="DSO Wallet"],[data-label="Uddokta Number"],[data-label="Contact Number"],[data-label="Submitted By"]){white-space:nowrap;font-variant-numeric:tabular-nums}
+ #main-app #view-kyc-status .kyc-truncate{max-width:135px;line-height:1.4}
+ #main-app #view-kyc-status .kyc-reason{max-width:180px}
+ #main-app #view-kyc-status .kyc-status-control{min-width:0;gap:4px;flex-wrap:nowrap}
+ #main-app #view-kyc-status .kyc-status-select{min-width:112px;width:112px;font-size:12px;min-height:30px;height:30px;padding:3px 5px}
+ #main-app #view-kyc-status .kyc-status-update-btn{font-size:11px!important;min-height:30px!important;padding:4px 6px!important}
+ #main-app #view-kyc-status .kyc-status-history{min-width:0}
+ #main-app #view-kyc-status .kyc-history-view-btn{min-width:32px;height:30px;padding:0 6px;font-size:15px}
+ #main-app #view-kyc-status td[data-label="Picture"] .btn{min-height:30px;padding:4px 7px;font-size:11px}
+}
+</style>
 </head>
 <body style="margin:0;background:#f8fafc;color:#0f172a;min-height:100vh;">
 <header id="app-header" style="display:block;background:#2563eb;color:#fff;padding:18px 20px;text-align:center;">
@@ -1670,7 +1687,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-17-kyc-short-date-v178';
+        const APP_CACHE_VERSION = '2026-11-17-kyc-compact-table-v179';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -6527,7 +6544,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-17-kyc-short-date-v178';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-17-kyc-compact-table-v179';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
