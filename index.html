@@ -3,7 +3,7 @@
 <head>
     <script src="assets/secure-data.js?v=166"></script>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-17-server-login-audit-v184">
+    <meta name="dms-app-version" content="2026-11-17-online-presence-v185">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1697,7 +1697,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-17-server-login-audit-v184';
+        const APP_CACHE_VERSION = '2026-11-17-online-presence-v185';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -2109,7 +2109,18 @@ body.app-logged-in #view-login{display:none!important}
         function getDeviceLabel(){const ua=String(navigator.userAgent||''),p=/Android/i.test(ua)?'Android':(/iPhone|iPad|iPod/i.test(ua)?'iPhone/iPad':(/Windows/i.test(ua)?'Windows':(/Macintosh|Mac OS/i.test(ua)?'Mac':(/Linux/i.test(ua)?'Linux':'Other')))),b=/Edg\//i.test(ua)?'Edge':(/OPR\//i.test(ua)?'Opera':(/Firefox\//i.test(ua)?'Firefox':(/CriOS|Chrome\//i.test(ua)?'Chrome':(/Safari\//i.test(ua)?'Safari':'Browser'))));return p+' · '+b;}
         function loginTimeText(ts=Date.now()){return new Date(Number(ts)||Date.now()).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true});}
         function stopLoginHeartbeat(){if(loginHeartbeatTimer)clearInterval(loginHeartbeatTimer);loginHeartbeatTimer=null;}
-        function updateLoginHeartbeat(){if(!db||!currentUser||registeredLoginUser!==String(currentUser))return;db.ref('user_login_sessions/'+String(currentUser)+'/'+getDeviceId()).update({lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText(),active:true}).catch(e=>console.warn('Login heartbeat failed; retrying on next tick:',e));}
+        let loginPresenceWrite=null;
+        function updateLoginHeartbeat(){
+            if(!db||!currentUser||registeredLoginUser!==String(currentUser))return Promise.resolve(false);
+            const user=String(currentUser),generation=appSessionGeneration;
+            if(loginPresenceWrite?.user===user&&loginPresenceWrite.generation===generation)return loginPresenceWrite.promise;
+            const job={user,generation,promise:null};
+            job.promise=firebaseRestWrite('user_login_sessions/'+user+'/'+getDeviceId(),JSON.stringify({lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText(),active:true}),'PATCH',null,12000)
+                .then(()=>currentUser===user&&appSessionGeneration===generation)
+                .catch(e=>{console.warn('Login heartbeat failed; retrying on next tick:',e);return false;})
+                .finally(()=>{if(loginPresenceWrite===job)loginPresenceWrite=null;});
+            loginPresenceWrite=job;return job.promise;
+        }
         async function recordLoginSession(){
             if(!db||!currentUser||mustChangeDefaultPassword)return false;
             const userId=String(currentUser),deviceId=getDeviceId(),generation=appSessionGeneration;
@@ -2129,15 +2140,14 @@ body.app-logged-in #view-login{display:none!important}
             const task=(async()=>{
                 try{
                     if(!state.sessionSaved){
-                        await state.root.child(deviceId).set(state.session);
+                        await firebaseRestWrite('user_login_sessions/'+userId+'/'+deviceId,JSON.stringify(state.session),'PUT',null,12000);
                         if(!valid())return false;
                         state.sessionSaved=true;registeredLoginUser=userId;
                     }
                     if(!valid())return false;
                     updateLoginHeartbeat();
-                    try{state.root.child(deviceId).onDisconnect().update({active:false,lastSeen:firebase.database.ServerValue.TIMESTAMP});}catch(_){}
                     if(!state.historySaved){
-                        await state.historyRef.set(state.session);
+                        await firebaseRestWrite('user_login_history/'+state.session.loginDate+'/'+state.historyRef.key,JSON.stringify(state.session),'PUT',null,12000);
                         if(!valid())return false;
                         state.historySaved=true;
                     }
@@ -2157,12 +2167,19 @@ body.app-logged-in #view-login{display:none!important}
             state.promise=task;
             try{return await task;}finally{if(state.promise===task)state.promise=null;}
         }
-        function markCurrentLoginOffline(){verifiedLoginAudit=null;loginTrackingState=null;if(adminLoginRefreshTimer)clearInterval(adminLoginRefreshTimer);adminLoginRefreshTimer=null;if(adminLoginSessionsRef){adminLoginSessionsRef.off();adminLoginSessionsRef=null;}if(adminLoginAlertRef){adminLoginAlertRef.off();adminLoginAlertRef=null;}kycPhotoViewToken++;kycPhotoCache.clear();if(loginHistoryRef){loginHistoryRef.off();loginHistoryRef=null;}loginLoadGeneration++;loginHistoryData={};loginSessionsData={};loginCurrentSessions={};stopLoginHeartbeat();if(db&&currentUser&&registeredLoginUser===String(currentUser))db.ref('user_login_sessions/'+String(currentUser)+'/'+getDeviceId()).update({active:false,lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText()}).catch(()=>{});registeredLoginUser='';}
+        function markCurrentLoginOffline(){verifiedLoginAudit=null;loginTrackingState=null;loginPresenceWrite=null;if(adminLoginRefreshTimer)clearInterval(adminLoginRefreshTimer);adminLoginRefreshTimer=null;if(adminLoginSessionsRef){adminLoginSessionsRef.off();adminLoginSessionsRef=null;}if(adminLoginAlertRef){adminLoginAlertRef.off();adminLoginAlertRef=null;}kycPhotoViewToken++;kycPhotoCache.clear();if(loginHistoryRef){loginHistoryRef.off();loginHistoryRef=null;}loginLoadGeneration++;loginHistoryData={};loginSessionsData={};loginCurrentSessions={};stopLoginHeartbeat();if(db&&currentUser&&registeredLoginUser===String(currentUser))firebaseRestWrite('user_login_sessions/'+String(currentUser)+'/'+getDeviceId(),JSON.stringify({active:false,lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText()}),'PATCH',null,8000).catch(()=>{});registeredLoginUser='';}
         function renderAdminLoginInfo(data){if(String(currentUser)!=='admin')return;loginSessionsData=data||{};setupReportFilters('login');const body=document.getElementById('admin-login-info-body');if(!body)return;const rows=[];Object.keys(data||{}).forEach(userId=>Object.keys(data[userId]||{}).forEach(deviceId=>rows.push(Object.assign({userId,deviceId},data[userId][deviceId]||{}))));const date=document.getElementById('login-filter-date').value,dss=document.getElementById('login-filter-dss').value,dso=document.getElementById('login-filter-dso').value;
             const filtered=rows.filter(r=>(!date||dhakaDateOf(r.loginAt)===date)&&(!dss||loginDss(r.userId)===dss)&&(!dso||normalizeScopeWallet(r.userId)===dso));
             rows.length=0;rows.push(...filtered);rows.sort((a,b)=>Number(b.loginAt||0)-Number(a.loginAt||0));body.innerHTML=rows.length?rows.map(r=>{const age=Date.now()-Number(r.lastSeen||0),active=r.active===true&&Number(r.lastSeen)>0&&age>=-30000&&age<150000;return '<tr><td data-label="User ID">'+escapeMorningHtml(r.userId||'')+'</td><td data-label="Login Time">'+escapeMorningHtml(loginTimestampLabel(r.loginAt,r.loginTime))+'</td><td data-label="Last Active">'+escapeMorningHtml(loginTimestampLabel(r.lastSeen,r.lastActiveTime))+'</td><td data-label="Device ID"><span title="'+escapeMorningHtml(r.deviceId||'')+'">'+escapeMorningHtml(String(r.deviceId||'').slice(0,16))+(String(r.deviceId||'').length>16?'…':'')+'</span></td><td data-label="Device / Browser">'+escapeMorningHtml(r.deviceLabel||'Unknown')+'</td><td data-label="Status"><span class="status-badge">'+(r.passwordChangeRequired?'Password change required':active?'Online':'Offline')+'</span></td></tr>';}).join(''):'<tr><td colspan="6" class="empty-state">No login information found.</td></tr>';}
         let adminLoginLoadInFlight=null;
-        async function loadAdminLoginInfo(){
+        function loadAdminLoginInfo(){
+            if(String(currentUser)!=='admin')return Promise.resolve();
+            const date=document.getElementById('login-filter-date')?.value||getDhakaToday();
+            if(adminLoginLoadInFlight?.date===date&&adminLoginLoadInFlight.generation===appSessionGeneration)return adminLoginLoadInFlight.promise;
+            const job={date,generation:appSessionGeneration,promise:null};job.promise=loadAdminLoginInfoOnce().finally(()=>{if(adminLoginLoadInFlight===job)adminLoginLoadInFlight=null;});
+            adminLoginLoadInFlight=job;return job.promise;
+        }
+        async function loadAdminLoginInfoOnce(){
             if(String(currentUser)!=='admin')return;
             setupReportFilters('login');const dateInput=document.getElementById('login-filter-date');if(!dateInput.value)dateInput.value=getDhakaToday();const date=dateInput.value;
             const generation=++loginLoadGeneration;loginHistoryData={};renderLoginDay();
@@ -2177,14 +2194,12 @@ body.app-logged-in #view-login{display:none!important}
                 if(!Object.keys(loginHistoryData).length)note.textContent='আগের login ইতিহাস সংরক্ষিত ছিল না; পাওয়া সর্বশেষ login দেখানো হচ্ছে।';
             }catch(e){if(generation!==loginLoadGeneration)return;loginHistoryData={};note.textContent='Login history পড়া যায়নি। Database permission / connection পরীক্ষা করুন।';renderLoginDay();}
             if(db&&generation===loginLoadGeneration){
-                loginHistoryRef=db.ref('user_login_history/'+date);
-                loginHistoryRef.on('value',snap=>{if(generation!==loginLoadGeneration)return;loginHistoryData=snap.val()||{};renderLoginDay();},e=>{note.textContent='Login history permission / connection unavailable.';});
                 startAdminLoginMonitoring();
             }
         }
         function openLoginInformation(){if(String(currentUser)!=='admin')return;switchTab('login-info');}
         async function loadAdminLatestLoginAlert(){if(!db||String(currentUser)!=='admin')return;try{const generation=appSessionGeneration,snap=await db.ref('admin_login_alerts').limitToLast(1).once('value');if(generation!==appSessionGeneration||String(currentUser)!=='admin')return;let latest=null;snap.forEach(c=>{latest=c.val()||{};});if(latest&&String(latest.userId||'')!=='admin'){const box=document.getElementById('admin-multi-device-alert');if(box){box.textContent='⚠️ '+String(latest.userId||'User')+' একাধিক active device থেকে login করেছে। সর্বশেষ: '+String(latest.deviceLabel||latest.deviceId||'Unknown')+' · '+String(latest.loginTime||'');box.style.display='block';}}}catch(e){}}
-        function startAdminLoginMonitoring(){if(!db||String(currentUser)!=='admin')return;if(!adminLoginRefreshTimer)adminLoginRefreshTimer=setInterval(()=>{if(String(currentUser)==='admin'&&document.getElementById('view-login-info')?.classList.contains('active'))renderLoginDay();},30000);if(!adminLoginSessionsRef){adminLoginSessionsRef=db.ref('user_login_sessions');adminLoginSessionsRef.on('value',s=>{if(String(currentUser)!=='admin')return;loginCurrentSessions=s.val()||{};renderLoginDay();},e=>{console.warn('Login information realtime unavailable:',e);adminLoginSessionsRef=null;});}if(!adminLoginAlertRef){adminLoginAlertRef=db.ref('admin_login_alerts').limitToLast(1);const watched=adminLoginAlertRef;watched.once('value').then(initial=>{if(String(currentUser)!=='admin'||adminLoginAlertRef!==watched)return;let latest=0;initial.forEach(c=>{latest=Math.max(latest,Number((c.val()||{}).createdAt||0));});adminLoginAlertRef.on('child_added',snap=>{if(String(currentUser)!=='admin')return;const a=snap.val()||{};if(Number(a.createdAt||0)<=latest||String(a.userId||'')==='admin')return;const box=document.getElementById('admin-multi-device-alert'),msg='⚠️ '+String(a.userId||'User')+' অন্য device থেকে login করেছে। Device: '+String(a.deviceLabel||a.deviceId||'Unknown')+' · '+String(a.loginTime||'');if(box){box.textContent=msg;box.style.display='block';}alert(msg);});}).catch(()=>{});}}
+        function startAdminLoginMonitoring(){if(!db||String(currentUser)!=='admin')return;if(!adminLoginRefreshTimer)adminLoginRefreshTimer=setInterval(()=>{if(String(currentUser)==='admin'&&document.getElementById('view-login-info')?.classList.contains('active'))loadAdminLoginInfo();},30000);if(!adminLoginAlertRef){adminLoginAlertRef=db.ref('admin_login_alerts').limitToLast(1);const watched=adminLoginAlertRef;watched.once('value').then(initial=>{if(String(currentUser)!=='admin'||adminLoginAlertRef!==watched)return;let latest=0;initial.forEach(c=>{latest=Math.max(latest,Number((c.val()||{}).createdAt||0));});adminLoginAlertRef.on('child_added',snap=>{if(String(currentUser)!=='admin')return;const a=snap.val()||{};if(Number(a.createdAt||0)<=latest||String(a.userId||'')==='admin')return;const box=document.getElementById('admin-multi-device-alert'),msg='⚠️ '+String(a.userId||'User')+' অন্য device থেকে login করেছে। Device: '+String(a.deviceLabel||a.deviceId||'Unknown')+' · '+String(a.loginTime||'');if(box){box.textContent=msg;box.style.display='block';}alert(msg);});}).catch(()=>{});}}
 
         // App code/design updates are mandatory. Live data continues updating
         // without a reload, while a newer deployed app locks the UI until updated.
@@ -6593,7 +6608,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-17-server-login-audit-v184';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-17-online-presence-v185';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
@@ -6699,6 +6714,7 @@ body:not(.app-logged-in) #view-login{background:radial-gradient(ellipse at 50% 0
 
 </body>
 </html>
+
 
 
 
