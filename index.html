@@ -3,7 +3,7 @@
 <head>
     <script src="assets/secure-data.js?v=166"></script>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-17-online-presence-v185">
+    <meta name="dms-app-version" content="2026-11-18-visit-feedback-v186">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -935,6 +935,7 @@ body:has(#view-kyc-status.active) #app-copyright,body:has(#view-kyc-status.activ
  #view-dashboard .executive-kpis span{font-size:10px}
 }
 </style>
+<link rel="stylesheet" href="feedback/visit-feedback.css?v=186">
 </head>
 <body style="margin:0;background:#f8fafc;color:#0f172a;min-height:100vh;">
 <header id="app-header" style="display:block;background:#2563eb;color:#fff;padding:18px 20px;text-align:center;">
@@ -1044,6 +1045,7 @@ body.app-logged-in #view-login{display:none!important}
 
 <!-- Main App Section -->
         <div id="main-app" class="hidden">
+<div id="visit-feedback-reminder" class="vf-banner" hidden><span></span><button type="button" onclick="switchTab('visit-feedback')">View Feedback →</button></div>
 
             <!-- Dashboard Page -->
             <div id="view-dashboard" class="page active">
@@ -1074,6 +1076,21 @@ body.app-logged-in #view-login{display:none!important}
                         </div>
                     </div>
                 </section>
+            </div>
+
+            <div id="view-visit-feedback" class="page hidden" aria-hidden="true">
+                <div class="vf-head"><div><h2>Visit Feedback</h2><p>Feedback, follow-up and replies in one place</p></div><button type="button" class="btn btn-sm btn-sec" onclick="DmsVisitFeedback.load(true)">↻ Refresh</button></div>
+                <div id="vf-status" class="vf-status" role="status" aria-live="polite"></div>
+                <div id="vf-layout" class="vf-layout vf-reader">
+                    <form id="vf-compose" class="vf-compose" hidden><h3>Send a feedback</h3>
+                        <label>DSO<select id="vf-dso" required><option value="">Select DSO</option></select></label>
+                        <label>Assigned DSS<span id="vf-dss" class="vf-dss">DSO নির্বাচন করলে DSS স্বয়ংক্রিয়ভাবে আসবে</span></label>
+                        <label>Subject<input id="vf-subject" type="text" maxlength="120" placeholder="What needs attention?" required></label>
+                        <label>Feedback<textarea id="vf-text" maxlength="3000" placeholder="Feedback ও করণীয় বিস্তারিত লিখুন…" required></textarea></label>
+                        <button id="vf-send" type="submit" class="btn">Send Feedback</button><p class="vf-muted">Assigned DSS ও DSO দুজনের reply আলাদা করে Pending থাকবে।</p>
+                    </form>
+                    <div><div class="vf-toolbar"><div class="vf-stats"><span class="vf-stat">Total<b id="vf-total">0</b></span><span class="vf-stat">Reply Pending<b id="vf-pending">0</b></span><span class="vf-stat">Replied<b id="vf-done">0</b></span></div><select id="vf-filter" aria-label="Feedback reply filter"><option value="pending">Reply Pending</option><option value="all">All Feedback</option><option value="replied">Replied</option></select></div><div id="vf-list"><div class="vf-empty">Loading feedback…</div></div></div>
+                </div>
             </div>
 
             <!-- New Visit Entry Form -->
@@ -1485,6 +1502,7 @@ body.app-logged-in #view-login{display:none!important}
         <div class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')"><span>🏠</span><span>Dashboard</span></div>
         <div class="nav-item visit-parent" id="nav-visit" onclick="toggleVisitMenu(event)"><span>📋</span><span>Visit <b class="menu-arrow">▾</b></span></div>
         <div id="visit-menu-panel" class="visit-menu-panel">
+<button type="button" class="visit-menu-btn" onclick="switchTab('visit-feedback')">💬 Visit Feedback <b id="vf-nav-count" class="vf-nav-count" hidden>0</b></button>
             
             <button type="button" class="visit-menu-btn" onclick="visitMenuAction('new')">➕ New Visit</button>
             <button type="button" id="visit-menu-my" class="visit-menu-btn" onclick="visitMenuAction('my')">👤 Amar Visit Report</button>
@@ -1671,7 +1689,7 @@ body.app-logged-in #view-login{display:none!important}
                 db = DmsSecureData.database(firebase.database(),securePrivateRead);
                 installFirebaseSubscriptionTracking();
                 attachFirebaseConnectionMonitor();
-                if(currentUser)setTimeout(()=>recordLoginSession(),0);
+                if(currentUser)setTimeout(()=>{recordLoginSession();window.DmsVisitFeedback?.start();},0);
                 // If a user logged in while the deferred SDK was still loading,
                 // start realtime services as soon as Firebase becomes available.
                 if (document.body && document.body.classList.contains('app-logged-in')) {
@@ -1697,7 +1715,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-17-online-presence-v185';
+        const APP_CACHE_VERSION = '2026-11-18-visit-feedback-v186';
         const APP_RELEASED_AT = 1792763658316;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -2167,7 +2185,7 @@ body.app-logged-in #view-login{display:none!important}
             state.promise=task;
             try{return await task;}finally{if(state.promise===task)state.promise=null;}
         }
-        function markCurrentLoginOffline(){verifiedLoginAudit=null;loginTrackingState=null;loginPresenceWrite=null;if(adminLoginRefreshTimer)clearInterval(adminLoginRefreshTimer);adminLoginRefreshTimer=null;if(adminLoginSessionsRef){adminLoginSessionsRef.off();adminLoginSessionsRef=null;}if(adminLoginAlertRef){adminLoginAlertRef.off();adminLoginAlertRef=null;}kycPhotoViewToken++;kycPhotoCache.clear();if(loginHistoryRef){loginHistoryRef.off();loginHistoryRef=null;}loginLoadGeneration++;loginHistoryData={};loginSessionsData={};loginCurrentSessions={};stopLoginHeartbeat();if(db&&currentUser&&registeredLoginUser===String(currentUser))firebaseRestWrite('user_login_sessions/'+String(currentUser)+'/'+getDeviceId(),JSON.stringify({active:false,lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText()}),'PATCH',null,8000).catch(()=>{});registeredLoginUser='';}
+        function markCurrentLoginOffline(){window.DmsVisitFeedback?.stop();verifiedLoginAudit=null;loginTrackingState=null;loginPresenceWrite=null;if(adminLoginRefreshTimer)clearInterval(adminLoginRefreshTimer);adminLoginRefreshTimer=null;if(adminLoginSessionsRef){adminLoginSessionsRef.off();adminLoginSessionsRef=null;}if(adminLoginAlertRef){adminLoginAlertRef.off();adminLoginAlertRef=null;}kycPhotoViewToken++;kycPhotoCache.clear();if(loginHistoryRef){loginHistoryRef.off();loginHistoryRef=null;}loginLoadGeneration++;loginHistoryData={};loginSessionsData={};loginCurrentSessions={};stopLoginHeartbeat();if(db&&currentUser&&registeredLoginUser===String(currentUser))firebaseRestWrite('user_login_sessions/'+String(currentUser)+'/'+getDeviceId(),JSON.stringify({active:false,lastSeen:firebase.database.ServerValue.TIMESTAMP,lastActiveTime:loginTimeText()}),'PATCH',null,8000).catch(()=>{});registeredLoginUser='';}
         function renderAdminLoginInfo(data){if(String(currentUser)!=='admin')return;loginSessionsData=data||{};setupReportFilters('login');const body=document.getElementById('admin-login-info-body');if(!body)return;const rows=[];Object.keys(data||{}).forEach(userId=>Object.keys(data[userId]||{}).forEach(deviceId=>rows.push(Object.assign({userId,deviceId},data[userId][deviceId]||{}))));const date=document.getElementById('login-filter-date').value,dss=document.getElementById('login-filter-dss').value,dso=document.getElementById('login-filter-dso').value;
             const filtered=rows.filter(r=>(!date||dhakaDateOf(r.loginAt)===date)&&(!dss||loginDss(r.userId)===dss)&&(!dso||normalizeScopeWallet(r.userId)===dso));
             rows.length=0;rows.push(...filtered);rows.sort((a,b)=>Number(b.loginAt||0)-Number(a.loginAt||0));body.innerHTML=rows.length?rows.map(r=>{const age=Date.now()-Number(r.lastSeen||0),active=r.active===true&&Number(r.lastSeen)>0&&age>=-30000&&age<150000;return '<tr><td data-label="User ID">'+escapeMorningHtml(r.userId||'')+'</td><td data-label="Login Time">'+escapeMorningHtml(loginTimestampLabel(r.loginAt,r.loginTime))+'</td><td data-label="Last Active">'+escapeMorningHtml(loginTimestampLabel(r.lastSeen,r.lastActiveTime))+'</td><td data-label="Device ID"><span title="'+escapeMorningHtml(r.deviceId||'')+'">'+escapeMorningHtml(String(r.deviceId||'').slice(0,16))+(String(r.deviceId||'').length>16?'…':'')+'</span></td><td data-label="Device / Browser">'+escapeMorningHtml(r.deviceLabel||'Unknown')+'</td><td data-label="Status"><span class="status-badge">'+(r.passwordChangeRequired?'Password change required':active?'Online':'Offline')+'</span></td></tr>';}).join(''):'<tr><td colspan="6" class="empty-state">No login information found.</td></tr>';}
@@ -4350,7 +4368,7 @@ function deferVisiblePageWork(tab,task){
             if (tab === 'assignment-upload' && getRoleInfo().role !== 'Admin') return;
             if (tab === 'login-info') { try { startAdminLoginMonitoring(); loadAdminLoginInfo(); loadAdminLatestLoginAlert(); } catch (_) {} }
             // Single-page navigation: ONLY the clicked page is visible.
-            const pages = ['dashboard','form','daily','notices','admin','uploads','login-info','change-pass','morning-upload','morning-report','afternoon-upload','afternoon-report','assignment-upload','monthly-performance','kyc-collection','kyc-status'];
+            const pages = ['dashboard','visit-feedback','form','daily','notices','admin','uploads','login-info','change-pass','morning-upload','morning-report','afternoon-upload','afternoon-report','assignment-upload','monthly-performance','kyc-collection','kyc-status'];
             pages.forEach(name => {
                 const el = document.getElementById('view-' + name);
                 if (!el) return;
@@ -4371,7 +4389,7 @@ function deferVisiblePageWork(tab,task){
                 page.setAttribute('aria-hidden', 'false');syncReportUploadClock();
             }
 
-            const navId = ['morning-upload','afternoon-upload','assignment-upload'].includes(tab) ? 'nav-uploads' : tab === 'change-pass' ? 'nav-settings' : ((tab === 'daily' || tab === 'form') ? 'nav-visit' : ((tab === 'morning-upload' || tab === 'morning-report' || tab === 'afternoon-upload' || tab === 'afternoon-report' || tab === 'assignment-upload' || tab === 'monthly-performance') ? 'nav-reports' : ((tab === 'kyc-collection' || tab === 'kyc-status') ? 'nav-kyc' : 'nav-' + tab)));
+            const navId = ['morning-upload','afternoon-upload','assignment-upload'].includes(tab) ? 'nav-uploads' : tab === 'change-pass' ? 'nav-settings' : ((tab === 'daily' || tab === 'form' || tab === 'visit-feedback') ? 'nav-visit' : ((tab === 'morning-upload' || tab === 'morning-report' || tab === 'afternoon-upload' || tab === 'afternoon-report' || tab === 'assignment-upload' || tab === 'monthly-performance') ? 'nav-reports' : ((tab === 'kyc-collection' || tab === 'kyc-status') ? 'nav-kyc' : 'nav-' + tab)));
             const nav = document.getElementById(navId);
             if (nav) nav.classList.add('active');
 
@@ -4402,6 +4420,7 @@ function deferVisiblePageWork(tab,task){
                 scheduleRenderReports();
             }
             if (tab === 'notices') renderNotices();
+            if (tab === 'visit-feedback') window.DmsVisitFeedback?.open();
             if (tab === 'dashboard') window.DmsTargets?.open();
             if (tab === 'uploads') { const month=document.getElementById('target-upload-month'); if(!month.value)month.value=getDhakaToday().slice(0,7); }
             if (tab === 'morning-upload') { const input=document.getElementById('morning-target-date'); const today=getDhakaToday(); input.max=today; if(!input.value)input.value=today; }
@@ -6608,7 +6627,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-17-online-presence-v185';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-18-visit-feedback-v186';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
@@ -6712,8 +6731,10 @@ body:not(.app-logged-in) #view-login{background:radial-gradient(ellipse at 50% 0
 @media(prefers-reduced-motion:reduce){#view-login input,#view-login button{transition:none!important}}
 </style>
 
+<script src="feedback/visit-feedback.js?v=186"></script>
 </body>
 </html>
+
 
 
 

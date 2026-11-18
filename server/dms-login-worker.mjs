@@ -1,3 +1,4 @@
+import {visitFeedback} from './visit-feedback.mjs';
 import {handleBackupExport} from './backup-export.mjs';
 import {secureData,securityScope} from './security-data.mjs';
 // Cloudflare module Worker. Secrets belong in Cloudflare Settings, never in this file.
@@ -64,11 +65,11 @@ export function loginClaims(id,account,attendanceOnly=false){
  return {dmsUserId:id,dmsCredentialVersion:Number(account.updatedAt||0),dmsRole:scope.all?(id==='admin'?'Admin':'DM'):scope.dss?'DSS':scope.own?'DSO':'Field',dmsWallet:scope.own||'',dmsWallets:Object.fromEntries([...scope.wallets].map(w=>[w,true])),attendanceAdmin:['admin','zahangir'].includes(id)&&!mustChange,
   ...(attendanceOnly?{}:{dmsAuthenticated:true,dmsPasswordChangeRequired:mustChange})};
 }
-async function readInput(req){
- if(Number(req.headers.get('Content-Length')||0)>4096)throw Object.assign(Error('Request too large'),{status:413});
+async function readInput(req,maxBytes=4096){
+ if(Number(req.headers.get('Content-Length')||0)>maxBytes)throw Object.assign(Error('Request too large'),{status:413});
  const reader=req.body?.getReader();if(!reader)throw Object.assign(Error('Request required'),{status:400});
  const chunks=[];let length=0;
- while(true){const {value,done}=await reader.read();if(done)break;length+=value.length;if(length>4096){await reader.cancel();throw Object.assign(Error('Request too large'),{status:413})}chunks.push(value)}
+ while(true){const {value,done}=await reader.read();if(done)break;length+=value.length;if(length>maxBytes){await reader.cancel();throw Object.assign(Error('Request too large'),{status:413})}chunks.push(value)}
  const bytes=new Uint8Array(length);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length}
  let input;try{input=JSON.parse(new TextDecoder().decode(bytes))}catch{throw Object.assign(Error('Invalid JSON'),{status:400})}
  if(!input||typeof input!=='object'||Array.isArray(input))throw Object.assign(Error('Invalid JSON'),{status:400});return input;
@@ -133,16 +134,17 @@ export default {async fetch(req,env){
  if(u.pathname==='/backup/export')return handleBackupExport(req,env,{firebase,rateLimit});
  if(req.method==='GET'&&['/','/health'].includes(u.pathname)){
   try{serviceAccount(env);databaseUrl(env);await credentialCache.key;
-   return json({ok:true,service:'DMS Secure Login',version:'184',configured:true,capabilities:['attendance-token','dms-login','password-change','scoped-data-v1','encrypted-backup-export-v1','server-login-audit-v1'],note:'Configuration validated only; authenticated login and database rules must be tested separately.'});
+   return json({ok:true,service:'DMS Secure Login',version:'186',configured:true,capabilities:['attendance-token','dms-login','password-change','scoped-data-v1','encrypted-backup-export-v1','server-login-audit-v1','visit-feedback-v1'],note:'Configuration validated only; authenticated login and database rules must be tested separately.'});
   }catch(e){return json({ok:false,configured:false,error:errors[e.message]||'Login server configuration error'},503)}
  }
- if(!['/','/token','/login','/password','/admin/password','/performance','/targets','/data'].includes(u.pathname))return json({error:'Not found'},404);
+ if(!['/','/token','/login','/password','/admin/password','/performance','/targets','/data','/visit-feedback'].includes(u.pathname))return json({error:'Not found'},404);
  if(!origin||!origins(env).includes(origin))return json({error:'Website is not permitted'},403);
  if(req.method==='OPTIONS')return new Response(null,{status:204,headers:{'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Methods':'POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type',Vary:'Origin','Access-Control-Max-Age':'600'}});
  if(req.method!=='POST')return json({error:'POST required'},405,origin);
  if(!req.headers.get('Content-Type')?.toLowerCase().startsWith('application/json'))return json({error:'JSON required'},415,origin);
  try{
-  const input=await readInput(req);
+  const input=await readInput(req,u.pathname==='/visit-feedback'?15000:4096);
+  if(u.pathname==='/visit-feedback'){const id=await performanceSession(env,input);return json(await visitFeedback(env,input,id,firebase),200,origin);}
   if(u.pathname==='/data'){const id=await performanceSession(env,input);const data=await secureData(input,id,async path=>{const r=await firebase(env,path);if(!r.ok)throw Error('FIREBASE_ACCESS_DENIED');return r.json();});return json({data},200,origin);}
   if(u.pathname==='/targets')return json(await targetReport(env,input),200,origin);
   if(u.pathname==='/performance')return json(await performanceReport(env,input),200,origin);
@@ -187,4 +189,5 @@ export default {async fetch(req,env){
   return json({token,...(attendanceOnly?{}:{userId:id,forceChange:account.forceChange===true||password==='1234',loginAudit})},200,origin);
  }catch(e){return json({error:e.status?e.message:errors[e.message]||'Login server temporarily unavailable'},e.status||503,origin)}
 }};
+
 
