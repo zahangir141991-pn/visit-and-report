@@ -22,7 +22,90 @@ function paged(key,headers,rows,empty){const size=state.sizes[key]||25,max=Math.
 function attendedDevices(row){return [...new Set(records('punch').filter(p=>p.employee===row.employee&&p.date===row.date&&p.device).map(p=>{const d=devices().find(d=>d.id===p.device);return d?[d.location,d.name].filter(Boolean).join(' · '):p.device}))].join(', ')||'—';}
 function attendanceCells(row){const issue=[row.lateMinutes?tag('Late '+row.lateMinutes+'m','amber'):'',row.earlyMinutes?tag('Early '+row.earlyMinutes+'m','amber'):'',row.overtimeMinutes?tag('Late out '+row.overtimeMinutes+'m','blue'):'',row.missingIn?tag('Missing in','red'):'',row.missingOut?tag('Missing out','red'):''].join('');return [displayDate(row.date),person(row.name,row.employeeId+' · '+row.branch),E(row.designation||'—'),E(attendedDevices(row)),row.first?.slice(0,5)||'—',row.last?.slice(0,5)||'—',row.workMinutes?C.formatMinutes(row.workMinutes):'—',tag(row.status,row.status==='Absent'?'red':['Pending','Upcoming','Off day','Not scheduled'].includes(row.status)?'neutral':row.status==='Leave'?'blue':'')+(row.holiday?'<small>'+E(row.holiday)+'</small>':''),issue||'—'];}
 const attendanceHeaders=['Date','Employee','Designation','Attendance device / branch','Check-in','Check-out','Work duration','Status','Exceptions'];
-function renderDashboard(){const date=state.overviewDate||C.today(),branchEmployees=employees().filter(e=>!state.overviewBranch||e.branch===state.overviewBranch),selected=branchEmployees.filter(e=>C.eligible(e,date)).sort((a,b)=>String(a.code||a.employeeId).localeCompare(String(b.code||b.employeeId),undefined,{numeric:true,sensitivity:'base'})),index=C.makeIndex(state.records),r=rules(),rows=selected.map(e=>C.attendanceRow(e,date,state.records,{rules:r,index})),present=rows.filter(r=>r.status==='Present').length,late=rows.filter(r=>r.lateMinutes).length,absent=rows.filter(r=>r.status==='Absent').length;const scopedDevices=devices().filter(d=>!state.overviewBranch||d.location===state.overviewBranch),online=scopedDevices.filter(d=>C.connectionState(d,state.records,Date.now(),r.heartbeatSeconds).online).length;const bars=Array.from({length:7},(_,i)=>{const day=C.addDays(date,i-6),n=branchEmployees.filter(e=>C.eligible(e,day)).filter(e=>C.attendanceRow(e,day,state.records,{rules:r,index}).status==='Present').length;return {day,n}}),peak=Math.max(1,...bars.map(b=>b.n)),recent=records('punch').filter(p=>p.date===date&&selected.some(e=>e.id===p.employee)&&C.validTime(p.time)).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time)).slice(0,4);return heading('WORKFORCE OVERVIEW','Attendance overview','A clear view of your people and today’s attendance.',button('View report →','open-report','','ghost')+button('+ Add employee','employee-new','',''))+'<section class="panel"><div class="filters"><label>Date<input id="overview-date" type="date" value="'+E(date)+'"></label><label>Branch<select id="overview-branch">'+options(branches(),state.overviewBranch,'All branches')+'</select></label><span>'+displayDate(date)+' · Asia/Dhaka</span></div></section><div class="metrics">'+metric('Employees',selected.length,displayDate(date),'','employees')+metric('Present',present,'Employees with a recorded punch','green','check')+metric('Late check-ins',late,'After the configured grace period','amber','clock')+metric('Absent',absent,'Finalized after shift end','red','employees')+metric('Pending',rows.filter(r=>r.status==='Pending').length,'No punch yet; shift not finalized','amber','clock')+metric('Leave / Off day',rows.filter(r=>['Leave','Off day'].includes(r.status)).length,'Approved leave or scheduled day off','','calendar')+'</div><div class="split"><section class="panel"><div class="panel-heading"><div><h2>Attendance · '+displayDate(date)+'</h2><small>'+displayDate(date)+' · '+E(r.start)+'–'+E(r.end)+'</small></div>'+'</div>'+paged('overview',attendanceHeaders,rows.map(attendanceCells),'Add an employee to start tracking attendance.')+'</section><aside class="dashboard-side"><section class="panel"><div class="panel-heading"><h2>Workforce pulse</h2>'+tag('Last 7 days','neutral')+'</div><div class="panel-content"><div class="side-stat"><span>Devices online (live)</span><strong>'+online+' / '+scopedDevices.length+'</strong></div><div class="side-stat"><span>On approved leave</span><strong>'+rows.filter(r=>r.status==='Leave').length+'</strong></div><div class="side-stat"><span>Awaiting first punch</span><strong>'+rows.filter(r=>r.status==='Pending').length+'</strong></div><div class="trend">'+bars.map(b=>'<div class="trend-column" title="'+b.day+': '+b.n+' present"><div style="height:'+Math.max(3,Math.round(b.n/peak*68))+'px"></div><span>'+new Date(b.day+'T00:00:00Z').toLocaleDateString('en-GB',{weekday:'short',timeZone:'UTC'}).slice(0,2)+'</span></div>').join('')+'</div></div></section><section class="panel"><div class="panel-heading"><h2>Selected date punches</h2>'+icon('activity')+'</div><div class="panel-content">'+(recent.length?recent.map(p=>{const e=employees().find(e=>e.id===p.employee);return '<div class="activity-item"><span class="avatar">'+icon('check')+'</span><span>'+E(e?.name||'Unmapped employee')+'<small>'+E(p.source||'Manual')+' · '+displayDate(p.date)+'</small></span><time>'+E(p.time.slice(0,5))+'</time></div>'}).join(''):'<div class="empty">No saved punches for this date and branch.</div>')+'</div></section></aside></div>'}
+function overviewRing(title, center, caption, entries) {
+    const total=entries.reduce((sum,[,count])=>sum+count,0);
+    let offset=0;
+    const segments=entries.filter(([,count])=>count>0).map(([,count,color])=>{
+        const start=offset;
+        offset+=count;
+        return `var(--overview-${color}) ${start/total*100}% ${offset/total*100}%`;
+    });
+    const background=total?`conic-gradient(${segments.join(',')})`:'var(--overview-neutral)';
+    return `<section class="panel overview-chart">
+        <div class="panel-heading"><h2>${title}</h2></div>
+        <div class="overview-chart-body">
+            <div class="overview-ring" style="background:${background}" aria-hidden="true"><div><strong>${center}</strong><small>${caption}</small></div></div>
+            <dl class="overview-legend">${entries.map(([label,count,color])=>`<div><dt><i class="overview-${color}"></i>${label}</dt><dd>${count}</dd></div>`).join('')}</dl>
+        </div>
+    </section>`;
+}
+
+function renderDashboard(){
+    const date=state.overviewDate||C.today();
+    const branchEmployees=employees().filter(e=>!state.overviewBranch||e.branch===state.overviewBranch);
+    const selected=branchEmployees.filter(e=>C.eligible(e,date)).sort((a,b)=>
+        String(a.code||a.employeeId).localeCompare(String(b.code||b.employeeId),undefined,{numeric:true,sensitivity:'base'}));
+    const index=C.makeIndex(state.records), r=rules(), now=new Date();
+    const rowFor=(employee,day)=>C.attendanceRow(employee,day,state.records,{rules:r,index,now});
+    const rows=selected.map(e=>rowFor(e,date));
+    const count=status=>rows.filter(row=>row.status===status).length;
+    const present=count('Present'), absent=count('Absent'), onLeave=count('Leave');
+    const selectedIds=new Set(selected.map(employee=>employee.id));
+    const leaves=records('leave').filter(leave=>selectedIds.has(leave.employee)&&leave.from<=date&&leave.to>=date);
+    const leaveEntries=['Approved','Pending','Rejected'].map((status,i)=>
+        [status,leaves.filter(leave=>leave.status===status).length,['green','amber','red'][i]]);
+    const recent=rows.filter(row=>row.first&&row.status==='Present')
+        .sort((a,b)=>b.first.localeCompare(a.first)).slice(0,4);
+    const trend=Array.from({length:7},(_,i)=>{
+        const day=C.addDays(date,i-6);
+        const dayRows=branchEmployees.filter(e=>C.eligible(e,day)).map(e=>rowFor(e,day));
+        return {day,present:dayRows.filter(row=>row.status==='Present').length,
+            late:dayRows.filter(row=>row.status==='Present'&&row.lateMinutes>0).length};
+    });
+    const scopedDevices=devices().filter(device=>!state.overviewBranch||device.location===state.overviewBranch);
+    const online=scopedDevices.filter(device=>C.connectionState(device,state.records,+now,r.heartbeatSeconds).online).length;
+    const peak=Math.max(1,...trend.map(day=>day.present));
+    const weekday=new Intl.DateTimeFormat('en-GB',{weekday:'short',timeZone:'UTC'});
+    return `<div class="attendance-overview">
+        ${heading('','Attendance Overview','',button('View report →','open-report','','ghost')+button('+ Add employee','employee-new','',''))}
+        <section class="panel overview-filters"><div class="filters">
+            <label>Date<input id="overview-date" type="date" value="${E(date)}"></label>
+            <label>Branch<select id="overview-branch">${options(branches(),state.overviewBranch,'All branches')}</select></label>
+        </div></section>
+        <div class="metrics overview-metrics">
+            ${metric('Total Employees',selected.length,'','','employees')}
+            ${metric('Present',present,'','green','check')}
+            ${metric('On Leave',onLeave,'','amber','leave')}
+            ${metric('Absent',absent,'','red','employees')}
+        </div>
+        <div class="overview-grid">
+            ${overviewRing('Attendance Breakdown',present,'Present',[
+                ['Present',present,'green'],['Absent',absent,'red'],['On Leave',onLeave,'amber'],
+                ['Pending',count('Pending'),'blue'],['Off day',count('Off day'),'neutral'],['Upcoming',count('Upcoming'),'gray']
+            ])}
+            ${overviewRing('Leave Overview',leaveEntries.reduce((sum,[,value])=>sum+value,0),'Requests',leaveEntries)}
+            <section class="panel overview-chart">
+                <div class="panel-heading"><h2>Recent Check-ins</h2></div>
+                <div class="overview-checkins">${recent.length?recent.map(row=>`<div class="overview-checkin">
+                    ${person(row.name,[row.branch,row.first.slice(0,5)].filter(Boolean).join(' · '))}
+                    ${row.lateMinutes?tag('Late','amber'):tag('Present')}
+                </div>`).join(''):'<div class="empty">No check-ins for this date and branch.</div>'}</div>
+            </section>
+            <section class="panel overview-chart">
+                <div class="panel-heading"><h2>Attendance Trend</h2><small>Last 7 days</small></div>
+                <div class="overview-trend-legend"><span><i class="overview-green"></i>On time</span><span><i class="overview-amber"></i>Late</span></div>
+                <ol class="overview-trend">${trend.map(({day,present,late})=>`<li title="${day} · ${present-late} on time · ${late} late">
+                    <div class="overview-bar" aria-hidden="true"><div class="overview-bar-track" style="height:${present/peak*100}%">${present?`<i style="height:${late/present*100}%"></i>`:''}</div></div>
+                    <span class="overview-sr">${displayDate(day)}, ${present-late} on time, ${late} late</span><small aria-hidden="true">${weekday.format(new Date(day+'T00:00:00Z'))}</small>
+                </li>`).join('')}</ol>
+            </section>
+        </div>
+        <section class="panel"><div class="panel-heading"><div><h2>Attendance Details</h2>
+            <small>${displayDate(date)} · ${E(r.start)}–${E(r.end)} · Asia/Dhaka</small></div>${tag(online+' / '+scopedDevices.length+' devices online','neutral')}</div>
+            ${paged('overview',attendanceHeaders,rows.map(attendanceCells),'No employees match the selected date and branch.')}
+        </section>
+    </div>`;
+}
 function filteredEmployees(){return employees().filter(e=>!e.deleted&&(!state.employeeBranch||e.branch===state.employeeBranch)&&(state.employeeStatus==='all'||(state.employeeStatus==='active'?e.active!==false:e.active===false))&&[e.employeeId,e.name,e.code,e.branch,e.department,e.designation,e.employeeNumber,e.personalNumber].join(' ').toLowerCase().includes(state.employeeSearch.toLowerCase())).sort((a,b)=>String(a.code||a.employeeId).localeCompare(String(b.code||b.employeeId),undefined,{numeric:true,sensitivity:'base'})||String(a.name).localeCompare(String(b.name)));}
 function renderEmployees(){const list=filteredEmployees();return heading('PEOPLE DIRECTORY','Employees','Employee profiles and device user mapping.',button('Remove selected ('+state.employeeSelected.length+')','employee-delete-selected','','danger small')+button('Review Sadar duplicates','employee-cleanup','','ghost')+button('Select page','employee-select-page','','ghost')+button('Import device users','employee-import-device','','ghost')+button('Export Excel','employee-export','','ghost')+button('+ Add employee','employee-new','',''))+'<section class="panel"><div class="panel-heading"><h2>Employee directory</h2>'+tag(list.length+' shown · '+employees().filter(e=>!e.deleted).length+' total','neutral')+'</div><div class="filters"><input type="search" id="employee-search" placeholder="Search name, ID or phone" aria-label="Search employees" value="'+E(state.employeeSearch)+'"><select id="employee-branch" aria-label="Branch">'+options(branches(),state.employeeBranch,'All branches')+'</select><select id="employee-status" aria-label="Employment status">'+options([['active','Active employees'],['inactive','Inactive employees'],['all','All employees']],state.employeeStatus)+'</select></div>'+paged('employees',['Select','SL','Employee','Employee ID','Department / Role','Contact','Branch','Joined','Device ID','Status',''],list.map((e,i)=>['<input type="checkbox" data-employee-select="'+E(e.id)+'" aria-label="Select '+E(e.name)+'" '+(state.employeeSelected.includes(e.id)?'checked':'')+'>',i+1,person(e.name,e.email||''),E(e.employeeId),E(e.department||'—')+'<small>'+E(e.designation||'')+'</small>',E(e.employeeNumber||'—')+'<small>'+E(e.personalNumber||'')+'</small>',E(e.branch),displayDate(e.join),'<span class="mono">'+E(e.code)+'</span>',tag(e.active===false?'Inactive':'Active',e.active===false?'neutral':''),'<div class="inline-actions">'+button('Edit','employee-edit','data-id="'+E(e.id)+'"')+button('Delete','employee-delete','data-id="'+E(e.id)+'"','danger small')+'</div>']))+'</section>'}
 function getReport(){let range;if(state.reportMode==='range')range={from:state.from,to:state.to};else range=C.period(state.reportMode,state.reportMode==='monthly'?state.reportMonth+'-01':state.reportDate);const selected=employees().filter(e=>(!state.reportBranch||e.branch===state.reportBranch)&&(!state.reportEmployee||e.id===state.reportEmployee)&&[e.name,e.employeeId,e.code,e.branch,e.designation].join(' ').toLowerCase().includes(state.reportSearch.toLowerCase()));let rows=C.buildReport(selected,state.records,range.from,range.to);rows=rows.filter(r=>!state.reportStatus||state.reportStatus==='Late'?(!state.reportStatus||r.lateMinutes>0):state.reportStatus==='Early'?r.earlyMinutes>0:state.reportStatus==='Missing'?r.missingIn||r.missingOut:r.status===state.reportStatus);return {...range,rows,summary:C.summarize(rows)};}
@@ -39,7 +122,7 @@ const select=(label,name,values,value,all)=>'<label>'+label+'<select name="'+nam
 const formHeading=label=>'<div class="form-heading">'+label+'</div>';
 const actions=label=>'<div class="form-actions">'+button('Cancel','dialog-close','','secondary')+'<button type="submit">'+label+'</button></div>';
 function renderSettings(){const r=rules();return heading('WORKSPACE PREFERENCES','Attendance settings','Shift rules, receiver address and company holidays.')+'<section class="panel"><div class="panel-heading"><h2>Shift & connection settings</h2>'+tag('Asia/Dhaka','neutral')+'</div><div class="panel-content"><form class="form-grid" data-form="settings">'+formHeading('Working schedule')+input('Shift start','start',r.start,'time',true)+input('Shift end','end',r.end,'time',true)+input('Arrival grace (minutes)','grace',r.grace,'number',true)+input('Unpaid break (minutes)','breakMinutes',r.breakMinutes,'number',true)+select('Weekly off day','off',['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map((v,i)=>[i,v]),r.off)+input('Device offline after (seconds)','heartbeatSeconds',r.heartbeatSeconds,'number',true)+formHeading('Device server')+input('ADMS receiver hostname','receiverHost',r.receiverHost||'','text',false,'Hostname only; use the device receiver, not the login service.')+'<div class="wide hint">Grace applies to late-arrival classification. After grace, lateness is counted from shift start. This workspace supports same-day shifts.</div>'+actions('Save settings')+'</form></div></section><section class="panel"><div class="panel-heading"><h2>Company holidays</h2>'+button('+ Add holiday','holiday-new')+'</div>'+table(['Date','Holiday'],records('holiday').sort((a,b)=>a.date.localeCompare(b.date)).map(h=>[displayDate(h.date),E(h.name)]),'No company holidays added.')+'</section>'}
-function render(){if(!state.received||state.closed)return;try{$('navigation').innerHTML=menus.map(([id,label])=>'<button type="button" data-nav="'+id+'" class="'+(state.page===id?'active':'')+'">'+icon(id)+'<span>'+label+'</span></button>').join('');$('breadcrumb').textContent=menus.find(m=>m[0]===state.page)?.[1]||'Attendance';const pages={dashboard:renderDashboard,employees:renderEmployees,reports:renderReports,leave:renderLeave,devices:renderDevices,activity:renderActivity,settings:renderSettings};$('app').innerHTML=pages[state.page]();state.dirty=false;window.attendanceBoot.phase('ready');updateStatus();}catch(e){window.attendanceBoot.fail('Some attendance records could not be displayed. Please try again.');console.error('Attendance render failed',e?.message)}}
+function render(){if(!state.received||state.closed)return;try{$('navigation').innerHTML=menus.map(([id,label])=>'<button type="button" data-nav="'+id+'" class="'+(state.page===id?'active':'')+'">'+icon(id)+'<span>'+label+'</span></button>').join('');$('breadcrumb').textContent=menus.find(m=>m[0]===state.page)?.[1]||'Attendance';$('app').dataset.attendancePage=state.page;const pages={dashboard:renderDashboard,employees:renderEmployees,reports:renderReports,leave:renderLeave,devices:renderDevices,activity:renderActivity,settings:renderSettings};$('app').innerHTML=pages[state.page]();state.dirty=false;window.attendanceBoot.phase('ready');updateStatus();}catch(e){window.attendanceBoot.fail('Some attendance records could not be displayed. Please try again.');console.error('Attendance render failed',e?.message)}}
 function canDraw(){return !$('dialog').open&&!document.activeElement?.matches?.('input,select,textarea')}
 function scheduleRender(){state.dirty=true;clearTimeout(renderTimer);renderTimer=setTimeout(()=>{if(canDraw())render()},120)}
 function updateStatus(){const c=$('connection');c.className='connection '+(state.connected&&state.received?'live':'offline');c.replaceChildren();const dot=document.createElement('i');c.append(dot,document.createTextNode(state.connected&&state.received?'Live · '+(state.updatedAt?stamp(state.updatedAt):'Connected'):state.received?'Reconnecting':'Connecting'));$('clock').textContent=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Dhaka',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date());$('admin-avatar').textContent=(state.identity?.role||'Admin').slice(0,1)}
