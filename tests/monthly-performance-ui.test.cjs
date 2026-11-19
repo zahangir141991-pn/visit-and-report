@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),vm=require(
 const A=require('../performance/analytics.js'),source=fs.readFileSync(require.resolve('../performance/app.js'),'utf8');
 function workspace(role='Admin'){
  class Element{constructor(){this._value='';this._html='';this.disabled=false;this.hidden=false;this.textContent='';}get value(){return this._value}set value(v){this._value=v}get innerHTML(){return this._html}set innerHTML(v){this._html=v;if(v.includes('<option')){const first=/value="([^"]*)"/.exec(v);this._value=first?first[1]:'';}}}
- const nodes={},get=id=>nodes[id]||(nodes[id]=new Element());get('perf-group').value='dso';get('perf-metric').value='txn';let listener,signal,writes=[];const context={window:{PerformanceAnalytics:A},document:{getElementById:get},currentUser:role==='Admin'?'admin':'zahangir',appSessionGeneration:1,role,uddoktaDB:[['801','01700000001','Agent One','DSS ONE'],['802','01700000002','Agent Two','DSS TWO']],dssDsoAssignmentIndex:new Map([['DSS ONE',new Set(['801'])],['DSS TWO',new Set(['802'])]]),getRoleInfo:()=>({role:context.role}),normalizeScopeWallet:v=>v,getAssignedDsoWalletsForDss:()=>new Set(),firebaseConfig:{databaseURL:'https://example.firebaseio.com'},fetch:async()=>({status:401}),crypto:require('node:crypto').webcrypto,db:{ref:path=>({off(){},on(event,fn){if(path==='dms_live_update_signal')signal=fn;else listener=fn;},async update(value){writes.push(value);}})},alert:msg=>{throw Error(msg)},confirm:()=>true,console,setTimeout:()=>0,clearTimeout:()=>{}};
+ const nodes={},get=id=>nodes[id]||(nodes[id]=new Element());get('perf-group').value='dso';get('perf-metric').value='txn';let listener,signal,writes=[];const context={window:{PerformanceAnalytics:A},document:{getElementById:get},currentUser:role==='Admin'?'admin':'zahangir',appSessionGeneration:1,role,uddoktaDB:[['801','01700000001','Agent One','DSS ONE'],['802','01700000002','Agent Two','DSS TWO']],dssDsoAssignmentIndex:new Map([['DSS ONE',new Set(['801'])],['DSS TWO',new Set(['802'])]]),getRoleInfo:()=>({role:context.role}),normalizeScopeWallet:v=>v,getAssignedDsoWalletsForDss:()=>new Set(),firebaseConfig:{databaseURL:'https://example.firebaseio.com'},fetch:async()=>({status:401}),AbortController,firebaseRestReadFresh:()=>new Promise(()=>{}),crypto:require('node:crypto').webcrypto,db:{ref:path=>({off(){},on(event,fn){if(path==='dms_live_update_signal')signal=fn;else listener=fn;},async update(value){writes.push(value);}})},alert:msg=>{throw Error(msg)},confirm:()=>true,console,setTimeout:()=>0,clearTimeout:()=>{}};
  vm.createContext(context);vm.runInContext(source,context);
  return {context,nodes,get,writes,run:js=>vm.runInContext(js,context),snapshot:months=>listener({val:()=>months}),signal:value=>signal({val:()=>value})};
 }
@@ -102,6 +102,7 @@ test('loading and connection failure do not appear as missing uploads',async()=>
  const opening=w.context.window.openPerformanceReport();
  assert.match(w.get('perf-meta').textContent,/Loading monthly/);
  assert.equal(w.get('perf-month').disabled,true);
+ await Promise.resolve();
  finish({status:503});
  await opening;
  w.context.window.renderPerformance();
@@ -113,4 +114,31 @@ test('loading and connection failure do not appear as missing uploads',async()=>
  assert.equal(w.get('perf-month').disabled,false);
  assert.equal(w.get('perf-month').value,'2026-11');
  assert.equal(w.get('perf-retry').hidden,true);
+});
+
+test('authenticated read loads report when realtime stays pending',async()=>{
+ const w=workspace();
+ let resolve;
+ w.context.firebaseRestReadFresh=path=>{
+  assert.equal(path,'monthly_performance');
+  return new Promise(done=>{resolve=done;});
+ };
+ await w.context.window.openPerformanceReport();
+ assert.match(w.get('perf-meta').textContent,/Loading/);
+ resolve({'2026-11':{groups:{801:group('801',10000000)}}});
+ await new Promise(done=>setImmediate(done));
+ assert.match(w.get('perf-cards').innerHTML,/1.00 Cr/);
+ w.snapshot({'2026-11':{groups:{801:group('801',20000000)}}});
+ assert.match(w.get('perf-cards').innerHTML,/2.00 Cr/);
+});
+
+test('a stalled authenticated read ends loading and exposes retry',async()=>{
+ const w=workspace();
+ let watchdog;
+ w.context.setTimeout=(callback,delay)=>{if(delay===12000)watchdog=callback;return 1;};
+ await w.context.window.openPerformanceReport();
+ watchdog();
+ await new Promise(done=>setImmediate(done));
+ assert.match(w.get('perf-meta').textContent,/did not respond in time/);
+ assert.equal(w.get('perf-retry').hidden,false);
 });
