@@ -94,3 +94,23 @@ test('a performance update signal refreshes scoped data and ignores duplicates o
  w.signal({type:'monthly-performance',revision:'upload-3'});
  assert.equal(loads,2);
 });
+
+test('loading and connection failure do not appear as missing uploads',async()=>{
+ const w=workspace();
+ let finish;
+ w.context.fetch=()=>new Promise(resolve=>{finish=resolve;});
+ const opening=w.context.window.openPerformanceReport();
+ assert.match(w.get('perf-meta').textContent,/Loading monthly/);
+ assert.equal(w.get('perf-month').disabled,true);
+ finish({status:503});
+ await opening;
+ w.context.window.renderPerformance();
+ assert.match(w.get('perf-meta').textContent,/Could not verify/);
+ assert.equal(w.get('perf-retry').hidden,false);
+ w.context.fetch=async()=>({status:401});
+ await w.context.window.openPerformanceReport();
+ w.snapshot({'2026-11':{groups:{801:group('801',10000000)}}});
+ assert.equal(w.get('perf-month').disabled,false);
+ assert.equal(w.get('perf-month').value,'2026-11');
+ assert.equal(w.get('perf-retry').hidden,true);
+});
