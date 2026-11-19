@@ -43,6 +43,7 @@ function controls(){
  if(dsos.includes(selectedDso))dw.value=selectedDso;
  return {days,mode};
 }
+const selectedMetric=()=>fields.find(([key])=>key===el('perf-metric').value)||fields[0];
 const percent=value=>value==null?'—':(value>=0?'+':'')+value.toFixed(2)+'%';
 function render(){
  if(!currentUser)return;
@@ -63,6 +64,7 @@ function render(){
   return '<div class="perf-card"><span>'+esc(label)+'</span><strong>'+esc(fmt(rows.length?totals[key]:null,key))+'</strong><small>'+esc(growth==null?'Previous: —':percent(growth))+'</small></div>';
  }).join('');
  const group=el('perf-group').value;
+ const [metric,metricLabel]=selectedMetric();
  if(group==='agent'){
   renderAgents(rows,priorRows,comparable,month);
  }else{
@@ -78,16 +80,16 @@ function render(){
    return grouped;
   };
   const label=group==='dh'?'DH':group==='dss'?'DSS':'DSO';
-  const columns=fields.length+3;
+  const columns=4;
   const renderRows=(caption,list,previousList)=>{
    const grouped=groupRows(list),previous=groupRows(previousList);
    return [...grouped.keys()].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).map(key=>{
     const summary=A.sum(grouped.get(key)),old=previous.get(key);
-    const growth=old?A.change(summary.txn,A.sum(old).txn):null;
-    return '<tr><td>'+esc(caption)+'</td><th>'+esc(key)+'</th>'+fields.map(([field])=>'<td>'+esc(fmt(summary[field],field))+'</td>').join('')+'<td>'+esc(percent(growth))+'</td></tr>';
+    const growth=old?A.change(summary[metric],A.sum(old)[metric]):null;
+    return '<tr><td>'+esc(caption)+'</td><th>'+esc(key)+'</th>'+'<td>'+esc(fmt(summary[metric],metric))+'</td>'+'<td>'+esc(percent(growth))+'</td></tr>';
    }).join('');
   };
-  el('perf-table-head').innerHTML='<tr><th>Month</th><th>'+label+'</th>'+fields.map(([,title])=>'<th>'+esc(title)+'</th>').join('')+'<th>TXN Growth</th></tr>';
+  el('perf-table-head').innerHTML='<tr><th>Month</th><th>'+label+'</th>'+'<th>'+esc(metricLabel)+'</th><th>Growth</th></tr>';
   const periodTotal=days.length>1?renderRows(periodLabel(month,mode)+' Total',rows,comparable?priorRows:[]):'';
   const monthlyRows=days.map(day=>renderRows(monthName(day),filtered(day),filtered(A.previousMonth(day)))).join('');
   el('perf-table-body').innerHTML=(periodTotal+monthlyRows)||'<tr><td colspan="'+columns+'">No data for this selection.</td></tr>';
@@ -100,14 +102,20 @@ function renderAgents(rows,previous,prevExists,month){
  const master=new Map((uddoktaDB||[]).map(row=>[String(row[1]||'').replace(/\D/g,'').replace(/^0/,''),row[2]||''])),agentName=agent=>master.get(String(agent).replace(/^0/,''))||'';
  const query=el('perf-agent-search').value.trim().toLowerCase(),size=Number(el('perf-agent-size').value)||25,signature=[el('perf-month').value,el('perf-dss').value,el('perf-dso').value,query,size].join('|');if(signature!==agentSignature){agentSignature=signature;agentPage=1;}
  const visible=list.filter(row=>!query||[row.agent,agentName(row.agent),row.dso].some(value=>String(value).toLowerCase().includes(query))).sort((a,b)=>String(a.agent).localeCompare(String(b.agent),undefined,{numeric:true}));const pages=Math.max(1,Math.ceil(visible.length/size));agentPage=Math.max(1,Math.min(agentPage,pages));
- el('perf-table-head').innerHTML='<tr>'+['Month','Uddokta Number','Uddokta Name','DSO','DSS','MTD TXN','MTD CI','MTD CO','Islamic MTD TXN','TXN Growth'].map(label=>'<th>'+label+'</th>').join('')+'</tr>';
- const amount=value=>value==null?'—':Number(value).toLocaleString('en-IN',{maximumFractionDigits:2});
- el('perf-table-body').innerHTML=visible.slice((agentPage-1)*size,agentPage*size).map(row=>{const old=prior.get(String(row.agent)),growth=prevExists&&old?A.change(row.txn,old.txn):null;return '<tr><td>'+esc(monthName(month))+'</td><th>'+esc(row.agent)+'</th><td>'+esc(agentName(row.agent))+'</td><td>'+esc(row.dso)+'</td><td>'+esc(name(row.dso))+'</td>'+['txn','ci','co','islamic'].map(key=>'<td>'+esc(amount(row[key]))+'</td>').join('')+'<td>'+esc(growth==null?'—':(growth>=0?'+':'')+growth.toFixed(2)+'%')+'</td></tr>';}).join('')||'<tr><td colspan="10">'+(list.length?'No matching agent.':'Agent details are unavailable for this month. Admin must upload its Excel file again.')+'</td></tr>';
+ const [metric,label]=selectedMetric();
+ el('perf-table-head').innerHTML='<tr>'+['Month','Uddokta Number','Uddokta Name','DSO','DSS',label,'Growth'].map(label=>'<th>'+esc(label)+'</th>').join('')+'</tr>';
+ const value=row=>metric==='atleast5'?Number(row.txn)>=500000?1:0:row[metric];
+ const amount=n=>n==null?'—':Number(n).toLocaleString('en-IN',{maximumFractionDigits:2});
+ el('perf-table-body').innerHTML=visible.slice((agentPage-1)*size,agentPage*size).map(row=>{
+  const old=prior.get(String(row.agent)),growth=prevExists&&old?A.change(value(row),value(old)):null;
+  return '<tr><td>'+esc(monthName(month))+'</td><th>'+esc(row.agent)+'</th><td>'+esc(agentName(row.agent))+'</td><td>'+esc(row.dso)+'</td><td>'+esc(name(row.dso))+'</td><td>'+esc(amount(value(row)))+'</td><td>'+esc(percent(growth))+'</td></tr>';
+ }).join('')||'<tr><td colspan="7">'+(list.length?'No matching agent.':'Agent details are unavailable for this month. Admin must upload its Excel file again.')+'</td></tr>';
  el('perf-agent-page').textContent='Page '+agentPage+' / '+pages+' · '+visible.length+' agents · Amounts in BDT';el('perf-agent-prev').disabled=agentPage<=1;el('perf-agent-next').disabled=agentPage>=pages;
 }
 window.performanceAgentPage=function(direction){agentPage+=direction;render();};
 function draw(days,mode){
- const chart=el('perf-chart'),metric=el('perf-metric').value||'txn';
+ const chart=el('perf-chart'),[metric,metricLabel]=selectedMetric();
+ const monthShort=new Intl.DateTimeFormat('en-GB',{month:'short',year:'2-digit',timeZone:'UTC'});
  const keys=[...days];
  if(mode==='monthly'&&keys.length){
   const earliest=Object.keys(months).sort()[0];
@@ -126,14 +134,46 @@ function draw(days,mode){
   if(points[i]==null||points[i+1]==null)return '';
   return '<line x1="'+coords[i][0]+'" y1="'+coords[i][1]+'" x2="'+x+'" y2="'+y+'" stroke="#047857" stroke-width="3"/>';
  }).join('');
- chart.innerHTML='<svg viewBox="0 0 720 190" role="img" aria-label="'+esc((fields.find(([key])=>key===metric)?.[1]||metric)+' by month')+'">'
+ chart.innerHTML='<svg viewBox="0 0 720 190" role="img" aria-label="'+esc(metricLabel+' by month')+'">'
   +'<line x1="50" y1="150" x2="670" y2="150" stroke="#cbd5e1"/>'+lines
   +coords.map(([x,y],i)=>{
    const month=keys[i],value=points[i],description=month+' · '+(value==null?'No data':fmt(value,metric));
    const point=value==null?'':'<circle cx="'+x+'" cy="'+y+'" r="4" fill="#047857"><title>'+esc(description)+'</title></circle><text x="'+x+'" y="'+(y-9)+'" text-anchor="middle" font-size="10" fill="#123c2c">'+esc(fmt(value,metric))+'</text>';
-   return '<g>'+point+'<text x="'+x+'" y="175" text-anchor="middle" font-size="11" fill="#1e293b"><title>'+esc(description)+'</title>'+esc(month.slice(2))+'</text></g>';
+   return '<g>'+point+'<text x="'+x+'" y="175" text-anchor="middle" font-size="11" fill="#1e293b"><title>'+esc(description)+'</title>'+esc(monthShort.format(new Date(month+'-01T00:00:00Z')))+'</text></g>';
   }).join('')+'</svg>';
 }
+window.printPerformance=function(){
+ if(!currentUser||!['Admin','DM','DSS','DSO'].includes(getRoleInfo().role))return;
+ const [,metric]=selectedMetric();
+ const group=el('perf-group').value;
+ const groupLabel={dh:'DH',dss:'DSS',dso:'DSO',agent:'Uddokta'}[group]||'DSO';
+ const filters=[groupLabel+' view',metric];
+ if(group!=='dh'){
+  const dss=el('perf-dss').value,dso=el('perf-dso').value;
+  if(dss)filters.push('DSS: '+dss);
+  if(dso)filters.push('DSO: '+dso);
+ }
+ if(group==='agent')filters.push(el('perf-agent-page').textContent);
+ const popup=window.open('','_blank');
+ if(!popup){alert('Allow pop-ups to print this report.');return;}
+ popup.opener=null;
+ popup.document.write(`<!doctype html><html lang="en"><head><meta charset="utf-8">
+ <title>Month Wise Performance Report</title><style>
+ @page{size:A4 landscape;margin:13mm}body{font:13px Arial;color:#17212b;margin:0}
+ h1{font-size:22px;margin:0 0 8px}h2{font-size:15px;margin:18px 0 6px}
+ p{margin:5px 0}table{margin-top:14px;width:100%;border-collapse:collapse}
+ thead{display:table-header-group}tr{break-inside:avoid}th,td{padding:6px;border:1px solid #9ba5ad;text-align:left}
+ section{break-inside:avoid}svg{display:block;width:100%;max-width:850px}
+ </style></head><body><h1>Month Wise Performance Report</h1>
+ <p>${esc(el('perf-meta').textContent)}</p><p>${esc(filters.join(' · '))}</p>
+ <table><thead>${el('perf-table-head').innerHTML}</thead><tbody>${el('perf-table-body').innerHTML}</tbody></table>
+ <section><h2>Monthly achievement · ${esc(metric)}</h2>${el('perf-chart').innerHTML}</section>
+ </body></html>`);
+ popup.document.close();
+ popup.addEventListener('afterprint',()=>popup.close(),{once:true});
+ popup.focus();
+ popup.print();
+};
 async function anonymousBlocked(){try{const u=String(firebaseConfig.databaseURL).replace(/\/$/,'')+'/monthly_performance.json?shallow=true';const r=await fetch(u,{cache:'no-store',credentials:'omit'});return r.status===401||r.status===403;}catch{return false;}}
 window.openPerformanceReport=async function(){if(!currentUser||!['Admin','DM','DSS','DSO'].includes(getRoleInfo().role))return;el('perf-upload-wrap').hidden=getRoleInfo().role!=='Admin';if(listener)listener.off();clearTimeout(refreshTimer);scopedDsos=null;serverNames=null;const gen=++token;months={};render();if(!await anonymousBlocked()){el('perf-meta').textContent='Secure database access is required before this report can be enabled.';return;}if(gen!==token||!currentUser)return;if(['DSS','DSO'].includes(getRoleInfo().role)){
  const load=async()=>{try{const idToken=await firebase.auth().currentUser.getIdToken();const result=await authServerRequest('/performance',{idToken});if(gen!==token||!currentUser)return;months=result.months||{};scopedDsos=new Set(result.allowedDsos||[]);serverNames=new Map(Object.entries(result.dssNames||{}));render();}catch(error){if(gen!==token||!currentUser)return;months={};scopedDsos=null;serverNames=null;render();el('perf-meta').textContent='Report access failed: '+error.message;}if(gen===token&&currentUser)refreshTimer=setTimeout(load,30000);};await load();return;

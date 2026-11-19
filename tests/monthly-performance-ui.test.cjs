@@ -38,7 +38,7 @@ test('DH, DSS and DSO summarize calendar periods and chart missing months as gap
  w.get('perf-dso').value='801';
  w.context.window.renderPerformance();
  assert.match(w.get('perf-meta').textContent,/2026 · Q1.*2 \/ 3 months uploaded/);
- assert.match(w.get('perf-table-body').innerHTML,/M\/S\. Mostafa.*14\.00 Cr.*<td>12<\/td>/);
+ assert.match(w.get('perf-table-body').innerHTML,/M\/S\. Mostafa.*14\.00 Cr/);
  assert.match(w.get('perf-chart').innerHTML,/2026-02 · No data/);
  assert.match(w.get('perf-table-body').innerHTML,/January 2026.*5\.00 Cr/);
  assert.match(w.get('perf-table-body').innerHTML,/March 2026.*9\.00 Cr/);
@@ -54,4 +54,23 @@ test('DH, DSS and DSO summarize calendar periods and chart missing months as gap
  w.context.window.renderPerformance();
  assert.match(w.get('perf-meta').textContent,/3 \/ 12 months uploaded/);
  assert.match(w.get('perf-table-body').innerHTML,/801.*12\.00 Cr.*802.*8\.00 Cr/);
+});
+
+test('metric selection updates table, monthly chart and printable report together',async()=>{
+ const w=workspace();
+ await w.context.window.openPerformanceReport();
+ w.snapshot({'2026-10':{groups:{801:group('801',10000000)}},'2026-11':{groups:{801:group('801',20000000)}}});
+ w.get('perf-metric').value='ci';
+ w.context.window.renderPerformance();
+ assert.match(w.get('perf-table-head').innerHTML,/MTD_CASH_IN/);
+ assert.doesNotMatch(w.get('perf-table-head').innerHTML,/MTD_CASH_OUT|MTD_TXN/);
+ assert.match(w.get('perf-table-body').innerHTML,/November 2026.*1\.20 Cr/);
+ assert.match(w.get('perf-chart').innerHTML,/MTD_CASH_IN by month/);
+ assert.match(w.get('perf-chart').innerHTML,/Oct 26/);
+ let printed=false,html='';
+ w.context.window.open=()=>({document:{write:value=>{html=value;},close(){}},addEventListener(){},focus(){},print(){printed=true;}});
+ w.context.window.printPerformance();
+ assert.equal(printed,true);
+ assert.match(html,/<table>[\s\S]*November 2026[\s\S]*<svg/);
+ assert.doesNotMatch(html,/MTD_CASH_OUT/);
 });
