@@ -2,15 +2,15 @@ const test=require('node:test'),assert=require('node:assert/strict'),vm=require(
 const A=require('../performance/analytics.js'),source=fs.readFileSync(require.resolve('../performance/app.js'),'utf8');
 function workspace(role='Admin'){
  class Element{constructor(){this._value='';this._html='';this.disabled=false;this.hidden=false;this.textContent='';}get value(){return this._value}set value(v){this._value=v}get innerHTML(){return this._html}set innerHTML(v){this._html=v;if(v.includes('<option')){const first=/value="([^"]*)"/.exec(v);this._value=first?first[1]:'';}}}
- const nodes={},get=id=>nodes[id]||(nodes[id]=new Element());get('perf-group').value='dso';get('perf-metric').value='txn';let listener,writes=[];const context={window:{PerformanceAnalytics:A},document:{getElementById:get},currentUser:role==='Admin'?'admin':'zahangir',appSessionGeneration:1,role,uddoktaDB:[['801','01700000001','Agent One','DSS ONE'],['802','01700000002','Agent Two','DSS TWO']],dssDsoAssignmentIndex:new Map([['DSS ONE',new Set(['801'])],['DSS TWO',new Set(['802'])]]),getRoleInfo:()=>({role:context.role}),normalizeScopeWallet:v=>v,getAssignedDsoWalletsForDss:()=>new Set(),firebaseConfig:{databaseURL:'https://example.firebaseio.com'},fetch:async()=>({status:401}),db:{ref:path=>({off(){},on(event,fn){listener=fn;},async set(value){writes.push({path,value});}})},alert:msg=>{throw Error(msg)},confirm:()=>true,console,setTimeout:()=>0,clearTimeout:()=>{}};
+ const nodes={},get=id=>nodes[id]||(nodes[id]=new Element());get('perf-group').value='dso';get('perf-metric').value='txn';let listener,signal,writes=[];const context={window:{PerformanceAnalytics:A},document:{getElementById:get},currentUser:role==='Admin'?'admin':'zahangir',appSessionGeneration:1,role,uddoktaDB:[['801','01700000001','Agent One','DSS ONE'],['802','01700000002','Agent Two','DSS TWO']],dssDsoAssignmentIndex:new Map([['DSS ONE',new Set(['801'])],['DSS TWO',new Set(['802'])]]),getRoleInfo:()=>({role:context.role}),normalizeScopeWallet:v=>v,getAssignedDsoWalletsForDss:()=>new Set(),firebaseConfig:{databaseURL:'https://example.firebaseio.com'},fetch:async()=>({status:401}),crypto:require('node:crypto').webcrypto,db:{ref:path=>({off(){},on(event,fn){if(path==='dms_live_update_signal')signal=fn;else listener=fn;},async update(value){writes.push(value);}})},alert:msg=>{throw Error(msg)},confirm:()=>true,console,setTimeout:()=>0,clearTimeout:()=>{}};
  vm.createContext(context);vm.runInContext(source,context);
- return {context,nodes,get,writes,run:js=>vm.runInContext(js,context),snapshot:months=>listener({val:()=>months})};
+ return {context,nodes,get,writes,run:js=>vm.runInContext(js,context),snapshot:months=>listener({val:()=>months}),signal:value=>signal({val:()=>value})};
 }
 const group=(dso,txn)=>({dso,txn,ci:txn*.6,co:txn*.4,islamic:txn*.1,agents:10,active:8,under5:7,atleast5:3});
 test('monthly screen renders and filters DSO/DSS totals and preceding calendar month growth',async()=>{const w=workspace();await w.context.window.openPerformanceReport();w.snapshot({'2026-08':{asOf:'2026-08-31',groups:{801:group('801',10000000),802:group('802',20000000)}},'2026-09':{asOf:'2026-09-30',groups:{801:group('801',20000000),802:group('802',40000000)}}});assert.equal(w.get('perf-month').value,'2026-09');assert.match(w.get('perf-cards').innerHTML,/6.00 Cr/);assert.match(w.get('perf-cards').innerHTML,/100.00%/);assert.match(w.get('perf-chart').innerHTML,/<svg/);w.get('perf-dss').value='DSS ONE';w.context.window.renderPerformance();assert.match(w.get('perf-cards').innerHTML,/2.00 Cr/);assert(!w.get('perf-table-body').innerHTML.includes('>802</th>'));w.get('perf-group').value='dss';w.context.window.renderPerformance();assert.match(w.get('perf-table-body').innerHTML,/DSS ONE/);w.get('perf-month').value='2026-08';w.context.window.renderPerformance();assert.match(w.get('perf-cards').innerHTML,/Previous: —/);});
 test('DM is read only',async()=>{const dm=workspace('DM');await dm.context.window.openPerformanceReport();assert.equal(dm.get('perf-upload-wrap').hidden,true);await dm.context.window.savePerformance();assert.equal(dm.writes.length,0);});
 test('logout clears monthly screen subscription and stale snapshot cannot restore report',async()=>{const w=workspace();await w.context.window.openPerformanceReport();w.context.window.closePerformance();w.context.currentUser=null;w.snapshot({'2026-09':{groups:{801:group('801',90000000)}}});assert(!w.get('perf-cards').innerHTML.includes('9.00 Cr'));});
-test('upload writes only its chosen month and prevents a double submission',async()=>{const w=workspace();await w.context.window.openPerformanceReport();w.snapshot({'2026-09':{groups:{801:group('801',1000)}}});const rows=[[],[],['DSO Wallet','Uddokta Wallet','CI AMT MTD','CO AMT MTD','Trx MTD (CI & CO)','Uddokta Account Status'],['801','01700000001',100,200,300,'ACTIVE']];w.context.ensureXlsxSdk=async()=>{};w.context.XLSX={read:()=>({SheetNames:['Uddokta'],Sheets:{Uddokta:{}}}),utils:{sheet_to_json:()=>rows}};await w.context.window.previewPerformance({files:[{arrayBuffer:async()=>new ArrayBuffer(0)}]});w.get('perf-upload-month').value='2026-10';await Promise.all([w.context.window.savePerformance(),w.context.window.savePerformance()]);assert.equal(w.writes.length,1);assert.equal(w.writes[0].path,'monthly_performance/2026-10');assert.equal(w.writes[0].value.groups['801'].txn,300);assert.equal(w.get('perf-upload-status').textContent,'Report saved.');});
+test('upload writes only its chosen month and prevents a double submission',async()=>{const w=workspace();await w.context.window.openPerformanceReport();w.snapshot({'2026-09':{groups:{801:group('801',1000)}}});const rows=[[],[],['DSO Wallet','Uddokta Wallet','CI AMT MTD','CO AMT MTD','Trx MTD (CI & CO)','Uddokta Account Status'],['801','01700000001',100,200,300,'ACTIVE']];w.context.ensureXlsxSdk=async()=>{};w.context.XLSX={read:()=>({SheetNames:['Uddokta'],Sheets:{Uddokta:{}}}),utils:{sheet_to_json:()=>rows}};await w.context.window.previewPerformance({files:[{arrayBuffer:async()=>new ArrayBuffer(0)}]});w.get('perf-upload-month').value='2026-10';await Promise.all([w.context.window.savePerformance(),w.context.window.savePerformance()]);assert.equal(w.writes.length,1);assert.equal(w.writes[0]['monthly_performance/2026-10'].groups['801'].txn,300);assert.equal(w.writes[0].dms_live_update_signal.type,'monthly-performance');assert.equal(w.get('perf-upload-status').textContent,'Report saved.');});
 
 test('DSS uses updated Uddokta Information instead of the separate assignment upload',async()=>{const w=workspace();w.context.dssDsoAssignmentIndex=new Map([['OLD DSS',new Set(['801'])]]);await w.context.window.openPerformanceReport();w.snapshot({'2026-09':{groups:{801:group('801',10000000)}}});w.get('perf-group').value='dss';w.context.window.renderPerformance();assert.match(w.get('perf-table-body').innerHTML,/DSS ONE/);assert(!w.get('perf-table-body').innerHTML.includes('OLD DSS'));w.context.uddoktaDB[0][3]='UPDATED DSS';w.context.window.renderPerformance();assert.match(w.get('perf-table-body').innerHTML,/UPDATED DSS/);});
 
@@ -38,7 +38,9 @@ test('DH, DSS and DSO summarize calendar periods and chart missing months as gap
  w.get('perf-dso').value='801';
  w.context.window.renderPerformance();
  assert.match(w.get('perf-meta').textContent,/2026 · Q1.*2 \/ 3 months uploaded/);
- assert.match(w.get('perf-table-body').innerHTML,/M\/S\. Mostafa.*14\.00 Cr/);
+ assert.match(w.get('perf-table-head').innerHTML,/2026 · Q1 Average/);
+ assert.match(w.get('perf-cards').innerHTML,/7\.00 Cr/);
+ assert.match(w.get('perf-table-body').innerHTML,/M\/S\. Mostafa.*7\.00 Cr/);
  assert.match(w.get('perf-chart').innerHTML,/2026-02 · No data/);
  assert.match(w.get('perf-table-head').innerHTML,/MTD_TXN-Jan&#39;26.*MTD_TXN-Feb&#39;26.*MTD_TXN-Mar&#39;26/);
  assert.match(w.get('perf-table-body').innerHTML,/5\.00 Cr<\/td><td>—<\/td><td>9\.00 Cr/);
@@ -73,4 +75,22 @@ test('metric selection updates table, monthly chart and printable report togethe
  assert.equal(printed,true);
  assert.match(html,/<table>[\s\S]*MTD_CASH_IN-Nov&#39;26[\s\S]*<svg/);
  assert.doesNotMatch(html,/MTD_CASH_OUT/);
+});
+
+test('a performance update signal refreshes scoped data and ignores duplicates or closed sessions',async()=>{
+ const w=workspace('DSO');
+ w.context.getRoleInfo=()=>({role:'DSO',dsoWallet:'801'});
+ w.context.firebase={auth:()=>({currentUser:{getIdToken:async()=> 'verified-session'}})};
+ let loads=0;
+ w.context.authServerRequest=async()=>({months:{'2026-11':{groups:{801:group('801',++loads*10000000)}}}});
+ await w.context.window.openPerformanceReport();
+ assert.match(w.get('perf-cards').innerHTML,/1.00 Cr/);
+ w.signal({type:'monthly-performance',revision:'upload-2'});
+ w.signal({type:'monthly-performance',revision:'upload-2'});
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(loads,2);
+ assert.match(w.get('perf-cards').innerHTML,/2.00 Cr/);
+ w.context.window.closePerformance();
+ w.signal({type:'monthly-performance',revision:'upload-3'});
+ assert.equal(loads,2);
 });
