@@ -97,10 +97,6 @@ footer{color:#52647a;font-size:11px;padding:8px 14px}.boot-card p{color:#52647a}
 .table-wrap{max-height:none!important;overflow-y:visible;overflow-x:auto}input[data-employee-select]{width:17px;height:17px}.delete-choice{display:flex;align-items:center;gap:10px;margin:15px 0}
 
 /* Attendance overview */
-body:has(#app[data-attendance-page="dashboard"]) .sidebar { background:#073f33; }
-body:has(#app[data-attendance-page="dashboard"]) .sidebar :is(.brand small,.nav-caption,.workspace-badge small) { color:#bbd8cd; }
-body:has(#app[data-attendance-page="dashboard"]) .sidebar nav button { color:#e3f1eb; }
-body:has(#app[data-attendance-page="dashboard"]) .sidebar nav button.active { background:#127147; color:#fff; }
 body:has(#app[data-attendance-page="dashboard"]) .workspace { background:#f4f8f5; }
 .attendance-overview {
   --overview-green:#127447;

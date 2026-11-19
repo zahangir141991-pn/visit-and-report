@@ -71,6 +71,7 @@ function renderDashboard(){
         <section class="panel overview-filters"><div class="filters">
             <label>Date<input id="overview-date" type="date" value="${E(date)}"></label>
             <label>Branch<select id="overview-branch">${options(branches(),state.overviewBranch,'All branches')}</select></label>
+            ${tag(online+' / '+scopedDevices.length+' devices online','neutral')}
         </div></section>
         <div class="metrics overview-metrics">
             ${metric('Total Employees',selected.length,'','','employees')}
@@ -100,10 +101,6 @@ function renderDashboard(){
                 </li>`).join('')}</ol>
             </section>
         </div>
-        <section class="panel"><div class="panel-heading"><div><h2>Attendance Details</h2>
-            <small>${displayDate(date)} · ${E(r.start)}–${E(r.end)} · Asia/Dhaka</small></div>${tag(online+' / '+scopedDevices.length+' devices online','neutral')}</div>
-            ${paged('overview',attendanceHeaders,rows.map(attendanceCells),'No employees match the selected date and branch.')}
-        </section>
     </div>`;
 }
 function filteredEmployees(){return employees().filter(e=>!e.deleted&&(!state.employeeBranch||e.branch===state.employeeBranch)&&(state.employeeStatus==='all'||(state.employeeStatus==='active'?e.active!==false:e.active===false))&&[e.employeeId,e.name,e.code,e.branch,e.department,e.designation,e.employeeNumber,e.personalNumber].join(' ').toLowerCase().includes(state.employeeSearch.toLowerCase())).sort((a,b)=>String(a.code||a.employeeId).localeCompare(String(b.code||b.employeeId),undefined,{numeric:true,sensitivity:'base'})||String(a.name).localeCompare(String(b.name)));}
