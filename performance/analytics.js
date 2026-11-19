@@ -16,5 +16,13 @@ const sum=rows=>rows.reduce((a,r)=>{for(const k of ['agents','active','under5','
 const change=(a,b)=>a==null||b==null||b===0?null:((a-b)/b)*100;
 function previousMonth(month){if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))return '';const [y,m]=month.split('-').map(Number);return m===1?(y-1)+'-12':y+'-'+String(m-1).padStart(2,'0');}
 function masterDssMap(rows){const sets=new Map();for(const row of Array.isArray(rows)?rows:[]){if(!Array.isArray(row))continue;const dso=wallet(row[0]),dss=String(row[3]||'').trim().toUpperCase().replace(/\s+/g,' ');if(!dso||!dss)continue;if(!sets.has(dso))sets.set(dso,new Set());sets.get(dso).add(dss);}return new Map([...sets].map(([dso,names])=>[dso,names.size===1?[...names][0]:'Multiple DSS — check Uddokta Information']));}
-const api={masterDssMap,wallet,mapColumns,parse,sum,change,previousMonth};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.PerformanceAnalytics=api;
+const periodLengths={monthly:1,quarterly:3,halfyearly:6,yearly:12};
+function periodMonths(month, period='monthly'){
+ if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))return [];
+ const [year,number]=month.split('-').map(Number);
+ const length=periodLengths[period]||1;
+ const start=Math.floor((number-1)/length)*length+1;
+ return Array.from({length},(_,i)=>year+'-'+String(start+i).padStart(2,'0'));
+}
+const api={masterDssMap,wallet,mapColumns,parse,sum,change,previousMonth,periodMonths};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.PerformanceAnalytics=api;
 })(typeof window!=='undefined'?window:globalThis);

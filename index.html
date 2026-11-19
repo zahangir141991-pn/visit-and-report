@@ -3,7 +3,7 @@
 <head>
     <script src="assets/secure-data.js?v=166"></script>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-19-idle-logout-v187">
+    <meta name="dms-app-version" content="2026-11-19-performance-v188">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1390,7 +1390,7 @@ body.app-logged-in #view-login{display:none!important}
             </div>
 
             <!-- Common DSS / DSO Assignment Upload -->
-            <div id="view-monthly-performance" class="page hidden" aria-hidden="true"><div class="section-head"><div><h2>Month wise performance report</h2><small>DSO and DSS monthly analysis</small></div></div><section class="perf-panel"><div class="perf-filters"><label>Month<select id="perf-month" onchange="renderPerformance()"></select></label><label>DSS<select id="perf-dss" onchange="renderPerformance()"></select></label><label>DSO<select id="perf-dso" onchange="renderPerformance()"></select></label><label>Group by<select id="perf-group" onchange="renderPerformance()"><option value="dso">DSO wise</option><option value="dss">DSS wise</option><option value="agent">Agent wise</option></select></label></div><p id="perf-meta">Loading…</p><div id="perf-cards" class="perf-cards"></div></section><section class="perf-panel"><div class="perf-chart-header"><h3>Monthly trend</h3><label>Metric<select id="perf-metric" onchange="renderPerformance()"><option value="txn">MTD TXN</option><option value="ci">MTD CI</option><option value="co">MTD CO</option><option value="islamic">Islamic MTD TXN</option><option value="atleast5">5 Lac &amp; Above</option><option value="active">Active Uddokta</option></select></label></div><div id="perf-chart" class="perf-chart"></div><small>Amounts shown in crore. Growth compares the immediately previous calendar month; matching report dates are recommended.</small></section><section class="perf-panel"><div id="perf-agent-controls" class="perf-filters" hidden><label>Search agent<input id="perf-agent-search" type="search" placeholder="Number / name / DSO" oninput="renderPerformance()"></label><label>Rows<select id="perf-agent-size" onchange="renderPerformance()"><option>25</option><option>50</option><option>100</option></select></label><button type="button" id="perf-agent-prev" class="btn btn-sec" onclick="performanceAgentPage(-1)">Previous</button><span id="perf-agent-page"></span><button type="button" id="perf-agent-next" class="btn btn-sec" onclick="performanceAgentPage(1)">Next</button></div><div class="perf-table"><table><thead id="perf-table-head"><tr><th>DSO / DSS</th><th>MTD TXN</th><th>MTD CI</th><th>MTD CO</th><th>Islamic MTD TXN</th><th>5 Lac &amp; Above</th><th>Active Uddokta</th><th>TXN Growth</th></tr></thead><tbody id="perf-table-body"></tbody></table></div></section></div>
+            <div id="view-monthly-performance" class="page hidden" aria-hidden="true"><div class="section-head"><div><h2>Month wise performance report</h2></div></div><section class="perf-panel"><div class="perf-filters"><label>Period<select id="perf-period" onchange="renderPerformance()"><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="halfyearly">Half-yearly</option><option value="yearly">Yearly</option></select></label><label>Report period<select id="perf-month" onchange="renderPerformance()"></select></label><label>DSS<select id="perf-dss" onchange="renderPerformance()"></select></label><label>DSO<select id="perf-dso" onchange="renderPerformance()"></select></label><label>Group by<select id="perf-group" onchange="renderPerformance()"><option value="dso">DSO wise</option><option value="dss">DSS wise</option><option id="perf-group-dh" value="dh">DH total</option><option value="agent">Agent wise</option></select></label></div><p id="perf-meta">Loading…</p><div id="perf-cards" class="perf-cards"></div></section><section class="perf-panel"><div id="perf-agent-controls" class="perf-filters" hidden><label>Search agent<input id="perf-agent-search" type="search" placeholder="Number / name / DSO" oninput="renderPerformance()"></label><label>Rows<select id="perf-agent-size" onchange="renderPerformance()"><option>25</option><option>50</option><option>100</option></select></label><button type="button" id="perf-agent-prev" class="btn btn-sec" onclick="performanceAgentPage(-1)">Previous</button><span id="perf-agent-page"></span><button type="button" id="perf-agent-next" class="btn btn-sec" onclick="performanceAgentPage(1)">Next</button></div><div class="perf-table"><table><thead id="perf-table-head"><tr><th>DSO / DSS</th><th>MTD TXN</th><th>MTD CI</th><th>MTD CO</th><th>Islamic MTD TXN</th><th>5 Lac &amp; Above</th><th>Active Uddokta</th><th>TXN Growth</th></tr></thead><tbody id="perf-table-body"></tbody></table></div></section><section class="perf-panel"><div class="perf-chart-header"><h3>Monthly trend</h3><label>Metric<select id="perf-metric" onchange="renderPerformance()"><option value="txn">MTD_TXN</option><option value="ci">MTD_CASH_IN</option><option value="co">MTD_CASH_OUT</option><option value="islamic">MTD ISLAMIC CICO</option><option value="atleast5">5 Lac &amp; Above</option></select></label></div><div id="perf-chart" class="perf-chart"></div><small>Amounts are in crore. For multi-month periods, 5 Lac &amp; Above adds the qualifying Uddokta counts from each uploaded month. Growth compares equivalent periods when both have all monthly uploads.</small></section></div>
             <div id="view-assignment-upload" class="page">
                 <button type="button" class="btn btn-sm btn-sec" style="margin-bottom:12px" onclick="switchTab('uploads')">← All uploads</button>
                 <div class="section-head"><div><h2>DSS–DSO Assignment Upload</h2><small style="color:#64748b">এই common assignment সব report-এ ব্যবহার হবে</small></div></div>
@@ -1715,8 +1715,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-19-idle-logout-v187';
-        const APP_RELEASED_AT = 1795078800000;
+        const APP_CACHE_VERSION = '2026-11-19-performance-v188';
+        const APP_RELEASED_AT = 1795078800001;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -6676,7 +6676,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-19-idle-logout-v187';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-19-performance-v188';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
@@ -6753,7 +6753,7 @@ function isOlderUploadedReport(candidate,current){
 }
 </script>
 
-<script src="performance/executive.js?v=172"></script><script src="performance/targets.js?v=172"></script><script src="performance/analytics.js?v=137"></script><script src="performance/app.js?v=144"></script>
+<script src="performance/executive.js?v=172"></script><script src="performance/targets.js?v=172"></script><script src="performance/analytics.js?v=188"></script><script src="performance/app.js?v=188"></script>
 <style id="dms-login-design-v163">
 body:not(.app-logged-in){background:#f3f6fb}
 body:not(.app-logged-in) #view-login{background:radial-gradient(ellipse at 50% 0%,#e8eefb 0%,transparent 58%),#f3f6fb;padding:32px 20px 80px;min-height:100vh;min-height:100dvh}
