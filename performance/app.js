@@ -212,7 +212,24 @@ window.printPerformance=function(){
  popup.focus();
  popup.print();
 };
-async function anonymousBlocked(){try{const u=String(firebaseConfig.databaseURL).replace(/\/$/,'')+'/monthly_performance.json?shallow=true';const r=await fetch(u,{cache:'no-store',credentials:'omit'});return r.status===401||r.status===403;}catch{return false;}}
+async function withReportDeadline(task,message,ms=12000){
+ let timer;
+ try{
+  return await Promise.race([Promise.resolve().then(task),new Promise((_,reject)=>{
+   timer=setTimeout(()=>reject(Error(message)),ms);
+  })]);
+ }finally{clearTimeout(timer);}
+}
+async function anonymousBlocked(){
+ const controller=new AbortController();
+ try{
+  const url=String(firebaseConfig.databaseURL).replace(/\/$/,'')+'/monthly_performance.json?shallow=true';
+  const response=await withReportDeadline(
+   ()=>fetch(url,{cache:'no-store',credentials:'omit',signal:controller.signal}),
+   'Report connection check timed out.',8000);
+  return response.status===401||response.status===403;
+ }finally{controller.abort();}
+}
 function stopPerformanceSync(){
  if(listener)listener.off();
  if(signalRef)signalRef.off('value',signalHandler);
@@ -233,7 +250,7 @@ window.openPerformanceReport=async function(){
  const gen=++token,session=appSessionGeneration,user=currentUser;
  const current=()=>gen===token&&session===appSessionGeneration&&user===currentUser;
  render();
- const secure=await anonymousBlocked();
+ const secure=await anonymousBlocked().catch(()=>false);
  if(!current())return;
  if(!secure){reportState='error';reportError='Could not verify the report connection. Check your connection and retry.';render();return;}
  if(['DSS','DSO'].includes(getRoleInfo().role)){
@@ -244,7 +261,9 @@ window.openPerformanceReport=async function(){
    busy=true;
    clearTimeout(refreshTimer);
    try{
-    const idToken=await firebase.auth().currentUser.getIdToken();
+    const auth=firebase.auth().currentUser;
+    if(!auth)throw Error('Please sign in again.');
+    const idToken=await withReportDeadline(()=>auth.getIdToken(),'Sign-in verification timed out.');
     if(!current())return;
     const result=await authServerRequest('/performance',{idToken});
     if(!current())return;
@@ -278,9 +297,37 @@ window.openPerformanceReport=async function(){
   await initial;
   return;
  }
+ let receivedSnapshot=false,reading=false;
+ const accept=data=>{
+  if(!current())return;
+  months=data||{};reportState='ready';render();
+ };
+ const fail=error=>{
+  if(!current()||receivedSnapshot)return;
+  reportState='error';reportError='Report could not load: '+error.message;render();
+ };
+ const readFresh=async()=>{
+  if(!current()||receivedSnapshot||reading)return;
+  reading=true;
+  try{
+   const data=await withReportDeadline(()=>firebaseRestReadFresh('monthly_performance'),'The report server did not respond in time.');
+   if(current()&&!receivedSnapshot)accept(data);
+  }catch(error){fail(error);}
+  finally{reading=false;}
+ };
+ refreshScoped=readFresh;
  listener=db.ref('monthly_performance');
- listener.on('value',snap=>{if(current()){months=snap.val()||{};reportState='ready';render();}},
-  error=>{if(current()){reportState='error';reportError='Report could not load: '+error.message;render();}});
+ listener.on('value',snap=>{
+  if(!current())return;
+  receivedSnapshot=true;
+  accept(snap.val());
+ },error=>{
+  if(!current())return;
+  receivedSnapshot=false;
+  fail(error);
+ });
+ // An authenticated read can load the report even if the realtime connection stalls.
+ void readFresh();
 };
 function usePerformanceSheet(sheetName){
  const entry=previewSheets.find(s=>s.name===sheetName);pending=null;el('perf-upload-button').disabled=true;if(!entry)return;
