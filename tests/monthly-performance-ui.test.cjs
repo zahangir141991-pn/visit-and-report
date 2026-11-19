@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
-const A=require('../performance/analytics.js'),source=fs.readFileSync('dms_review/performance/app.js','utf8');
+const A=require('../performance/analytics.js'),source=fs.readFileSync(require.resolve('../performance/app.js'),'utf8');
 function workspace(role='Admin'){
  class Element{constructor(){this._value='';this._html='';this.disabled=false;this.hidden=false;this.textContent='';}get value(){return this._value}set value(v){this._value=v}get innerHTML(){return this._html}set innerHTML(v){this._html=v;if(v.includes('<option')){const first=/value="([^"]*)"/.exec(v);this._value=first?first[1]:'';}}}
  const nodes={},get=id=>nodes[id]||(nodes[id]=new Element());get('perf-group').value='dso';get('perf-metric').value='txn';let listener,writes=[];const context={window:{PerformanceAnalytics:A},document:{getElementById:get},currentUser:role==='Admin'?'admin':'zahangir',appSessionGeneration:1,role,uddoktaDB:[['801','01700000001','Agent One','DSS ONE'],['802','01700000002','Agent Two','DSS TWO']],dssDsoAssignmentIndex:new Map([['DSS ONE',new Set(['801'])],['DSS TWO',new Set(['802'])]]),getRoleInfo:()=>({role:context.role}),normalizeScopeWallet:v=>v,getAssignedDsoWalletsForDss:()=>new Set(),firebaseConfig:{databaseURL:'https://example.firebaseio.com'},fetch:async()=>({status:401}),db:{ref:path=>({off(){},on(event,fn){listener=fn;},async set(value){writes.push({path,value});}})},alert:msg=>{throw Error(msg)},confirm:()=>true,console,setTimeout:()=>0,clearTimeout:()=>{}};
@@ -22,3 +22,34 @@ test('DSS and DSO request server-scoped months and cannot upload',async()=>{for(
 test('scoped response arriving after logout cannot restore data',async()=>{const w=workspace('DSS');w.context.currentUser='alamin';w.context.firebase={auth:()=>({currentUser:{getIdToken:async()=> 'session'}})};w.context.authServerRequest=async()=>{w.context.window.closePerformance();w.context.currentUser=null;return {months:{'2026-09':{groups:{801:group('801',90000000)}}}}};await w.context.window.openPerformanceReport();assert(!w.get('perf-cards').innerHTML.includes('9.00 Cr'));});
 test('agent view lists own filtered agents and computes agent growth with pagination',async()=>{const w=workspace();await w.context.window.openPerformanceReport();const make=(n)=>({...group('801',n),agentRows:Array.from({length:30},(_,i)=>({agent:'017'+String(i).padStart(8,'0'),dso:'801',txn:n,ci:n/2,co:n/2,islamic:0}))});w.snapshot({'2026-08':{groups:{801:make(500000)}},'2026-09':{groups:{801:make(1000000)}}});w.get('perf-group').value='agent';w.context.window.renderPerformance();assert.match(w.get('perf-table-head').innerHTML,/Uddokta Number/);assert.equal((w.get('perf-table-body').innerHTML.match(/<tr>/g)||[]).length,25);assert.match(w.get('perf-table-body').innerHTML,/100.00%/);assert.match(w.get('perf-agent-page').textContent,/30 agents/);w.context.window.performanceAgentPage(1);assert.equal((w.get('perf-table-body').innerHTML.match(/<tr>/g)||[]).length,5);assert(!w.get('perf-cards').innerHTML.includes('Below 5 Lac'));});
 test('legacy aggregate report asks for reupload instead of fabricating agent data',async()=>{const w=workspace();await w.context.window.openPerformanceReport();w.snapshot({'2026-09':{groups:{801:group('801',1000000)}}});w.get('perf-group').value='agent';w.context.window.renderPerformance();assert.match(w.get('perf-table-body').innerHTML,/upload its Excel file again/);});
+
+test('DH, DSS and DSO summarize calendar periods and chart missing months as gaps',async()=>{
+ const w=workspace();
+ await w.context.window.openPerformanceReport();
+ w.snapshot({
+  '2025-12':{groups:{801:group('801',10000000)}},
+  '2026-01':{groups:{801:group('801',20000000),802:group('802',30000000)}},
+  '2026-03':{groups:{801:group('801',40000000),802:group('802',50000000)}},
+  '2026-07':{groups:{801:group('801',60000000)}}
+ });
+ w.get('perf-month').value='2026-03';
+ w.get('perf-period').value='quarterly';
+ w.get('perf-group').value='dh';
+ w.get('perf-dso').value='801';
+ w.context.window.renderPerformance();
+ assert.match(w.get('perf-meta').textContent,/2026 · Q1.*2 \/ 3 months uploaded/);
+ assert.match(w.get('perf-table-body').innerHTML,/M\/S\. Mostafa.*14\.00 Cr.*<td>12<\/td>/);
+ assert.match(w.get('perf-chart').innerHTML,/2026-02 · No data/);
+ assert.ok(!w.get('perf-table-body').innerHTML.includes('%'));
+ w.get('perf-group').value='dss';
+ w.get('perf-dso').value='';
+ w.get('perf-period').value='halfyearly';
+ w.context.window.renderPerformance();
+ assert.match(w.get('perf-meta').textContent,/2026 · H1.*2 \/ 6 months uploaded/);
+ assert.match(w.get('perf-table-body').innerHTML,/DSS ONE.*6\.00 Cr.*DSS TWO.*8\.00 Cr/);
+ w.get('perf-group').value='dso';
+ w.get('perf-period').value='yearly';
+ w.context.window.renderPerformance();
+ assert.match(w.get('perf-meta').textContent,/3 \/ 12 months uploaded/);
+ assert.match(w.get('perf-table-body').innerHTML,/801.*12\.00 Cr.*802.*8\.00 Cr/);
+});

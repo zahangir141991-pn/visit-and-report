@@ -1,13 +1,91 @@
 (function(){
 'use strict';
-const A=window.PerformanceAnalytics,el=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),fields=[['txn','MTD TXN'],['ci','MTD CI'],['co','MTD CO'],['islamic','Islamic MTD TXN'],['atleast5','5 Lac & Above'],['active','Active Uddokta']];let months={},listener=null,pending=null,token=0,previewToken=0,saving=false,dssMap=new Map(),previewSheets=[],scopedDsos=null,serverNames=null,refreshTimer=null,agentPage=1,agentSignature='';
+const A=window.PerformanceAnalytics,el=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),fields=[['txn','MTD_TXN'],['ci','MTD_CASH_IN'],['co','MTD_CASH_OUT'],['islamic','MTD ISLAMIC CICO'],['atleast5','5 Lac & Above']];let months={},listener=null,pending=null,token=0,previewToken=0,saving=false,dssMap=new Map(),previewSheets=[],scopedDsos=null,serverNames=null,refreshTimer=null,agentPage=1,agentSignature='';
 const fmt=(n,k)=>n==null?'—':['under5','atleast5','active','agents'].includes(k)?Number(n||0).toLocaleString('en-IN'):(Number(n||0)/10000000).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})+' Cr';
 const name=dso=>dssMap.get(A.wallet(dso))||'Unassigned';
 function scope(dso){const role=getRoleInfo();if(['Admin','DM'].includes(role.role))return true;if(role.role==='DSS')return !!scopedDsos&&scopedDsos.has(A.wallet(dso));if(role.role==='DSO')return normalizeScopeWallet(role.dsoWallet)===A.wallet(dso);return false;}
 const entries=(month)=>Object.values(months[month]?.groups||{}).filter(r=>r&&scope(String(r.dso)));
-function filtered(month){let rows=entries(month),dss=el('perf-dss').value,dso=el('perf-dso').value;if(dss)rows=rows.filter(r=>name(String(r.dso))===dss);if(dso)rows=rows.filter(r=>String(r.dso)===dso);return rows;}
-function controls(){const keys=Object.keys(months).sort().reverse(),ms=el('perf-month'),old=ms.value;ms.innerHTML=keys.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('');if(keys.includes(old))ms.value=old;const ds=el('perf-dss'),dw=el('perf-dso'),selectedDss=ds.value,selectedDso=dw.value;const rows=entries(ms.value),names=[...new Set(rows.map(r=>name(String(r.dso))))].sort();ds.innerHTML='<option value="">All DSS</option>'+names.map(s=>'<option value="'+esc(s)+'">'+esc(s)+'</option>').join('');if(names.includes(selectedDss))ds.value=selectedDss;const dsos=[...new Set(rows.filter(r=>!ds.value||name(String(r.dso))===ds.value).map(r=>String(r.dso)))].sort((a,b)=>Number(a)-Number(b));dw.innerHTML='<option value="">All DSO</option>'+dsos.map(s=>'<option value="'+esc(s)+'">'+esc(s)+'</option>').join('');if(dsos.includes(selectedDso))dw.value=selectedDso;}
-function render(){if(!currentUser)return;dssMap=serverNames||A.masterDssMap(uddoktaDB);controls();const month=el('perf-month').value,previous=A.previousMonth(month),rows=filtered(month),now=A.sum(rows),prevExists=!!months[previous],prev=A.sum(filtered(previous)),change=prevExists?A.change(now.txn,prev.txn):null;el('perf-meta').textContent=month?'Selected: '+month+' · Report date: '+(months[month]?.asOf||'not specified')+(prevExists?' · Previous report: '+(months[previous]?.asOf||previous):' · Previous month not uploaded'):'No monthly report uploaded yet.';el('perf-cards').innerHTML=fields.map(([k,label])=>'<div class="perf-card"><span>'+esc(label)+'</span><strong>'+esc(fmt(now[k],k))+'</strong><small>'+esc(!prevExists||A.change(now[k],prev[k])==null?'Previous: —':(A.change(now[k],prev[k])>=0?'+':'')+A.change(now[k],prev[k]).toFixed(2)+'%')+'</small></div>').join('')+'<div class="perf-card"><span>MTD TXN growth</span><strong>'+esc(change==null?'—':(change>=0?'+':'')+change.toFixed(2)+'%')+'</strong></div>';const by=el('perf-group').value,grouped={};if(by==='agent'){renderAgents(rows,filtered(previous),prevExists);draw();return;}el('perf-agent-controls').hidden=true;el('perf-table-head').innerHTML='<tr><th>DSO / DSS</th>'+fields.map(([,label])=>'<th>'+esc(label)+'</th>').join('')+'<th>TXN Growth</th></tr>';for(const row of rows){const key=by==='dss'?name(String(row.dso)):String(row.dso);(grouped[key]||(grouped[key]=[])).push(row);}const keys=Object.keys(grouped).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));el('perf-table-body').innerHTML=keys.length?keys.map(key=>{const totals=A.sum(grouped[key]);const p=filtered(previous).filter(r=>(by==='dss'?name(String(r.dso)):String(r.dso))===key);const pc=prevExists&&p.length?A.change(totals.txn,A.sum(p).txn):null;return '<tr><th>'+esc(key)+'</th>'+fields.map(([k])=>'<td>'+esc(fmt(totals[k],k))+'</td>').join('')+'<td>'+esc(pc==null?'—':(pc>=0?'+':'')+pc.toFixed(2)+'%')+'</td></tr>';}).join(''):'<tr><td colspan="9">No data for this selection.</td></tr>';draw();}
+function filtered(month){
+ const rows=entries(month);
+ if(el('perf-group').value==='dh')return rows;
+ const dss=el('perf-dss').value,dso=el('perf-dso').value;
+ return rows.filter(r=>(!dss||name(r.dso)===dss)&&(!dso||String(r.dso)===dso));
+}
+function periodLabel(month,period){
+ const [year,number]=month.split('-');
+ if(period==='yearly')return year;
+ if(period==='halfyearly')return year+' · H'+Math.ceil(Number(number)/6);
+ if(period==='quarterly')return year+' · Q'+Math.ceil(Number(number)/3);
+ return month;
+}
+function controls(){
+ const role=getRoleInfo().role,group=el('perf-group'),period=el('perf-period'),ms=el('perf-month');
+ const allowDh=['Admin','DM'].includes(role);
+ el('perf-group-dh').hidden=!allowDh;
+ if(!allowDh&&group.value==='dh')group.value='dso';
+ if(group.value==='agent')period.value='monthly';
+ period.disabled=group.value==='agent';
+ const mode=period.value||'monthly',old=ms.value;
+ const keys=[...new Set(Object.keys(months).sort().reverse().map(month=>A.periodMonths(month,mode)[0]).filter(Boolean))];
+ ms.innerHTML=keys.map(month=>'<option value="'+esc(month)+'">'+esc(periodLabel(month,mode))+'</option>').join('');
+ const previousSelection=A.periodMonths(old,mode)[0];
+ if(keys.includes(previousSelection))ms.value=previousSelection;
+ const days=A.periodMonths(ms.value,mode);
+ const ds=el('perf-dss'),dw=el('perf-dso'),selectedDss=ds.value,selectedDso=dw.value;
+ ds.disabled=dw.disabled=group.value==='dh';
+ const rows=days.flatMap(entries),names=[...new Set(rows.map(r=>name(r.dso)))].sort();
+ ds.innerHTML='<option value="">All DSS</option>'+names.map(s=>'<option value="'+esc(s)+'">'+esc(s)+'</option>').join('');
+ if(names.includes(selectedDss))ds.value=selectedDss;
+ const dsos=[...new Set(rows.filter(r=>!ds.value||name(r.dso)===ds.value).map(r=>String(r.dso)))].sort((a,b)=>Number(a)-Number(b));
+ dw.innerHTML='<option value="">All DSO</option>'+dsos.map(s=>'<option value="'+esc(s)+'">'+esc(s)+'</option>').join('');
+ if(dsos.includes(selectedDso))dw.value=selectedDso;
+ return {days,mode};
+}
+const percent=value=>value==null?'—':(value>=0?'+':'')+value.toFixed(2)+'%';
+function render(){
+ if(!currentUser)return;
+ dssMap=serverNames||A.masterDssMap(uddoktaDB);
+ const {days,mode}=controls();
+ const month=days[0],priorDays=A.periodMonths(A.previousMonth(month),mode);
+ const uploaded=days.filter(day=>!!months[day]);
+ const rows=days.flatMap(filtered),priorRows=priorDays.flatMap(filtered);
+ const comparable=!!days.length&&uploaded.length===days.length&&priorDays.every(day=>!!months[day]);
+ const totals=A.sum(rows),priorTotals=A.sum(priorRows);
+ el('perf-meta').textContent=month
+  ?mode==='monthly'
+   ?'Selected: '+month+' · Report date: '+(months[month]?.asOf||'not specified')+(comparable?' · Previous report: '+(months[priorDays[0]]?.asOf||priorDays[0]):' · Previous month not uploaded')
+   :periodLabel(month,mode)+' · '+days[0]+' to '+days.at(-1)+' · '+uploaded.length+' / '+days.length+' months uploaded'
+  :'No monthly report uploaded yet.';
+ el('perf-cards').innerHTML=fields.map(([key,label])=>{
+  const growth=comparable&&rows.length&&priorRows.length?A.change(totals[key],priorTotals[key]):null;
+  return '<div class="perf-card"><span>'+esc(label)+'</span><strong>'+esc(fmt(rows.length?totals[key]:null,key))+'</strong><small>'+esc(growth==null?'Previous: —':percent(growth))+'</small></div>';
+ }).join('');
+ const group=el('perf-group').value;
+ if(group==='agent'){
+  renderAgents(rows,priorRows,comparable);
+ }else{
+  el('perf-agent-controls').hidden=true;
+  const groupKey=row=>group==='dh'?'M/S. Mostafa':group==='dss'?name(row.dso):String(row.dso);
+  const groupRows=list=>{
+   const grouped=new Map();
+   for(const row of list){
+    const key=groupKey(row);
+    if(!grouped.has(key))grouped.set(key,[]);
+    grouped.get(key).push(row);
+   }
+   return grouped;
+  };
+  const grouped=groupRows(rows),previous=groupRows(priorRows);
+  const label=group==='dh'?'DH':group==='dss'?'DSS':'DSO';
+  el('perf-table-head').innerHTML='<tr><th>'+label+'</th>'+fields.map(([,title])=>'<th>'+esc(title)+'</th>').join('')+'<th>TXN Growth</th></tr>';
+  el('perf-table-body').innerHTML=[...grouped.keys()].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).map(key=>{
+   const summary=A.sum(grouped.get(key)),old=previous.get(key);
+   const growth=comparable&&old?A.change(summary.txn,A.sum(old).txn):null;
+   return '<tr><th>'+esc(key)+'</th>'+fields.map(([field])=>'<td>'+esc(fmt(summary[field],field))+'</td>').join('')+'<td>'+esc(percent(growth))+'</td></tr>';
+  }).join('')||'<tr><td colspan="'+(fields.length+2)+'">No data for this selection.</td></tr>';
+ }
+ draw(days,mode);
+}
 function renderAgents(rows,previous,prevExists){
  el('perf-agent-controls').hidden=false;
  const list=rows.flatMap(row=>(row.agentRows||[]).map(agent=>({...agent,dso:String(row.dso)}))),prior=new Map(previous.flatMap(row=>row.agentRows||[]).map(agent=>[String(agent.agent),agent]));
@@ -20,7 +98,34 @@ function renderAgents(rows,previous,prevExists){
  el('perf-agent-page').textContent='Page '+agentPage+' / '+pages+' · '+visible.length+' agents · Amounts in BDT';el('perf-agent-prev').disabled=agentPage<=1;el('perf-agent-next').disabled=agentPage>=pages;
 }
 window.performanceAgentPage=function(direction){agentPage+=direction;render();};
-function draw(){const metric=el('perf-metric').value||'txn',keys=Object.keys(months).sort().filter(x=>x<=el('perf-month').value).slice(-12),points=keys.map(x=>A.sum(filtered(x))[metric]),max=Math.max(...points,1),width=720,height=180,dx=keys.length>1?(width-64)/(keys.length-1):0;const coords=points.map((n,i)=>[32+dx*i,150-(n/max)*125]);const segments=[];let segment=[];coords.forEach((p,i)=>{if(points[i]==null){if(segment.length)segments.push(segment);segment=[];}else segment.push(p.join(','));});if(segment.length)segments.push(segment);const lines=segments.map(s=>'<polyline fill="none" stroke="#047857" stroke-width="3" points="'+s.join(' ')+'"/>').join('');el('perf-chart').innerHTML=keys.length?'<svg viewBox="0 0 720 195" role="img" aria-label="Monthly performance trend"><line x1="32" y1="150" x2="688" y2="150" stroke="#cbd5e1"/>'+lines+coords.map((p,i)=>points[i]==null?'':('<circle cx="'+p[0]+'" cy="'+p[1]+'" r="5" fill="#047857"><title>'+esc(keys[i]+' · '+fmt(points[i],metric))+'</title></circle><text x="'+p[0]+'" y="'+Math.max(13,p[1]-10)+'" text-anchor="middle" font-size="10" fill="#123c2c">'+esc(fmt(points[i],metric))+'</text><text x="'+p[0]+'" y="175" text-anchor="middle" font-size="12" fill="#1e293b">'+esc(keys[i].slice(2))+'</text>')).join('')+'</svg>':'<p>No monthly data.</p>';}
+function draw(days,mode){
+ const chart=el('perf-chart'),metric=el('perf-metric').value||'txn';
+ const keys=[...days];
+ if(mode==='monthly'&&keys.length){
+  const earliest=Object.keys(months).sort()[0];
+  for(let month=A.previousMonth(keys[0]);keys.length<12&&month>=earliest;month=A.previousMonth(month)){
+   keys.unshift(month);
+  }
+ }
+ const points=keys.map(month=>{
+  const rows=filtered(month);
+  return rows.length?A.sum(rows)[metric]:null;
+ });
+ if(!points.some(value=>value!=null)){chart.innerHTML='<p>No monthly data for this selection.</p>';return;}
+ const max=Math.max(1,...points),step=keys.length>1?620/(keys.length-1):0;
+ const coords=points.map((value,i)=>[keys.length===1?360:50+step*i,150-value/max*115]);
+ const lines=coords.slice(1).map(([x,y],i)=>{
+  if(points[i]==null||points[i+1]==null)return '';
+  return '<line x1="'+coords[i][0]+'" y1="'+coords[i][1]+'" x2="'+x+'" y2="'+y+'" stroke="#047857" stroke-width="3"/>';
+ }).join('');
+ chart.innerHTML='<svg viewBox="0 0 720 190" role="img" aria-label="'+esc((fields.find(([key])=>key===metric)?.[1]||metric)+' by month')+'">'
+  +'<line x1="50" y1="150" x2="670" y2="150" stroke="#cbd5e1"/>'+lines
+  +coords.map(([x,y],i)=>{
+   const month=keys[i],value=points[i],description=month+' · '+(value==null?'No data':fmt(value,metric));
+   const point=value==null?'':'<circle cx="'+x+'" cy="'+y+'" r="4" fill="#047857"><title>'+esc(description)+'</title></circle><text x="'+x+'" y="'+(y-9)+'" text-anchor="middle" font-size="10" fill="#123c2c">'+esc(fmt(value,metric))+'</text>';
+   return '<g>'+point+'<text x="'+x+'" y="175" text-anchor="middle" font-size="11" fill="#1e293b"><title>'+esc(description)+'</title>'+esc(month.slice(2))+'</text></g>';
+  }).join('')+'</svg>';
+}
 async function anonymousBlocked(){try{const u=String(firebaseConfig.databaseURL).replace(/\/$/,'')+'/monthly_performance.json?shallow=true';const r=await fetch(u,{cache:'no-store',credentials:'omit'});return r.status===401||r.status===403;}catch{return false;}}
 window.openPerformanceReport=async function(){if(!currentUser||!['Admin','DM','DSS','DSO'].includes(getRoleInfo().role))return;el('perf-upload-wrap').hidden=getRoleInfo().role!=='Admin';if(listener)listener.off();clearTimeout(refreshTimer);scopedDsos=null;serverNames=null;const gen=++token;months={};render();if(!await anonymousBlocked()){el('perf-meta').textContent='Secure database access is required before this report can be enabled.';return;}if(gen!==token||!currentUser)return;if(['DSS','DSO'].includes(getRoleInfo().role)){
  const load=async()=>{try{const idToken=await firebase.auth().currentUser.getIdToken();const result=await authServerRequest('/performance',{idToken});if(gen!==token||!currentUser)return;months=result.months||{};scopedDsos=new Set(result.allowedDsos||[]);serverNames=new Map(Object.entries(result.dssNames||{}));render();}catch(error){if(gen!==token||!currentUser)return;months={};scopedDsos=null;serverNames=null;render();el('perf-meta').textContent='Report access failed: '+error.message;}if(gen===token&&currentUser)refreshTimer=setTimeout(load,30000);};await load();return;
