@@ -80,19 +80,26 @@ function render(){
    return grouped;
   };
   const label=group==='dh'?'DH':group==='dss'?'DSS':'DSO';
-  const columns=4;
-  const renderRows=(caption,list,previousList)=>{
-   const grouped=groupRows(list),previous=groupRows(previousList);
-   return [...grouped.keys()].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).map(key=>{
-    const summary=A.sum(grouped.get(key)),old=previous.get(key);
-    const growth=old?A.change(summary[metric],A.sum(old)[metric]):null;
-    return '<tr><td>'+esc(caption)+'</td><th>'+esc(key)+'</th>'+'<td>'+esc(fmt(summary[metric],metric))+'</td>'+'<td>'+esc(percent(growth))+'</td></tr>';
+  const keys=reportMonths(days,mode);
+  const byMonth=keys.map(day=>groupRows(filtered(day)));
+  const grouped=groupRows(rows),previous=groupRows(priorRows);
+  const names=[...new Set(byMonth.flatMap(result=>[...result.keys()]))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  const showTotal=days.length>1;
+  const totalHead=showTotal?'<th scope="col">'+esc(periodLabel(month,mode)+' Total')+'</th>':'';
+  const monthHeads=keys.map(day=>'<th scope="col">'+esc(metricLabel+'-'+shortMonth(day))+'</th>').join('');
+  el('perf-table-head').innerHTML='<tr><th scope="col">'+label+'</th>'+monthHeads+totalHead+'<th scope="col">Growth</th></tr>';
+  const columns=keys.length+(showTotal?3:2);
+  el('perf-table-body').innerHTML=names.map(key=>{
+   const selected=grouped.get(key),old=previous.get(key);
+   const total=selected?A.sum(selected)[metric]:null;
+   const growth=comparable&&old?A.change(total,A.sum(old)[metric]):null;
+   const cells=byMonth.map(result=>{
+    const list=result.get(key);
+    return '<td>'+esc(fmt(list?A.sum(list)[metric]:null,metric))+'</td>';
    }).join('');
-  };
-  el('perf-table-head').innerHTML='<tr><th>Month</th><th>'+label+'</th>'+'<th>'+esc(metricLabel)+'</th><th>Growth</th></tr>';
-  const periodTotal=days.length>1?renderRows(periodLabel(month,mode)+' Total',rows,comparable?priorRows:[]):'';
-  const monthlyRows=days.map(day=>renderRows(monthName(day),filtered(day),filtered(A.previousMonth(day)))).join('');
-  el('perf-table-body').innerHTML=(periodTotal+monthlyRows)||'<tr><td colspan="'+columns+'">No data for this selection.</td></tr>';
+   const totalCell=showTotal?'<td>'+esc(fmt(total,metric))+'</td>':'';
+   return '<tr><th scope="row">'+esc(key)+'</th>'+cells+totalCell+'<td>'+esc(percent(growth))+'</td></tr>';
+  }).join('')||'<tr><td colspan="'+columns+'">No data for this selection.</td></tr>';
  }
  draw(days,mode);
 }
@@ -103,19 +110,22 @@ function renderAgents(rows,previous,prevExists,month){
  const query=el('perf-agent-search').value.trim().toLowerCase(),size=Number(el('perf-agent-size').value)||25,signature=[el('perf-month').value,el('perf-dss').value,el('perf-dso').value,query,size].join('|');if(signature!==agentSignature){agentSignature=signature;agentPage=1;}
  const visible=list.filter(row=>!query||[row.agent,agentName(row.agent),row.dso].some(value=>String(value).toLowerCase().includes(query))).sort((a,b)=>String(a.agent).localeCompare(String(b.agent),undefined,{numeric:true}));const pages=Math.max(1,Math.ceil(visible.length/size));agentPage=Math.max(1,Math.min(agentPage,pages));
  const [metric,label]=selectedMetric();
- el('perf-table-head').innerHTML='<tr>'+['Month','Uddokta Number','Uddokta Name','DSO','DSS',label,'Growth'].map(label=>'<th>'+esc(label)+'</th>').join('')+'</tr>';
+ el('perf-table-head').innerHTML='<tr>'+['Uddokta Number','Uddokta Name','DSO','DSS',month?label+'-'+shortMonth(month):label,'Growth'].map(label=>'<th>'+esc(label)+'</th>').join('')+'</tr>';
  const value=row=>metric==='atleast5'?Number(row.txn)>=500000?1:0:row[metric];
  const amount=n=>n==null?'—':Number(n).toLocaleString('en-IN',{maximumFractionDigits:2});
  el('perf-table-body').innerHTML=visible.slice((agentPage-1)*size,agentPage*size).map(row=>{
   const old=prior.get(String(row.agent)),growth=prevExists&&old?A.change(value(row),value(old)):null;
-  return '<tr><td>'+esc(monthName(month))+'</td><th>'+esc(row.agent)+'</th><td>'+esc(agentName(row.agent))+'</td><td>'+esc(row.dso)+'</td><td>'+esc(name(row.dso))+'</td><td>'+esc(amount(value(row)))+'</td><td>'+esc(percent(growth))+'</td></tr>';
- }).join('')||'<tr><td colspan="7">'+(list.length?'No matching agent.':'Agent details are unavailable for this month. Admin must upload its Excel file again.')+'</td></tr>';
+  return '<tr><th>'+esc(row.agent)+'</th><td>'+esc(agentName(row.agent))+'</td><td>'+esc(row.dso)+'</td><td>'+esc(name(row.dso))+'</td><td>'+esc(amount(value(row)))+'</td><td>'+esc(percent(growth))+'</td></tr>';
+ }).join('')||'<tr><td colspan="6">'+(list.length?'No matching agent.':'Agent details are unavailable for this month. Admin must upload its Excel file again.')+'</td></tr>';
  el('perf-agent-page').textContent='Page '+agentPage+' / '+pages+' · '+visible.length+' agents · Amounts in BDT';el('perf-agent-prev').disabled=agentPage<=1;el('perf-agent-next').disabled=agentPage>=pages;
 }
 window.performanceAgentPage=function(direction){agentPage+=direction;render();};
-function draw(days,mode){
- const chart=el('perf-chart'),[metric,metricLabel]=selectedMetric();
- const monthShort=new Intl.DateTimeFormat('en-GB',{month:'short',year:'2-digit',timeZone:'UTC'});
+const shortMonth=month=>{
+ const [year,number]=month.split('-');
+ const names=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+ return names[Number(number)-1]+"'"+year.slice(-2);
+};
+function reportMonths(days,mode){
  const keys=[...days];
  if(mode==='monthly'&&keys.length){
   const earliest=Object.keys(months).sort()[0];
@@ -123,6 +133,11 @@ function draw(days,mode){
    keys.unshift(month);
   }
  }
+ return keys;
+}
+function draw(days,mode){
+ const chart=el('perf-chart'),[metric,metricLabel]=selectedMetric();
+ const keys=reportMonths(days,mode);
  const points=keys.map(month=>{
   const rows=filtered(month);
   return rows.length?A.sum(rows)[metric]:null;
@@ -139,7 +154,7 @@ function draw(days,mode){
   +coords.map(([x,y],i)=>{
    const month=keys[i],value=points[i],description=month+' · '+(value==null?'No data':fmt(value,metric));
    const point=value==null?'':'<circle cx="'+x+'" cy="'+y+'" r="4" fill="#047857"><title>'+esc(description)+'</title></circle><text x="'+x+'" y="'+(y-9)+'" text-anchor="middle" font-size="10" fill="#123c2c">'+esc(fmt(value,metric))+'</text>';
-   return '<g>'+point+'<text x="'+x+'" y="175" text-anchor="middle" font-size="11" fill="#1e293b"><title>'+esc(description)+'</title>'+esc(monthShort.format(new Date(month+'-01T00:00:00Z')))+'</text></g>';
+   return '<g>'+point+'<text x="'+x+'" y="175" text-anchor="middle" font-size="11" fill="#1e293b"><title>'+esc(description)+'</title>'+esc(shortMonth(month))+'</text></g>';
   }).join('')+'</svg>';
 }
 window.printPerformance=function(){
@@ -162,7 +177,7 @@ window.printPerformance=function(){
  @page{size:A4 landscape;margin:13mm}body{font:13px Arial;color:#17212b;margin:0}
  h1{font-size:22px;margin:0 0 8px}h2{font-size:15px;margin:18px 0 6px}
  p{margin:5px 0}table{margin-top:14px;width:100%;border-collapse:collapse}
- thead{display:table-header-group}tr{break-inside:avoid}th,td{padding:6px;border:1px solid #9ba5ad;text-align:left}
+ thead{display:table-header-group}tr{break-inside:avoid}th,td{padding:5px;overflow-wrap:anywhere;border:1px solid #9ba5ad;text-align:left}
  section{break-inside:avoid}svg{display:block;width:100%;max-width:850px}
  </style></head><body><h1>Month Wise Performance Report</h1>
  <p>${esc(el('perf-meta').textContent)}</p><p>${esc(filters.join(' · '))}</p>
