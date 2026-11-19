@@ -3,7 +3,7 @@
 <head>
     <script src="assets/secure-data.js?v=166"></script>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-18-visit-feedback-v186">
+    <meta name="dms-app-version" content="2026-11-19-idle-logout-v187">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1715,8 +1715,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-18-visit-feedback-v186';
-        const APP_RELEASED_AT = 1792763658316;
+        const APP_CACHE_VERSION = '2026-11-19-idle-logout-v187';
+        const APP_RELEASED_AT = 1795078800000;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -2571,7 +2571,7 @@ body.app-logged-in #view-login{display:none!important}
 
             // Login itself must never depend on Firebase/network/table loading.
             // Enter the app first, then initialize optional data services safely.
-            appSessionGeneration++;currentUser = user;verifiedLoginAudit=cloudAuth?.loginAudit||null;syncReportUploadClock();
+            appSessionGeneration++;currentUser = user;startDmsIdleLogout();verifiedLoginAudit=cloudAuth?.loginAudit||null;syncReportUploadClock();
             mustChangeDefaultPassword = cloudAuth&&typeof cloudAuth.forceChange==='boolean'?cloudAuth.forceChange:(pass==='1234');
             clearRuntimeDataCaches();
             document.body.classList.add('app-logged-in');
@@ -2712,7 +2712,52 @@ function clearPrivateSessionData(){
  for(const id of ['morning-report-body','afternoon-report-body','kyc-status-body','reports-table-body','visit-details-content','kyc-summary']){const el=document.getElementById(id);if(el)el.replaceChildren();}
  document.querySelectorAll('#main-app input:not([type=hidden]),#main-app textarea').forEach(el=>{if(el.type==='checkbox'||el.type==='radio')el.checked=false;else el.value='';});
 }
+        const DMS_IDLE_LIMIT_MS = 10 * 60 * 1000;
+        const dmsActivityEvents = ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'touchmove', 'input'];
+        let dmsIdleDeadline = null;
+        let dmsIdleTimer;
+
+        function stopDmsIdleLogout() {
+            clearTimeout(dmsIdleTimer);
+            dmsIdleDeadline = null;
+        }
+
+        function checkDmsIdleLogout() {
+            if (!currentUser || dmsIdleDeadline === null) return;
+            clearTimeout(dmsIdleTimer);
+            const remaining = dmsIdleDeadline - Date.now();
+            if (remaining > 0) {
+                dmsIdleTimer = setTimeout(checkDmsIdleLogout, remaining);
+                return;
+            }
+            logout();
+            showLoginAlert('১০ মিনিট কোনো কার্যকলাপ না থাকায় লগআউট হয়েছে। আবার সাইন ইন করুন।', 'info');
+        }
+
+        function startDmsIdleLogout() {
+            dmsIdleDeadline = Date.now() + DMS_IDLE_LIMIT_MS;
+            checkDmsIdleLogout();
+        }
+
+        function recordDmsActivity(event) {
+            if (!event.isTrusted || !currentUser || dmsIdleDeadline === null) return;
+            if (Date.now() >= dmsIdleDeadline) checkDmsIdleLogout();
+            else dmsIdleDeadline = Date.now() + DMS_IDLE_LIMIT_MS;
+        }
+
+        function bindDmsActivity(target) {
+            for (const type of dmsActivityEvents) {
+                target.addEventListener(type, recordDmsActivity, {capture:true, passive:true});
+            }
+        }
+
+        bindDmsActivity(document);
+        document.addEventListener('visibilitychange', checkDmsIdleLogout);
+        window.addEventListener('pageshow', checkDmsIdleLogout);
+        window.addEventListener('focus', checkDmsIdleLogout);
+
         function logout() {
+            stopDmsIdleLogout();
             closeDmsAttendance();
             appSessionGeneration++;kycPhotoViewToken++;visitPhotoMemoryCache.clear();kycPhotoRequests.clear();kycAttemptTokens.clear();closeVisitDetails();stopKycShopCamera();clearKycForm();resetSessionFilters();
             closeMobileNav();
@@ -6615,6 +6660,10 @@ function resetSessionFilters(){
 <section id="dms-attendance-shell" aria-label="Attendance"><iframe id="dms-attendance-frame" title="DMS Attendance" referrerpolicy="same-origin"></iframe><button id="dms-attendance-close" type="button" onclick="closeDmsAttendance()">DMS-এ ফিরুন</button></section>
 <script>
 let attendanceRequestController=null,attendanceOpenGeneration=0;
+document.getElementById('dms-attendance-frame').addEventListener('load', event => {
+ const attendanceDocument=event.currentTarget.contentDocument;
+ if(attendanceDocument)bindDmsActivity(attendanceDocument);
+});
 function closeDmsAttendance(){
  attendanceOpenGeneration++;
  if(attendanceRequestController){attendanceRequestController.abort();attendanceRequestController=null;}
@@ -6627,7 +6676,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-18-visit-feedback-v186';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-19-idle-logout-v187';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
