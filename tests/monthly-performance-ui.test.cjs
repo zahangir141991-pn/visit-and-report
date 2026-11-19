@@ -7,7 +7,7 @@ function workspace(role='Admin'){
  return {context,nodes,get,writes,run:js=>vm.runInContext(js,context),snapshot:months=>listener({val:()=>months})};
 }
 const group=(dso,txn)=>({dso,txn,ci:txn*.6,co:txn*.4,islamic:txn*.1,agents:10,active:8,under5:7,atleast5:3});
-test('monthly screen renders and filters DSO/DSS totals and preceding calendar month growth',async()=>{const w=workspace();await w.context.window.openPerformanceReport();w.snapshot({'2026-08':{asOf:'2026-08-31',groups:{801:group('801',10000000),802:group('802',20000000)}},'2026-09':{asOf:'2026-09-30',groups:{801:group('801',20000000),802:group('802',40000000)}}});assert.equal(w.get('perf-month').value,'2026-09');assert.match(w.get('perf-cards').innerHTML,/6.00 Cr/);assert.match(w.get('perf-cards').innerHTML,/100.00%/);assert.match(w.get('perf-chart').innerHTML,/<svg/);w.get('perf-dss').value='DSS ONE';w.context.window.renderPerformance();assert.match(w.get('perf-cards').innerHTML,/2.00 Cr/);assert(!w.get('perf-table-body').innerHTML.includes('<th>802</th>'));w.get('perf-group').value='dss';w.context.window.renderPerformance();assert.match(w.get('perf-table-body').innerHTML,/DSS ONE/);w.get('perf-month').value='2026-08';w.context.window.renderPerformance();assert.match(w.get('perf-cards').innerHTML,/Previous: —/);});
+test('monthly screen renders and filters DSO/DSS totals and preceding calendar month growth',async()=>{const w=workspace();await w.context.window.openPerformanceReport();w.snapshot({'2026-08':{asOf:'2026-08-31',groups:{801:group('801',10000000),802:group('802',20000000)}},'2026-09':{asOf:'2026-09-30',groups:{801:group('801',20000000),802:group('802',40000000)}}});assert.equal(w.get('perf-month').value,'2026-09');assert.match(w.get('perf-cards').innerHTML,/6.00 Cr/);assert.match(w.get('perf-cards').innerHTML,/100.00%/);assert.match(w.get('perf-chart').innerHTML,/<svg/);w.get('perf-dss').value='DSS ONE';w.context.window.renderPerformance();assert.match(w.get('perf-cards').innerHTML,/2.00 Cr/);assert(!w.get('perf-table-body').innerHTML.includes('>802</th>'));w.get('perf-group').value='dss';w.context.window.renderPerformance();assert.match(w.get('perf-table-body').innerHTML,/DSS ONE/);w.get('perf-month').value='2026-08';w.context.window.renderPerformance();assert.match(w.get('perf-cards').innerHTML,/Previous: —/);});
 test('DM is read only',async()=>{const dm=workspace('DM');await dm.context.window.openPerformanceReport();assert.equal(dm.get('perf-upload-wrap').hidden,true);await dm.context.window.savePerformance();assert.equal(dm.writes.length,0);});
 test('logout clears monthly screen subscription and stale snapshot cannot restore report',async()=>{const w=workspace();await w.context.window.openPerformanceReport();w.context.window.closePerformance();w.context.currentUser=null;w.snapshot({'2026-09':{groups:{801:group('801',90000000)}}});assert(!w.get('perf-cards').innerHTML.includes('9.00 Cr'));});
 test('upload writes only its chosen month and prevents a double submission',async()=>{const w=workspace();await w.context.window.openPerformanceReport();w.snapshot({'2026-09':{groups:{801:group('801',1000)}}});const rows=[[],[],['DSO Wallet','Uddokta Wallet','CI AMT MTD','CO AMT MTD','Trx MTD (CI & CO)','Uddokta Account Status'],['801','01700000001',100,200,300,'ACTIVE']];w.context.ensureXlsxSdk=async()=>{};w.context.XLSX={read:()=>({SheetNames:['Uddokta'],Sheets:{Uddokta:{}}}),utils:{sheet_to_json:()=>rows}};await w.context.window.previewPerformance({files:[{arrayBuffer:async()=>new ArrayBuffer(0)}]});w.get('perf-upload-month').value='2026-10';await Promise.all([w.context.window.savePerformance(),w.context.window.savePerformance()]);assert.equal(w.writes.length,1);assert.equal(w.writes[0].path,'monthly_performance/2026-10');assert.equal(w.writes[0].value.groups['801'].txn,300);assert.equal(w.get('perf-upload-status').textContent,'Report saved.');});
@@ -40,8 +40,8 @@ test('DH, DSS and DSO summarize calendar periods and chart missing months as gap
  assert.match(w.get('perf-meta').textContent,/2026 · Q1.*2 \/ 3 months uploaded/);
  assert.match(w.get('perf-table-body').innerHTML,/M\/S\. Mostafa.*14\.00 Cr/);
  assert.match(w.get('perf-chart').innerHTML,/2026-02 · No data/);
- assert.match(w.get('perf-table-body').innerHTML,/January 2026.*5\.00 Cr/);
- assert.match(w.get('perf-table-body').innerHTML,/March 2026.*9\.00 Cr/);
+ assert.match(w.get('perf-table-head').innerHTML,/MTD_TXN-Jan&#39;26.*MTD_TXN-Feb&#39;26.*MTD_TXN-Mar&#39;26/);
+ assert.match(w.get('perf-table-body').innerHTML,/5\.00 Cr<\/td><td>—<\/td><td>9\.00 Cr/);
  assert.ok(!w.get('perf-table-body').innerHTML.split('</tr>')[0].includes('%'));
  w.get('perf-group').value='dss';
  w.get('perf-dso').value='';
@@ -64,13 +64,13 @@ test('metric selection updates table, monthly chart and printable report togethe
  w.context.window.renderPerformance();
  assert.match(w.get('perf-table-head').innerHTML,/MTD_CASH_IN/);
  assert.doesNotMatch(w.get('perf-table-head').innerHTML,/MTD_CASH_OUT|MTD_TXN/);
- assert.match(w.get('perf-table-body').innerHTML,/November 2026.*1\.20 Cr/);
+ assert.match(w.get('perf-table-body').innerHTML,/0\.60 Cr.*1\.20 Cr/);
  assert.match(w.get('perf-chart').innerHTML,/MTD_CASH_IN by month/);
- assert.match(w.get('perf-chart').innerHTML,/Oct 26/);
+ assert.match(w.get('perf-chart').innerHTML,/Oct&#39;26/);
  let printed=false,html='';
  w.context.window.open=()=>({document:{write:value=>{html=value;},close(){}},addEventListener(){},focus(){},print(){printed=true;}});
  w.context.window.printPerformance();
  assert.equal(printed,true);
- assert.match(html,/<table>[\s\S]*November 2026[\s\S]*<svg/);
+ assert.match(html,/<table>[\s\S]*MTD_CASH_IN-Nov&#39;26[\s\S]*<svg/);
  assert.doesNotMatch(html,/MTD_CASH_OUT/);
 });
