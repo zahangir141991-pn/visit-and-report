@@ -40,7 +40,9 @@ test('DH, DSS and DSO summarize calendar periods and chart missing months as gap
  assert.match(w.get('perf-meta').textContent,/2026 · Q1.*2 \/ 3 months uploaded/);
  assert.match(w.get('perf-table-body').innerHTML,/M\/S\. Mostafa.*14\.00 Cr.*<td>12<\/td>/);
  assert.match(w.get('perf-chart').innerHTML,/2026-02 · No data/);
- assert.ok(!w.get('perf-table-body').innerHTML.includes('%'));
+ assert.match(w.get('perf-table-body').innerHTML,/January 2026.*5\.00 Cr/);
+ assert.match(w.get('perf-table-body').innerHTML,/March 2026.*9\.00 Cr/);
+ assert.ok(!w.get('perf-table-body').innerHTML.split('</tr>')[0].includes('%'));
  w.get('perf-group').value='dss';
  w.get('perf-dso').value='';
  w.get('perf-period').value='halfyearly';

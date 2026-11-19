@@ -11,12 +11,14 @@ function filtered(month){
  const dss=el('perf-dss').value,dso=el('perf-dso').value;
  return rows.filter(r=>(!dss||name(r.dso)===dss)&&(!dso||String(r.dso)===dso));
 }
+const monthFormat=new Intl.DateTimeFormat('en-GB',{month:'long',year:'numeric',timeZone:'UTC'});
+const monthName=month=>month?monthFormat.format(new Date(month+'-01T00:00:00Z')):'';
 function periodLabel(month,period){
  const [year,number]=month.split('-');
  if(period==='yearly')return year;
  if(period==='halfyearly')return year+' · H'+Math.ceil(Number(number)/6);
  if(period==='quarterly')return year+' · Q'+Math.ceil(Number(number)/3);
- return month;
+ return monthName(month);
 }
 function controls(){
  const role=getRoleInfo().role,group=el('perf-group'),period=el('perf-period'),ms=el('perf-month');
@@ -53,7 +55,7 @@ function render(){
  const totals=A.sum(rows),priorTotals=A.sum(priorRows);
  el('perf-meta').textContent=month
   ?mode==='monthly'
-   ?'Selected: '+month+' · Report date: '+(months[month]?.asOf||'not specified')+(comparable?' · Previous report: '+(months[priorDays[0]]?.asOf||priorDays[0]):' · Previous month not uploaded')
+   ?'Selected: '+monthName(month)+' · Report date: '+(months[month]?.asOf||'not specified')+(comparable?' · Previous report: '+(months[priorDays[0]]?.asOf||priorDays[0]):' · Previous month not uploaded')
    :periodLabel(month,mode)+' · '+days[0]+' to '+days.at(-1)+' · '+uploaded.length+' / '+days.length+' months uploaded'
   :'No monthly report uploaded yet.';
  el('perf-cards').innerHTML=fields.map(([key,label])=>{
@@ -62,7 +64,7 @@ function render(){
  }).join('');
  const group=el('perf-group').value;
  if(group==='agent'){
-  renderAgents(rows,priorRows,comparable);
+  renderAgents(rows,priorRows,comparable,month);
  }else{
   el('perf-agent-controls').hidden=true;
   const groupKey=row=>group==='dh'?'M/S. Mostafa':group==='dss'?name(row.dso):String(row.dso);
@@ -75,26 +77,32 @@ function render(){
    }
    return grouped;
   };
-  const grouped=groupRows(rows),previous=groupRows(priorRows);
   const label=group==='dh'?'DH':group==='dss'?'DSS':'DSO';
-  el('perf-table-head').innerHTML='<tr><th>'+label+'</th>'+fields.map(([,title])=>'<th>'+esc(title)+'</th>').join('')+'<th>TXN Growth</th></tr>';
-  el('perf-table-body').innerHTML=[...grouped.keys()].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).map(key=>{
-   const summary=A.sum(grouped.get(key)),old=previous.get(key);
-   const growth=comparable&&old?A.change(summary.txn,A.sum(old).txn):null;
-   return '<tr><th>'+esc(key)+'</th>'+fields.map(([field])=>'<td>'+esc(fmt(summary[field],field))+'</td>').join('')+'<td>'+esc(percent(growth))+'</td></tr>';
-  }).join('')||'<tr><td colspan="'+(fields.length+2)+'">No data for this selection.</td></tr>';
+  const columns=fields.length+3;
+  const renderRows=(caption,list,previousList)=>{
+   const grouped=groupRows(list),previous=groupRows(previousList);
+   return [...grouped.keys()].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).map(key=>{
+    const summary=A.sum(grouped.get(key)),old=previous.get(key);
+    const growth=old?A.change(summary.txn,A.sum(old).txn):null;
+    return '<tr><td>'+esc(caption)+'</td><th>'+esc(key)+'</th>'+fields.map(([field])=>'<td>'+esc(fmt(summary[field],field))+'</td>').join('')+'<td>'+esc(percent(growth))+'</td></tr>';
+   }).join('');
+  };
+  el('perf-table-head').innerHTML='<tr><th>Month</th><th>'+label+'</th>'+fields.map(([,title])=>'<th>'+esc(title)+'</th>').join('')+'<th>TXN Growth</th></tr>';
+  const periodTotal=days.length>1?renderRows(periodLabel(month,mode)+' Total',rows,comparable?priorRows:[]):'';
+  const monthlyRows=days.map(day=>renderRows(monthName(day),filtered(day),filtered(A.previousMonth(day)))).join('');
+  el('perf-table-body').innerHTML=(periodTotal+monthlyRows)||'<tr><td colspan="'+columns+'">No data for this selection.</td></tr>';
  }
  draw(days,mode);
 }
-function renderAgents(rows,previous,prevExists){
+function renderAgents(rows,previous,prevExists,month){
  el('perf-agent-controls').hidden=false;
  const list=rows.flatMap(row=>(row.agentRows||[]).map(agent=>({...agent,dso:String(row.dso)}))),prior=new Map(previous.flatMap(row=>row.agentRows||[]).map(agent=>[String(agent.agent),agent]));
  const master=new Map((uddoktaDB||[]).map(row=>[String(row[1]||'').replace(/\D/g,'').replace(/^0/,''),row[2]||''])),agentName=agent=>master.get(String(agent).replace(/^0/,''))||'';
  const query=el('perf-agent-search').value.trim().toLowerCase(),size=Number(el('perf-agent-size').value)||25,signature=[el('perf-month').value,el('perf-dss').value,el('perf-dso').value,query,size].join('|');if(signature!==agentSignature){agentSignature=signature;agentPage=1;}
  const visible=list.filter(row=>!query||[row.agent,agentName(row.agent),row.dso].some(value=>String(value).toLowerCase().includes(query))).sort((a,b)=>String(a.agent).localeCompare(String(b.agent),undefined,{numeric:true}));const pages=Math.max(1,Math.ceil(visible.length/size));agentPage=Math.max(1,Math.min(agentPage,pages));
- el('perf-table-head').innerHTML='<tr>'+['Uddokta Number','Uddokta Name','DSO','DSS','MTD TXN','MTD CI','MTD CO','Islamic MTD TXN','TXN Growth'].map(label=>'<th>'+label+'</th>').join('')+'</tr>';
+ el('perf-table-head').innerHTML='<tr>'+['Month','Uddokta Number','Uddokta Name','DSO','DSS','MTD TXN','MTD CI','MTD CO','Islamic MTD TXN','TXN Growth'].map(label=>'<th>'+label+'</th>').join('')+'</tr>';
  const amount=value=>value==null?'—':Number(value).toLocaleString('en-IN',{maximumFractionDigits:2});
- el('perf-table-body').innerHTML=visible.slice((agentPage-1)*size,agentPage*size).map(row=>{const old=prior.get(String(row.agent)),growth=prevExists&&old?A.change(row.txn,old.txn):null;return '<tr><th>'+esc(row.agent)+'</th><td>'+esc(agentName(row.agent))+'</td><td>'+esc(row.dso)+'</td><td>'+esc(name(row.dso))+'</td>'+['txn','ci','co','islamic'].map(key=>'<td>'+esc(amount(row[key]))+'</td>').join('')+'<td>'+esc(growth==null?'—':(growth>=0?'+':'')+growth.toFixed(2)+'%')+'</td></tr>';}).join('')||'<tr><td colspan="9">'+(list.length?'No matching agent.':'Agent details are unavailable for this month. Admin must upload its Excel file again.')+'</td></tr>';
+ el('perf-table-body').innerHTML=visible.slice((agentPage-1)*size,agentPage*size).map(row=>{const old=prior.get(String(row.agent)),growth=prevExists&&old?A.change(row.txn,old.txn):null;return '<tr><td>'+esc(monthName(month))+'</td><th>'+esc(row.agent)+'</th><td>'+esc(agentName(row.agent))+'</td><td>'+esc(row.dso)+'</td><td>'+esc(name(row.dso))+'</td>'+['txn','ci','co','islamic'].map(key=>'<td>'+esc(amount(row[key]))+'</td>').join('')+'<td>'+esc(growth==null?'—':(growth>=0?'+':'')+growth.toFixed(2)+'%')+'</td></tr>';}).join('')||'<tr><td colspan="10">'+(list.length?'No matching agent.':'Agent details are unavailable for this month. Admin must upload its Excel file again.')+'</td></tr>';
  el('perf-agent-page').textContent='Page '+agentPage+' / '+pages+' · '+visible.length+' agents · Amounts in BDT';el('perf-agent-prev').disabled=agentPage<=1;el('perf-agent-next').disabled=agentPage>=pages;
 }
 window.performanceAgentPage=function(direction){agentPage+=direction;render();};
