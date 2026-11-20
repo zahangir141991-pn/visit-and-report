@@ -3,7 +3,7 @@
 <head>
     <script src="assets/secure-data.js?v=166"></script>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-20-glass-v195">
+    <meta name="dms-app-version" content="2026-11-20-login-clean-v196">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1715,7 +1715,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-20-glass-v195';
+        const APP_CACHE_VERSION = '2026-11-20-login-clean-v196';
         const APP_RELEASED_AT = 1795078800007;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -2731,7 +2731,6 @@ function clearPrivateSessionData(){
                 return;
             }
             logout();
-            showLoginAlert('১০ মিনিট কোনো কার্যকলাপ না থাকায় লগআউট হয়েছে। আবার সাইন ইন করুন।', 'info');
         }
 
         function startDmsIdleLogout() {
