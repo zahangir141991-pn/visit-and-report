@@ -1,0 +1,138 @@
+@media screen {
+  :root {
+    --glass-canvas:
+      radial-gradient(ellipse at 12% 9%, #fff 0%, transparent 43%),
+      radial-gradient(ellipse at 81% 24%, #e4e9ef 0%, transparent 56%),
+      radial-gradient(ellipse at 23% 87%, #e5e9ed 0%, transparent 55%),
+      #f6f7f8;
+    --glass-pane: linear-gradient(140deg, #ffffff80, #ffffff20 57%, #ffffff48);
+    --glass-field: #ffffff67;
+    --glass-line: #a1aab43d;
+    --glass-shadow: inset 0 1px 0 #fffffff5, inset 0 0 0 1px #ffffff59, 0 8px 24px #25384e10;
+    --glass-ink: #182333;
+    --glass-muted: #495669;
+    --glass-table-head: #e9edf1;
+  }
+
+  html {
+    background: var(--glass-canvas) fixed;
+    scrollbar-width: thin;
+    scrollbar-color: #c9cfd7 transparent;
+  }
+
+  body, body:not(.app-logged-in), body:not(.app-logged-in) #view-login,
+  body:has(#app[data-attendance-page="dashboard"]) .workspace {
+    background: transparent !important;
+    color: var(--glass-ink);
+  }
+
+  #main-app {
+    --text: var(--glass-ink);
+    --text-light: var(--glass-muted);
+    --border: var(--glass-line);
+    --card-bg: var(--glass-field);
+  }
+
+  #view-login .dms-signin,
+  #main-app :is(.card,.perf-panel,.executive-panel,.details-card,.report-kpi,.chart-kpi,.vf-compose,.vf-thread,.vf-stat),
+  #main-app :is(.quick-grid,.cards-grid,.morning-summary,.kyc-summary) > .card,
+  #main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary > .card,
+  :is(.metric,.panel,.boot-card,.update-card,dialog) {
+    background: var(--glass-pane) !important;
+    border-color: var(--glass-line);
+    box-shadow: var(--glass-shadow) !important;
+  }
+
+  #app-header, #user-info-bar.user-visible, #app-nav.nav-sidebar, #submit-action-bar,
+  .sidebar, .topbar {
+    background: linear-gradient(125deg, #ffffffde, #f1f3f6aa) !important;
+    border-color: var(--glass-line);
+    box-shadow: var(--glass-shadow);
+    color: var(--glass-ink) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(115%);
+    backdrop-filter: blur(18px) saturate(115%);
+  }
+
+  :is(#header-user-name,#current-user-name,#current-user-role,#current-user-id),
+  .sidebar :is(.brand,.brand-symbol,.brand small,.nav-caption,.workspace-badge,.back-button),
+  .sidebar nav button:not(.active) {
+    color: var(--glass-ink) !important;
+  }
+
+  #mobile-menu-btn {
+    background: var(--glass-field);
+    color: var(--glass-ink);
+  }
+
+  #view-login .dms-signin-form input,
+  #main-app :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea),
+  :is(.workspace,dialog) :is(input:not([type="checkbox"]),select,textarea) {
+    background-color: var(--glass-field);
+    border-color: #909caa75;
+    color: var(--glass-ink);
+  }
+
+  #view-login .dms-signin-form input::placeholder {
+    color: var(--glass-muted);
+  }
+
+  #main-app :is(.table-responsive,.table-wrap), .workspace .table-wrap {
+    scrollbar-width: thin;
+    scrollbar-color: #c9cfd7 transparent;
+  }
+
+  #main-app table.reports-table th,
+  #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table thead th,
+  .report-floating-head, .report-floating-head th, .workspace th {
+    background: var(--glass-table-head) !important;
+    border-color: #c6cfd9 !important;
+  }
+
+  #main-app table.reports-table tbody tr, .workspace tbody tr {
+    background: transparent;
+  }
+
+  .workspace tbody td {
+    background: #ffffff60;
+  }
+
+  .workspace tbody tr:nth-child(even) td {
+    background: #e9eef382;
+  }
+
+  .workspace tbody tr:hover td {
+    background: #e0e8f0;
+  }
+
+  #main-app table.reports-table tbody td,
+  #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table tbody td {
+    background: #ffffff79 !important;
+    border-color: var(--glass-line) !important;
+  }
+
+  #main-app table.reports-table tbody tr:nth-child(even) td,
+  #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table tbody tr:nth-child(even) td {
+    background: #e9eef382 !important;
+  }
+
+  #main-app table.reports-table tbody tr:hover td,
+  #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table tbody tr:hover td {
+    background: #e0e8f0 !important;
+  }
+
+  #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table tbody tr > :is(.dso-col,.agent-col,.agent-name-col) {
+    background: #f5f7f9 !important;
+  }
+
+  #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table tbody tr:nth-child(even) > :is(.dso-col,.agent-col,.agent-name-col) {
+    background: #edf0f3 !important;
+  }
+
+  #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table tbody tr.zero-b2b-row td {
+    background: #fff4d3 !important;
+  }
+
+  #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table tbody tr.zero-b2b-row:hover td {
+    background: #ffecb4 !important;
+  }
+}
