@@ -142,3 +142,32 @@ test('a stalled authenticated read ends loading and exposes retry',async()=>{
  assert.match(w.get('perf-meta').textContent,/did not respond in time/);
  assert.equal(w.get('perf-retry').hidden,false);
 });
+
+test('a save finishing after a new preview keeps the newer report, even on failure',async()=>{
+ for(const outcome of ['success','failure','new session']){
+  const w=workspace();
+  let finish,fail,onWrite;
+  const started=new Promise(resolve=>{onWrite=resolve;});
+  w.context.db.ref=()=>({update:()=>new Promise((resolve,reject)=>{finish=resolve;fail=reject;onWrite();})});
+  w.context.ensureXlsxSdk=async()=>{};
+  w.context.XLSX={read:bytes=>{const name=bytes.byteLength===1?'Old report':'New report';return {SheetNames:[name],Sheets:{[name]:{}}};},utils:{sheet_to_json:()=>flatRows}};
+  const preview=size=>w.context.window.previewPerformance({files:[{arrayBuffer:async()=>new ArrayBuffer(size)}]});
+  await preview(1);
+  w.get('perf-upload-month').value='2026-11';
+  const save=w.context.window.savePerformance();
+  await started;
+  if(outcome==='new session'){
+   w.get('perf-upload-file').value='old.xlsx';
+   w.context.appSessionGeneration++;
+   w.context.window.closePerformance();
+   assert.equal(w.get('perf-upload-status').textContent,'');
+   assert.equal(w.get('perf-upload-file').value,'');
+  }
+  await preview(2);
+  assert.equal(w.get('perf-upload-button').disabled,true);
+  if(outcome==='failure')fail(Error('Network error'));else finish();
+  await save;
+  assert.match(w.get('perf-upload-status').textContent,/Sheet: New report/);
+  assert.equal(w.get('perf-upload-button').disabled,false);
+ }
+});

@@ -330,15 +330,15 @@ window.openPerformanceReport=async function(){
  void readFresh();
 };
 function usePerformanceSheet(sheetName){
- const entry=previewSheets.find(s=>s.name===sheetName);pending=null;el('perf-upload-button').disabled=true;if(!entry)return;
- try{const parsed=A.parse(entry.matrix),asOf=entry.asOf;let date='';if(asOf instanceof Date&&!isNaN(asOf))date=[asOf.getFullYear(),String(asOf.getMonth()+1).padStart(2,'0'),String(asOf.getDate()).padStart(2,'0')].join('-');if(date)el('perf-upload-month').value=date.slice(0,7);pending={...parsed,asOf:date};el('perf-upload-status').textContent='Sheet: '+entry.name+' · '+parsed.agents+' Uddokta · '+Object.keys(parsed.groups).length+' DSO · report date '+(date||'not found')+'. Verify the month before uploading.';el('perf-upload-button').disabled=false;}catch(e){el('perf-upload-status').textContent=e.message;}
+ const entry=previewSheets.find(s=>s.name===sheetName);pending=null;el('perf-upload-button').disabled=true;if(!entry){el('perf-upload-status').textContent='Select the report sheet.';return;}
+ try{const parsed=A.parse(entry.matrix),asOf=entry.asOf;let date='';if(asOf instanceof Date&&!isNaN(asOf))date=[asOf.getFullYear(),String(asOf.getMonth()+1).padStart(2,'0'),String(asOf.getDate()).padStart(2,'0')].join('-');if(date)el('perf-upload-month').value=date.slice(0,7);pending={...parsed,asOf:date};el('perf-upload-status').textContent='Sheet: '+entry.name+' · '+parsed.agents+' Uddokta · '+Object.keys(parsed.groups).length+' DSO · report date '+(date||'not found')+'. Verify the month before uploading.';el('perf-upload-button').disabled=saving;}catch(e){el('perf-upload-status').textContent=e.message;}
 }
 window.selectPerformanceSheet=function(value){if(currentUser&&getRoleInfo().role==='Admin')usePerformanceSheet(value);};
 window.previewPerformance=async function(input){
  if(!currentUser||getRoleInfo().role!=='Admin')return;const preview=++previewToken,session=appSessionGeneration;pending=null;previewSheets=[];el('perf-upload-button').disabled=true;el('perf-sheet-wrap').hidden=true;const file=input.files?.[0];
  el('perf-upload-status').textContent=file?'Reading report…':'';
  if(!file)return;
- try{await ensureXlsxSdk();const wb=XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:true});if(preview!==previewToken||session!==appSessionGeneration||!currentUser)return;
+ try{await ensureXlsxSdk();const bytes=await file.arrayBuffer();if(preview!==previewToken||session!==appSessionGeneration||!currentUser)return;const wb=XLSX.read(bytes,{type:'array',cellDates:true});
  for(const sheetName of wb.SheetNames){const sheet=wb.Sheets[sheetName],matrix=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:true,blankrows:false});try{A.mapColumns(matrix);previewSheets.push({name:sheetName,matrix,asOf:sheet.B2?.v});}catch(_){}}
  if(!previewSheets.length)throw Error('No matching report sheet found. Required: DSO, Uddokta number, MTD transaction amount, MTD CI and MTD CO. The sheet name can be anything.');
  const select=el('perf-sheet');select.innerHTML='<option value="">Select report sheet</option>'+previewSheets.map(s=>'<option value="'+esc(s.name)+'">'+esc(s.name)+'</option>').join('');el('perf-sheet-wrap').hidden=previewSheets.length===1;
@@ -361,10 +361,10 @@ window.savePerformance=async function(){
    ['monthly_performance/'+month]:report,
    dms_live_update_signal:{type:'monthly-performance',revision:globalThis.crypto.randomUUID()}
   });
-  if(session!==appSessionGeneration||currentUser!==user)return;
+  if(session!==appSessionGeneration||currentUser!==user||pending!==upload)return;
   pending=null;el('perf-upload-status').textContent='Report saved.';
- }catch(e){if(session===appSessionGeneration&&currentUser===user)el('perf-upload-status').textContent='Upload failed: '+e.message;}
- finally{saving=false;if(session===appSessionGeneration&&currentUser===user)b.disabled=!pending;}
+ }catch(e){if(session===appSessionGeneration&&currentUser===user&&pending===upload)el('perf-upload-status').textContent='Upload failed: '+e.message;}
+ finally{saving=false;b.disabled=!pending||!currentUser||getRoleInfo().role!=='Admin';}
 };
-window.renderPerformance=render;window.closePerformance=function(){token++;previewToken++;stopPerformanceSync();reportState='idle';reportError='';scopedDsos=null;serverNames=null;months={};pending=null;previewSheets=[];};
+window.renderPerformance=render;window.closePerformance=function(){token++;previewToken++;stopPerformanceSync();reportState='idle';reportError='';scopedDsos=null;serverNames=null;months={};pending=null;previewSheets=[];el('perf-upload-file').value='';el('perf-upload-month').value='';el('perf-upload-status').textContent='';el('perf-sheet').innerHTML='';el('perf-sheet-wrap').hidden=true;el('perf-upload-button').disabled=true;};
 })();
