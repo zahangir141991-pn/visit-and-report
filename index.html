@@ -3,7 +3,7 @@
 <head>
     <script src="assets/secure-data.js?v=166"></script>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-21-login-startup-v204">
+    <meta name="dms-app-version" content="2026-11-21-dashboard-first-paint-v205">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1716,8 +1716,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-21-login-startup-v204';
-        const APP_RELEASED_AT = 1795261619567;
+        const APP_CACHE_VERSION = '2026-11-21-dashboard-first-paint-v205';
+        const APP_RELEASED_AT = 1795261873714;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -2407,13 +2407,14 @@ body.app-logged-in #view-login{display:none!important}
                 return refreshKycSnapshot();
             }
             if (activeId === 'view-dashboard' || activeId === 'view-daily') {
-                const [data] = await Promise.all([
-                    (async()=>{
-                        const index=await firebaseValueOnce('visit_reports_index');
-                        return index&&Object.keys(index).length?index:firebaseValueOnce('visit_reports',ref=>ref.orderByChild('timestamp').limitToLast(500));
-                    })(),
-                    activeId==='view-dashboard'?window.DmsTargets?.load():Promise.resolve()
-                ]);
+                const visits = (async () => {
+                    const index=await firebaseValueOnce('visit_reports_index');
+                    return index&&Object.keys(index).length?index:firebaseValueOnce('visit_reports',ref=>ref.orderByChild('timestamp').limitToLast(500));
+                })();
+                const targets = activeId==='view-dashboard' ? window.DmsTargets?.load()?.catch(err => {
+                    console.warn('Dashboard target refresh failed:', err);
+                }) : undefined;
+                const data = await visits;
                 if(currentUser!==refreshUser||appSessionGeneration!==refreshGeneration)return false;
                 applyLightReportSnapshot(data || {});
                 if (activeId === 'view-daily') {
@@ -2422,7 +2423,10 @@ body.app-logged-in #view-login{display:none!important}
                     }).catch(() => {});
                     Promise.resolve().then(() => ensureReportModeData(visitReportMode)).catch(() => {});
                     renderReports();
-                } else updateDashboard(false);
+                } else {
+                    updateDashboard(false);
+                    await targets;
+                }
                 return true;
             }
             if (activeId === 'view-form' || activeId === 'view-admin' || activeId === 'view-assignment-upload') {
