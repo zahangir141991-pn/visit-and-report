@@ -9,8 +9,8 @@
     --glass-field: #ffffff67;
     --glass-line: #a1aab43d;
     --glass-shadow: inset 0 1px 0 #fffffff5, inset 0 0 0 1px #ffffff59, 0 8px 24px #25384e10;
-    --glass-ink: #182333;
-    --glass-muted: #495669;
+    --glass-ink: #111827;
+    --glass-muted: #364152;
     --glass-table-head: #e9edf1;
   }
 
@@ -134,5 +134,76 @@
 
   #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table tbody tr.zero-b2b-row:hover td {
     background: #ffecb4 !important;
+  }
+
+  :root {
+    --dms-reading-font: system-ui, "Nirmala UI", "Noto Sans Bengali", "Vrinda", sans-serif;
+  }
+
+  body, body :where(button, input, select, textarea, label, th, td, small, span, p, a, h1, h2, h3, h4, strong, b, li, legend, summary, div) {
+    font-family: var(--dms-reading-font);
+  }
+
+  #view-login .dms-signin-form label {
+    font-size: 14px;
+    font-weight: 650;
+    color: var(--glass-ink);
+  }
+
+  #view-login .dms-signin-form input::placeholder {
+    font-size: 14px;
+    opacity: 1;
+  }
+
+  #view-login #login-button {
+    font-size: 15px;
+  }
+
+  #app-nav.nav-sidebar :is(.nav-item,.visit-menu-btn):not(#sidebar-logout),
+  .sidebar nav button {
+    font-size: 14px !important;
+    font-weight: 650;
+    line-height: 1.45;
+  }
+
+  #main-app :is(label,.card-lbl,.perf-muted,.vf-muted),
+  .workspace :is(label,.metric-top,.metric small,.panel-heading small,.hint) {
+    color: var(--glass-muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  #main-app :is(.card-lbl,label), .workspace :is(label,.metric-top) {
+    font-weight: 650;
+  }
+
+  #main-app :is(.card-val,.report-kpi strong,.chart-kpi strong),
+  .workspace .metric b {
+    font-variant-numeric: lining-nums tabular-nums;
+    font-weight: 750;
+  }
+
+  #main-app table :is(th,td),
+  #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table :is(th,td),
+  #main-app #view-kyc-status table.kyc-table :is(th,td),
+  .report-floating-head th,.workspace table :is(th,td) {
+    font-family: var(--dms-reading-font) !important;
+    font-size: 13px !important;
+    line-height: 1.45 !important;
+    font-variant-numeric: lining-nums tabular-nums;
+  }
+
+  #main-app table th, .report-floating-head th, .workspace table th {
+    font-weight: 700;
+    letter-spacing: normal;
+  }
+
+  .workspace table td, .workspace table td small {
+    color: var(--glass-ink);
+  }
+
+  #main-app #view-kyc-status table.kyc-table td[data-label]::before {
+    font-size: 12px;
+    color: var(--glass-muted);
   }
 }
