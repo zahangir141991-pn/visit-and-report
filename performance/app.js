@@ -330,12 +330,12 @@ window.openPerformanceReport=async function(){
  void readFresh();
 };
 function usePerformanceSheet(sheetName){
- const entry=previewSheets.find(s=>s.name===sheetName);pending=null;el('perf-upload-button').disabled=true;if(!entry){el('perf-upload-status').textContent='Select the report sheet.';return;}
- try{const parsed=A.parse(entry.matrix),asOf=entry.asOf;let date='';if(asOf instanceof Date&&!isNaN(asOf))date=[asOf.getFullYear(),String(asOf.getMonth()+1).padStart(2,'0'),String(asOf.getDate()).padStart(2,'0')].join('-');if(date)el('perf-upload-month').value=date.slice(0,7);pending={...parsed,asOf:date};el('perf-upload-status').textContent='Sheet: '+entry.name+' · '+parsed.agents+' Uddokta · '+Object.keys(parsed.groups).length+' DSO · report date '+(date||'not found')+'. Verify the month before uploading.';el('perf-upload-button').disabled=saving;}catch(e){el('perf-upload-status').textContent=e.message;}
+ const entry=previewSheets.find(s=>s.name===sheetName);el('perf-upload-month').value='';pending=null;el('perf-upload-button').disabled=true;if(!entry){el('perf-upload-status').textContent='Select the report sheet.';return;}
+ try{const parsed=A.parse(entry.matrix),asOf=entry.asOf;let date='';if(asOf instanceof Date&&!isNaN(asOf))date=[asOf.getFullYear(),String(asOf.getMonth()+1).padStart(2,'0'),String(asOf.getDate()).padStart(2,'0')].join('-');if(date)el('perf-upload-month').value=date.slice(0,7);pending={...parsed,asOf:date};el('perf-upload-status').textContent='Sheet: '+entry.name+' · '+parsed.agents+' Uddokta · '+Object.keys(parsed.groups).length+' DSO · report date '+(date?date+'. Verify the month before uploading.':'not found. Select the report month before uploading.');el('perf-upload-button').disabled=saving;}catch(e){el('perf-upload-status').textContent=e.message;}
 }
 window.selectPerformanceSheet=function(value){if(currentUser&&getRoleInfo().role==='Admin')usePerformanceSheet(value);};
 window.previewPerformance=async function(input){
- if(!currentUser||getRoleInfo().role!=='Admin')return;const preview=++previewToken,session=appSessionGeneration;pending=null;previewSheets=[];el('perf-upload-button').disabled=true;el('perf-sheet-wrap').hidden=true;const file=input.files?.[0];
+ if(!currentUser||getRoleInfo().role!=='Admin')return;const preview=++previewToken,session=appSessionGeneration;pending=null;previewSheets=[];el('perf-upload-month').value='';el('perf-upload-button').disabled=true;el('perf-sheet-wrap').hidden=true;const file=input.files?.[0];
  el('perf-upload-status').textContent=file?'Reading report…':'';
  if(!file)return;
  try{await ensureXlsxSdk();const bytes=await file.arrayBuffer();if(preview!==previewToken||session!==appSessionGeneration||!currentUser)return;const wb=XLSX.read(bytes,{type:'array',cellDates:true});

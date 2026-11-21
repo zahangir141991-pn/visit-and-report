@@ -171,3 +171,22 @@ test('a save finishing after a new preview keeps the newer report, even on failu
   assert.equal(w.get('perf-upload-button').disabled,false);
  }
 });
+
+test('undated sheets require a fresh report month before upload',async()=>{
+ const w=workspace();
+ w.context.ensureXlsxSdk=async()=>{};
+ w.context.XLSX={read:()=>({SheetNames:['October','Undated'],Sheets:{October:{B2:{v:w.run("new Date(2026,9,31)")}},Undated:{}}}),utils:{sheet_to_json:()=>flatRows}};
+ const preview=()=>w.context.window.previewPerformance({files:[{arrayBuffer:async()=>new ArrayBuffer(0)}]});
+ await preview();
+ w.context.window.selectPerformanceSheet('October');
+ assert.equal(w.get('perf-upload-month').value,'2026-10');
+ w.context.window.selectPerformanceSheet('Undated');
+ assert.equal(w.get('perf-upload-month').value,'');
+ await assert.rejects(w.context.window.savePerformance(),/Select a valid report month/);
+ assert.equal(w.writes.length,0);
+ w.get('perf-upload-month').value='2026-11';
+ await w.context.window.savePerformance();
+ assert.ok(w.writes[0]['monthly_performance/2026-11']);
+ await preview();
+ assert.equal(w.get('perf-upload-month').value,'');
+});
