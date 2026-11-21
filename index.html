@@ -3,7 +3,7 @@
 <head>
     <script src="assets/secure-data.js?v=166"></script>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-21-feedback-draft-v203">
+    <meta name="dms-app-version" content="2026-11-21-login-startup-v204">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -11,7 +11,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DMS</title>
     
-    <!-- Heavy app libraries are loaded only after a successful login. -->
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://dms-attendance-login.zahangir-ithome.workers.dev" crossorigin>
 
     <style>
         :root {
@@ -1613,10 +1614,10 @@ body.app-logged-in #view-login{display:none!important}
             if (!window.firebase || typeof window.firebase.initializeApp !== 'function') {
                 await loadRuntimeScript('firebase-app', 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
             }
-            if (!firebase.database) {
-                await loadRuntimeScript('firebase-database', 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js');
-            }
-            if (!firebase.auth) await loadRuntimeScript('firebase-auth', 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js');
+            await Promise.all([
+                firebase.database || loadRuntimeScript('firebase-database', 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js'),
+                firebase.auth || loadRuntimeScript('firebase-auth', 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js')
+            ]);
             return initializeFirebaseServices();
         }
 
@@ -1706,7 +1707,7 @@ body.app-logged-in #view-login{display:none!important}
                 return null;
             }
         }
-        // Login is entirely local; heavy SDK loading starts only after success.
+        // Initialize immediately when Firebase is already available.
         initializeFirebaseServices();
 
         // ----------------------------------------------------
@@ -1715,8 +1716,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-21-feedback-draft-v203';
-        const APP_RELEASED_AT = 1795261030593;
+        const APP_CACHE_VERSION = '2026-11-21-login-startup-v204';
+        const APP_RELEASED_AT = 1795261619567;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -2475,7 +2476,7 @@ body.app-logged-in #view-login{display:none!important}
             // Always bootstrap from authenticated server snapshots, even if realtime listeners were attached.
             // A listener registration alone does not prove an initial dataset was delivered.
             if (!currentUser || !document.body?.classList.contains('app-logged-in')) return false;
-            if (loginServerSyncPromise) return loginServerSyncPromise;
+            if (loginServerSyncPromise?.generation===appSessionGeneration) return loginServerSyncPromise.promise;
 
             const bootstrapUser=currentUser,bootstrapGeneration=appSessionGeneration;
             const bootstrapCurrent=()=>currentUser===bootstrapUser&&appSessionGeneration===bootstrapGeneration;
@@ -2510,15 +2511,18 @@ body.app-logged-in #view-login{display:none!important}
             });
             const kycTask = refreshKycSnapshot();
 
-            loginServerSyncPromise = Promise.allSettled([
+            const bootstrap = {generation:bootstrapGeneration,promise:null};
+            bootstrap.promise = Promise.allSettled([
                 visitsTask, masterTask, assignmentTask, kycTask, morningTask, afternoonTask
             ]).then(results => {
+                if(!bootstrapCurrent())return false;
                 const successCount = results.filter(x => x.status === 'fulfilled').length;
                 if (!successCount) throw new Error('No server dataset could be refreshed');
                 try { renderReports(); updateDashboard(false); } catch (_) {}
                 return true;
-            }).finally(() => { loginServerSyncPromise = null; });
-            return loginServerSyncPromise;
+            }).finally(() => { if(loginServerSyncPromise===bootstrap)loginServerSyncPromise=null; });
+            loginServerSyncPromise=bootstrap;
+            return bootstrap.promise;
         }
 
         async function refreshAppToLatest() {
@@ -2599,6 +2603,10 @@ body.app-logged-in #view-login{display:none!important}
             if (mainApp) { mainApp.classList.remove('hidden'); mainApp.classList.add('app-visible'); }
             if (userBar) { userBar.classList.remove('hidden'); userBar.classList.add('user-visible'); }
             if (appNav) { appNav.classList.remove('hidden'); appNav.classList.add('nav-visible'); }
+            if(!mustChangeDefaultPassword)void refreshAllDataFromServerOnLogin().catch(err => {
+                console.warn('Login server sync failed; realtime fallback remains active:', err);
+            });
+
 
             try {
                 const roleInfo = getRoleInfo();
@@ -2636,11 +2644,6 @@ body.app-logged-in #view-login{display:none!important}
                 }
                 // Start network/data libraries only after the app shell is visible.
                 setTimeout(loadPostLoginLibraries, 0);
-                // Highest-priority fresh sync: every login receives current server data
-                // without waiting for cookies/cache cleanup or a manual refresh.
-                if(!mustChangeDefaultPassword)setTimeout(() => refreshAllDataFromServerOnLogin().catch(err => {
-                    console.warn('Login server sync failed; realtime fallback remains active:', err);
-                }), 0);
                 if(!mustChangeDefaultPassword)startServerUpdatePolling();
                 try {
                     applyPasswordChangeRequirement();
@@ -5149,6 +5152,11 @@ let firebaseListenersStarted = false;
             }
 
             bindVisitFormCompletionListeners();
+
+            loginView?.addEventListener('focusin', () => {
+                // Warm the SDK while credentials are typed. Authentication still requires Sign in.
+                ensureFirebaseSdk().catch(() => {});
+            }, {once:true});
 
             const u = document.getElementById('login-user');
             if (u && !u.dataset.enterBound) {
