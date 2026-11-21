@@ -137,7 +137,7 @@
   }
 
   :root {
-    --dms-reading-font: system-ui, "Nirmala UI", "Noto Sans Bengali", "Vrinda", sans-serif;
+    --dms-reading-font: "Segoe UI", "Nirmala UI", "Noto Sans Bengali", system-ui, sans-serif;
   }
 
   body, body :where(button, input, select, textarea, label, th, td, small, span, p, a, h1, h2, h3, h4, strong, b, li, legend, summary, div) {
@@ -145,32 +145,22 @@
   }
 
   #view-login .dms-signin-form label {
-    font-size: 14px;
     font-weight: 650;
     color: var(--glass-ink);
   }
 
   #view-login .dms-signin-form input::placeholder {
-    font-size: 14px;
     opacity: 1;
-  }
-
-  #view-login #login-button {
-    font-size: 15px;
   }
 
   #app-nav.nav-sidebar :is(.nav-item,.visit-menu-btn):not(#sidebar-logout),
   .sidebar nav button {
-    font-size: 14px !important;
     font-weight: 650;
-    line-height: 1.45;
   }
 
   #main-app :is(label,.card-lbl,.perf-muted,.vf-muted),
   .workspace :is(label,.metric-top,.metric small,.panel-heading small,.hint) {
     color: var(--glass-muted);
-    font-size: 13px;
-    line-height: 1.5;
   }
 
   #main-app :is(.card-lbl,label), .workspace :is(label,.metric-top) {
@@ -188,8 +178,6 @@
   #main-app #view-kyc-status table.kyc-table :is(th,td),
   .report-floating-head th,.workspace table :is(th,td) {
     font-family: var(--dms-reading-font) !important;
-    font-size: 13px !important;
-    line-height: 1.45 !important;
     font-variant-numeric: lining-nums tabular-nums;
   }
 
@@ -203,7 +191,6 @@
   }
 
   #main-app #view-kyc-status table.kyc-table td[data-label]::before {
-    font-size: 12px;
     color: var(--glass-muted);
   }
 }
