@@ -3,7 +3,7 @@
 <head>
     <script src="assets/secure-data.js?v=166"></script>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-21-dashboard-contrast-v199">
+    <meta name="dms-app-version" content="2026-11-21-bug-fixes-v200">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1715,8 +1715,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-21-dashboard-contrast-v199';
-        const APP_RELEASED_AT = 1795078800007;
+        const APP_CACHE_VERSION = '2026-11-21-bug-fixes-v200';
+        const APP_RELEASED_AT = 1795260024279;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -2811,18 +2811,15 @@ function clearPrivateSessionData(){
             if(newPass.length<8){alert('New Password কমপক্ষে ৮ অক্ষরের হতে হবে।');return;}
             if(newPass===oldPass){alert('New Password আলাদা হতে হবে।');return;}
             if(newPass!==confirmPass){alert('New Password এবং Confirm Password মিলছে না।');return;}
-            const user=currentUser;
+            const user=currentUser,generation=appSessionGeneration;
             try{await authServerRequest('/password',{userId:user,password:oldPass,newPassword:newPass});}
-            catch(e){alert(e.message||'Password পরিবর্তন হয়নি।');return;}
+            catch(e){
+                if(currentUser===user&&appSessionGeneration===generation)alert(e.message||'Password পরিবর্তন হয়নি।');
+                return;
+            }
+            if(currentUser!==user||appSessionGeneration!==generation)return;
+            logout();
             alert('Password পরিবর্তন হয়েছে। নতুন Password দিয়ে Login করুন।');
-            logout();return;
-            mustChangeDefaultPassword = false;
-            applyPasswordChangeRequirement();
-            if (oldInput) oldInput.value = '';
-            if (newInput) newInput.value = '';
-            if (confirmInput) confirmInput.value = '';
-            alert('Password সফলভাবে পরিবর্তন হয়েছে।');
-            switchTab('dashboard');
         }
 
         async function adminChangePassword() {
@@ -6752,7 +6749,7 @@ function isOlderUploadedReport(candidate,current){
 }
 </script>
 
-<script src="performance/executive.js?v=172"></script><script src="performance/targets.js?v=172"></script><script src="performance/analytics.js?v=188"></script><script src="performance/app.js?v=194"></script>
+<script src="performance/executive.js?v=172"></script><script src="performance/targets.js?v=172"></script><script src="performance/analytics.js?v=188"></script><script src="performance/app.js?v=200"></script>
 <style id="dms-login-design-v163">
 body:not(.app-logged-in){background:#f3f6fb}
 body:not(.app-logged-in) #view-login{background:radial-gradient(ellipse at 50% 0%,#e8eefb 0%,transparent 58%),#f3f6fb;padding:32px 20px 80px;min-height:100vh;min-height:100dvh}

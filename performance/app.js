@@ -335,7 +335,9 @@ function usePerformanceSheet(sheetName){
 }
 window.selectPerformanceSheet=function(value){if(currentUser&&getRoleInfo().role==='Admin')usePerformanceSheet(value);};
 window.previewPerformance=async function(input){
- if(!currentUser||getRoleInfo().role!=='Admin')return;const preview=++previewToken,session=appSessionGeneration;pending=null;previewSheets=[];el('perf-upload-button').disabled=true;el('perf-sheet-wrap').hidden=true;const file=input.files?.[0];if(!file)return;
+ if(!currentUser||getRoleInfo().role!=='Admin')return;const preview=++previewToken,session=appSessionGeneration;pending=null;previewSheets=[];el('perf-upload-button').disabled=true;el('perf-sheet-wrap').hidden=true;const file=input.files?.[0];
+ el('perf-upload-status').textContent=file?'Reading report…':'';
+ if(!file)return;
  try{await ensureXlsxSdk();const wb=XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:true});if(preview!==previewToken||session!==appSessionGeneration||!currentUser)return;
  for(const sheetName of wb.SheetNames){const sheet=wb.Sheets[sheetName],matrix=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:true,blankrows:false});try{A.mapColumns(matrix);previewSheets.push({name:sheetName,matrix,asOf:sheet.B2?.v});}catch(_){}}
  if(!previewSheets.length)throw Error('No matching report sheet found. Required: DSO, Uddokta number, MTD transaction amount, MTD CI and MTD CO. The sheet name can be anything.');

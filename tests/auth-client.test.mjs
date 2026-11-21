@@ -4,9 +4,9 @@ const between=(a,b)=>source.slice(source.indexOf(a),source.indexOf(b,source.inde
 test('login exchanges server token for matching Firebase identity with memory-only persistence',async()=>{
  const calls=[];const auth={setPersistence:async v=>calls.push(v),signInWithCustomToken:async token=>{calls.push(token);return {user:{uid:'dms_admin'}}},signOut:async()=>calls.push('signOut')};
  const firebase={auth:Object.assign(()=>auth,{Auth:{Persistence:{NONE:'NONE'}}})};
- const context=vm.createContext({firebase,dmsSignOutPromise:Promise.resolve(),authServerRequest:async(path,input)=>{calls.push([path,input]);return {userId:'admin',token:'signed-token'}},ensureFirebaseSdk:async()=>{}});
+ const context=vm.createContext({firebase,getDeviceId:()=> 'test-device',getDeviceLabel:()=> 'Test browser',navigator:{userAgent:'Test agent'},dmsSignOutPromise:Promise.resolve(),authServerRequest:async(path,input)=>{calls.push([path,input]);return {userId:'admin',token:'signed-token'}},ensureFirebaseSdk:async()=>{}});
  vm.runInContext(between('async function signInDmsServer(', 'async function authenticatedDatabaseUrl('),context);
- const result=await context.signInDmsServer('admin','test-password');assert.equal(result.userId,'admin');assert.equal(calls[1],'NONE');assert.equal(calls[2],'signed-token');
+ const result=await context.signInDmsServer('admin','test-password');assert.equal(result.userId,'admin');assert.equal(calls[0][0],'/login');assert.equal(calls[0][1].deviceId,'test-device');assert.equal(calls[0][1].deviceLabel,'Test browser');assert.equal(calls[0][1].userAgent,'Test agent');assert.equal(calls[1],'NONE');assert.equal(calls[2],'signed-token');
  auth.signInWithCustomToken=async()=>({user:{uid:'dms_other'}});await assert.rejects(context.signInDmsServer('admin','test-password'),/identity/);assert.ok(calls.includes('signOut'));
 });
 test('database URLs require matching authenticated user and reject logout during token refresh',async()=>{
