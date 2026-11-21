@@ -28,3 +28,46 @@
 @media(max-width:1100px){#view-dashboard .executive-board{grid-template-columns:155px minmax(0,1fr);gap:12px;padding:12px}#view-dashboard .executive-filters{padding:12px}#view-dashboard .executive-panel{padding:14px}.executive-badge{display:none}}
 @media(max-width:800px){#view-dashboard .executive-board{grid-template-columns:1fr}#view-dashboard .executive-filters{position:static;display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end}#view-dashboard .executive-filter-title{grid-column:1/-1;margin:0;padding-bottom:9px}#view-dashboard .executive-filters label{margin:0}#view-dashboard #target-admin-filters{display:contents}#view-dashboard #target-admin-filters[hidden]{display:none}#view-dashboard .executive-filter-note{margin:0}#view-dashboard .executive-heading{padding:20px}.executive-eyebrow{font-size:.6rem}}
 @media(max-width:600px){#view-dashboard .executive-charts{grid-template-columns:1fr}#view-dashboard .executive-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px}#view-dashboard .executive-kpis>div{padding:13px 11px}#view-dashboard .executive-kpis strong{display:block;font-size:1.18rem}#view-dashboard .executive-kpis span{display:block;font-size:.66rem}#view-dashboard .executive-heading h2{font-size:1.3rem}#view-dashboard .executive-heading p{font-size:.72rem}#view-dashboard .executive-filter-note{display:none}#view-dashboard .executive-refresh{grid-column:1/-1}#view-dashboard .executive-board{padding:10px}#view-dashboard .executive-panel{padding:16px}}
+
+@media screen {
+  #view-dashboard .executive-panel {
+    --exec-detail-ink: #26394a;
+  }
+
+  #view-dashboard .executive-panel > p,
+  #view-dashboard .executive-panel .executive-empty,
+  #view-dashboard .executive-rank small,
+  #view-dashboard .executive-donut small,
+  #view-dashboard .executive-coverage-key {
+    color: var(--exec-detail-ink);
+    font-weight: 600;
+  }
+
+  #view-dashboard .executive-rank-label {
+    color: var(--exec-detail-ink);
+    font-weight: 650;
+  }
+
+  #view-dashboard .executive-rank-label b {
+    color: #103d59;
+  }
+
+  #view-dashboard .executive-rank :is(b, small) {
+    font-variant-numeric: tabular-nums;
+  }
+
+  #view-dashboard .target-legend {
+    color: #004d43;
+    font-weight: 650;
+  }
+
+  #view-dashboard .target-legend span + span {
+    color: #713900;
+  }
+
+  #view-dashboard .executive-plot svg text {
+    fill: var(--exec-detail-ink);
+    font-family: var(--dms-reading-font, system-ui, sans-serif);
+    font-weight: 650;
+  }
+}
