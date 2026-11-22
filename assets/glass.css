@@ -510,7 +510,6 @@
 
   html[data-dms-theme="dark"] #view-login .dms-signin-form input:focus {
     background: var(--glass-field);
-    border-color: #95baff;
   }
 
   html[data-dms-theme="dark"] #main-app :is(.quick-grid,.cards-grid,.morning-summary,.kyc-summary) .card :is(.card-lbl,span),
@@ -558,5 +557,21 @@
 
   html[data-dms-theme="dark"] #main-app table.reports-table td[data-label]::before {
     color: var(--glass-muted);
+  }
+}
+
+@media screen {
+  :root {
+    --field-focus: #9bcfa9;
+  }
+
+  :root[data-dms-theme="dark"] {
+    --field-focus: #a5d8b3;
+  }
+
+  html :is(#view-login, #main-app, #app-nav, .workspace, dialog)
+    :is(input, select, textarea):focus:where(:not(.submit-invalid, [aria-invalid="true"])) {
+    outline: 1px solid var(--field-focus) !important;
+    outline-offset: 1px;
   }
 }
