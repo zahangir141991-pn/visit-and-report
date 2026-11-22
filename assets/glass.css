@@ -1,23 +1,23 @@
 @media screen {
   :root {
     --glass-canvas:
-      radial-gradient(ellipse at 12% 9%, #fff 0%, transparent 43%),
-      radial-gradient(ellipse at 81% 24%, #e4e9ef 0%, transparent 56%),
-      radial-gradient(ellipse at 23% 87%, #e5e9ed 0%, transparent 55%),
-      #f6f7f8;
-    --glass-pane: linear-gradient(140deg, #ffffff80, #ffffff20 57%, #ffffff48);
-    --glass-field: #ffffff67;
-    --glass-line: #a1aab43d;
-    --glass-shadow: inset 0 1px 0 #fffffff5, inset 0 0 0 1px #ffffff59, 0 8px 24px #25384e10;
+      radial-gradient(ellipse at 12% 12%, #fff7e8 0%, transparent 45%),
+      radial-gradient(ellipse at 90% 6%, #b99b81 0%, transparent 46%),
+      radial-gradient(ellipse at 82% 92%, #e5c6a8 0%, transparent 52%),
+      linear-gradient(125deg, #e8d9c9, #ccbaa9 54%, #e7d8c8);
+    --glass-pane: linear-gradient(140deg, #fffaf2db, #f6ecdf92 62%, #fff8efb8);
+    --glass-field: #fff9efbc;
+    --glass-line: #8c715742;
+    --glass-shadow: inset 0 1px 0 #fffffff5, inset 0 0 0 1px #ffffff59, 0 8px 24px #52391f20;
     --glass-ink: #111827;
     --glass-muted: #364152;
-    --glass-table-head: #e9edf1;
+    --glass-table-head: #ede2d4;
   }
 
   html {
     background: var(--glass-canvas) fixed;
     scrollbar-width: thin;
-    scrollbar-color: #c9cfd7 transparent;
+    scrollbar-color: #aa8f76 transparent;
   }
 
   body, body:not(.app-logged-in), body:not(.app-logged-in) #view-login,
@@ -45,7 +45,7 @@
 
   #app-header, #user-info-bar.user-visible, #app-nav.nav-sidebar, #submit-action-bar,
   .sidebar, .topbar {
-    background: linear-gradient(125deg, #ffffffde, #f1f3f6aa) !important;
+    background: linear-gradient(125deg, #fff7eaf0, #dfc8b1bc) !important;
     border-color: var(--glass-line);
     box-shadow: var(--glass-shadow);
     color: var(--glass-ink) !important;
@@ -78,7 +78,7 @@
 
   #main-app :is(.table-responsive,.table-wrap), .workspace .table-wrap {
     scrollbar-width: thin;
-    scrollbar-color: #c9cfd7 transparent;
+    scrollbar-color: #aa8f76 transparent;
   }
 
   #main-app table.reports-table th,
@@ -97,11 +97,11 @@
   }
 
   .workspace tbody tr:nth-child(even) td {
-    background: #e9eef382;
+    background: #eadccd8f;
   }
 
   .workspace tbody tr:hover td {
-    background: #e0e8f0;
+    background: #e6d4c1;
   }
 
   #main-app table.reports-table tbody td,
@@ -112,20 +112,20 @@
 
   #main-app table.reports-table tbody tr:nth-child(even) td,
   #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table tbody tr:nth-child(even) td {
-    background: #e9eef382 !important;
+    background: #eadccd8f !important;
   }
 
   #main-app table.reports-table tbody tr:hover td,
   #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table tbody tr:hover td {
-    background: #e0e8f0 !important;
+    background: #e6d4c1 !important;
   }
 
   #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table tbody tr > :is(.dso-col,.agent-col,.agent-name-col) {
-    background: #f5f7f9 !important;
+    background: #f7eee4 !important;
   }
 
   #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table tbody tr:nth-child(even) > :is(.dso-col,.agent-col,.agent-name-col) {
-    background: #edf0f3 !important;
+    background: #f0e3d5 !important;
   }
 
   #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table tbody tr.zero-b2b-row td {
@@ -192,5 +192,25 @@
 
   #main-app #view-kyc-status table.kyc-table td[data-label]::before {
     color: var(--glass-muted);
+  }
+
+  #view-dashboard .executive-board {
+    background: linear-gradient(155deg, #fffcf676, #e6cdb753);
+    border-color: var(--glass-line);
+  }
+
+  #view-dashboard :is(.executive-filters,.executive-kpis > div) {
+    background: var(--glass-pane);
+    border-color: var(--glass-line);
+  }
+
+  #view-dashboard .executive-heading {
+    background: linear-gradient(120deg, #433129, #685043 68%, #795d4d);
+  }
+
+  #app-nav.nav-sidebar .nav-item.active {
+    background: #fff5e8;
+    box-shadow: inset 3px 0 #886044;
+    color: #3d281c;
   }
 }
