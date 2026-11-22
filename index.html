@@ -3,7 +3,7 @@
 <head>
     <script src="assets/secure-data.js?v=166"></script>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-22-theme-picker-v210">
+    <meta name="dms-app-version" content="2026-11-22-glassy-background-v211">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -950,7 +950,6 @@ body:has(#view-kyc-status.active) #app-copyright,body:has(#view-kyc-status.activ
 <div id="view-login" class="page login-visible active">
   <div class="dms-signin">
     <div class="dms-signin-brand"><div class="dms-signin-logo"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiB2aWV3Qm94PSIwIDAgNTEyIDUxMiI+PHRpdGxlPkRNUzwvdGl0bGU+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJiZyIgeDI9IjEiIHkyPSIxIj48c3RvcCBzdG9wLWNvbG9yPSIjMjU2M2ViIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMTQzYjk1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIHJ4PSIxMTYiIGZpbGw9InVybCgjYmcpIi8+PHBhdGggZmlsbD0iI2ZmZiIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTEyIDExMkgyMjZDMzM0IDExMiA0MDIgMTY0IDQwMiAyNTZTMzM0IDQwMCAyMjYgNDAwSDExMlYxMTJaTTE3MiAxNzJWMzQwSDIyNEMyOTYgMzQwIDM0MCAzMTAgMzQwIDI1NlMyOTYgMTcyIDIyNCAxNzJIMTcyWiIvPjxyZWN0IHg9IjE5OCIgeT0iMjU5IiB3aWR0aD0iMjkiIGhlaWdodD0iNTMiIHJ4PSI4IiBmaWxsPSIjNWVlYWQ0Ii8+PHJlY3QgeD0iMjQwIiB5PSIyMjYiIHdpZHRoPSIyOSIgaGVpZ2h0PSI4NiIgcng9IjgiIGZpbGw9IiM1ZWVhZDQiLz48cmVjdCB4PSIyODIiIHk9IjE5MiIgd2lkdGg9IjI5IiBoZWlnaHQ9IjEyMCIgcng9IjgiIGZpbGw9IiM1ZWVhZDQiLz48L3N2Zz4K" width="48" height="48" alt="DMS logo"></div></div>
-    <label class="dms-theme-control"><span>Theme</span><select data-dms-theme-picker><option value="glassy">Glassy</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
     <form class="dms-signin-form" onsubmit="event.preventDefault();return false">
       
       <div id="login-alert" class="alert" role="status" aria-live="polite"></div>
@@ -1719,8 +1718,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-22-theme-picker-v210';
-        const APP_RELEASED_AT = 1795342096125;
+        const APP_CACHE_VERSION = '2026-11-22-glassy-background-v211';
+        const APP_RELEASED_AT = 1795342480730;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -6794,7 +6793,7 @@ body:not(.app-logged-in) #view-login{background:radial-gradient(ellipse at 50% 0
 @media(prefers-reduced-motion:reduce){#view-login input,#view-login button{transition:none!important}}
 </style>
 
-<link rel="stylesheet" href="assets/glass.css?v=210">
+<link rel="stylesheet" href="assets/glass.css?v=211">
 <script src="feedback/visit-feedback.js?v=203"></script>
 </body>
 </html>

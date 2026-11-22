@@ -1,10 +1,10 @@
 @media screen {
   :root {
     --glass-canvas:
-      radial-gradient(ellipse at 12% 12%, #fff7e8 0%, transparent 45%),
-      radial-gradient(ellipse at 90% 6%, #b99b81 0%, transparent 46%),
-      radial-gradient(ellipse at 82% 92%, #e5c6a8 0%, transparent 52%),
-      linear-gradient(125deg, #e8d9c9, #ccbaa9 54%, #e7d8c8);
+      radial-gradient(ellipse at 12% 12%, #f9fcff 0%, transparent 45%),
+      radial-gradient(ellipse at 90% 6%, #c6d7ec 0%, transparent 46%),
+      radial-gradient(ellipse at 82% 92%, #dae7f3 0%, transparent 52%),
+      linear-gradient(125deg, #edf1f6, #dbe4ef 54%, #eef3f8);
     --glass-pane: linear-gradient(140deg, #fffaf2db, #f6ecdf92 62%, #fff8efb8);
     --glass-field: #fff9efbc;
     --glass-line: #8c715742;
@@ -195,7 +195,7 @@
   }
 
   #view-dashboard .executive-board {
-    background: linear-gradient(155deg, #fffcf676, #e6cdb753);
+    background: linear-gradient(155deg, #f9fcff76, #d5e3f153);
     border-color: var(--glass-line);
   }
 
@@ -234,7 +234,6 @@
     font: inherit;
   }
 
-  #view-login .dms-theme-control { margin-top: 14px; }
   #app-nav .dms-theme-control { order: 8; margin: 0; }
 
   :root[data-dms-theme="light"] {
