@@ -562,16 +562,17 @@
 
 @media screen {
   :root {
-    --field-focus: #9bcfa9;
+    --field-focus: #00bd56;
   }
 
   :root[data-dms-theme="dark"] {
-    --field-focus: #a5d8b3;
+    --field-focus: #39ef86;
   }
 
   html :is(#view-login, #main-app, #app-nav, .workspace, dialog)
     :is(input, select, textarea):focus:where(:not(.submit-invalid, [aria-invalid="true"])) {
-    outline: 1px solid var(--field-focus) !important;
+    outline: 1px solid transparent !important;
     outline-offset: 1px;
+    box-shadow: 0 0 0 0.5px var(--field-focus);
   }
 }
