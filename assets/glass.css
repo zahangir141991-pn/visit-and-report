@@ -576,3 +576,46 @@
     box-shadow: 0 0 0 0.5px var(--field-focus);
   }
 }
+
+@media screen {
+  #login-button { position: relative; }
+
+  #login-button .dms-door-icon {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    translate: 0 -50%;
+  }
+
+  #sidebar-logout .dms-door-icon { margin-inline-start: auto; }
+
+  .dms-door-icon {
+    position: relative;
+    display: inline-block;
+    flex: none;
+    width: 9px;
+    height: 12px;
+    border: 1px solid currentColor;
+    border-radius: 1px;
+    perspective: 18px;
+  }
+
+  .dms-door-icon > span {
+    position: absolute;
+    inset: 0;
+    background: currentColor;
+    transform-origin: left center;
+  }
+
+  .dms-door-icon > span::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 1px;
+    width: 1px;
+    height: 1px;
+    background: Canvas;
+  }
+
+  #sidebar-logout .dms-door-icon > span { transform: rotateY(-64deg); }
+}
