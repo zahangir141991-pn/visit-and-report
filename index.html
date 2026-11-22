@@ -2,15 +2,15 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-22-fast-login-data-v218">
+    <meta name="dms-app-version" content="2026-11-22-stable-theme-v219">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://visit-report-ea224-default-rtdb.firebaseio.com https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://nominatim.openstreetmap.org https://dms-attendance-login.zahangir-ithome.workers.dev; img-src 'self' data: blob: https://*.tile.openstreetmap.org; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DMS</title>
-    <link rel="preload" as="style" href="assets/glass.css?v=217">
-    <script src="assets/theme.js?v=217"></script>
+    <script src="assets/theme.js?v=219"></script>
+    <link rel="stylesheet" href="assets/glass.css?v=217">
     <script defer src="assets/secure-data.js?v=166"></script>
     
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
@@ -1734,8 +1734,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-22-fast-login-data-v218';
-        const APP_RELEASED_AT = 1795346592334;
+        const APP_CACHE_VERSION = '2026-11-22-stable-theme-v219';
+        const APP_RELEASED_AT = 1795346863687;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -2578,7 +2578,6 @@ body.app-logged-in #view-login{display:none!important}
                 if(!bootstrapCurrent())return false;
                 const successCount = results.filter(x => x.status === 'fulfilled').length;
                 if (!successCount) throw new Error('No server dataset could be refreshed');
-                try { renderReports(); updateDashboard(false); } catch (_) {}
                 return true;
             }).finally(() => { if(loginServerSyncPromise===bootstrap)loginServerSyncPromise=null; });
             loginServerSyncPromise=bootstrap;
@@ -3194,7 +3193,8 @@ function clearPrivateSessionData(){
             rebuildDssDsoAssignmentIndex(uddoktaDB);
             uddoktaMasterSynced = true;
             saveUddoktaCache(uddoktaDB);
-            try { renderReports(); updateDashboard(); } catch(e) {}
+            if (document.getElementById('view-daily')?.classList.contains('active')) scheduleRenderReports();
+            updateDashboard(false);
         }
         function useEmbeddedMasterFallback() {
             // Never blank the app when Firebase master is temporarily unavailable/empty.
@@ -5232,7 +5232,6 @@ let firebaseListenersStarted = false;
                 const previewTheme = () => window.DmsTheme?.preview(normalizeLoginUserId(u.value));
                 u.addEventListener('input', previewTheme);
                 u.addEventListener('change', previewTheme);
-                if(u.value)previewTheme();
                 u.addEventListener('keydown', e => {
                     if (e.key === 'Enter' && !e.isComposing) {
                         e.preventDefault();
@@ -6754,7 +6753,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=217';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=219';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');

@@ -48,7 +48,8 @@
     function preview(id) {
         if (user) return;
         previewUser = id;
-        apply(id ? read(prefix + id) : read(lastKey));
+        const saved = id && read(prefix + id);
+        apply(themes.has(saved) ? saved : read(lastKey));
     }
 
     function signOut() {
