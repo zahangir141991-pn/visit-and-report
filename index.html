@@ -3,7 +3,7 @@
 <head>
     <script src="assets/secure-data.js?v=166"></script>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-22-opaque-details-v207">
+    <meta name="dms-app-version" content="2026-11-22-kyc-dialog-title-v208">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1465,9 +1465,9 @@ body.app-logged-in #view-login{display:none!important}
             </div>
 
             <!-- Visit Details Modal -->
-            <div id="visit-details-modal" class="details-modal hidden" onclick="if(event.target===this) closeVisitDetails()">
+            <div id="visit-details-modal" role="dialog" aria-modal="true" aria-labelledby="visit-details-title" class="details-modal hidden" onclick="if(event.target===this) closeVisitDetails()">
                 <div class="details-card">
-                    <div class="details-head"><h3>Visit Details</h3><button type="button" class="btn btn-sm btn-sec" onclick="closeVisitDetails()">✕</button></div>
+                    <div class="details-head"><h3 id="visit-details-title">Visit Details</h3><button type="button" class="btn btn-sm btn-sec" onclick="closeVisitDetails()">✕</button></div>
                     <div id="visit-details-content"></div>
                 </div>
             </div>
@@ -1716,8 +1716,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-22-opaque-details-v207';
-        const APP_RELEASED_AT = 1795340515431;
+        const APP_CACHE_VERSION = '2026-11-22-kyc-dialog-title-v208';
+        const APP_RELEASED_AT = 1795340721750;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -4903,6 +4903,7 @@ function deferVisiblePageWork(tab,task){
             if(!r||!canSeeReport(r))return;
             const modal=document.getElementById('visit-details-modal');
             const box=document.getElementById('visit-details-content');
+            document.getElementById('visit-details-title').textContent='Visit Details';
             const time=r.visitTime||(r.timestamp?new Date(r.timestamp).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',hour12:true}):'');
             box.innerHTML=`
                 <div class="details-grid">
@@ -6308,7 +6309,8 @@ function kycStatusHistoryHtml(r){
 function showKycStatusHistory(id){kycPhotoViewToken++;
     const r=kycRecords.find(x=>String(x.id)===String(id)),modal=document.getElementById('visit-details-modal'),box=document.getElementById('visit-details-content');if(!r||!canSeeKycRecord(r)||!modal||!box)return;
     const items=getKycStatusHistoryEntries(r),title=escapeMorningHtml(r.shopName||r.uddoktaNumber||'KYC');
-    box.innerHTML='<h3 style="margin:0 0 4px">Status History</h3><div style="color:#64748b;font-size:.84rem">'+title+' · '+escapeMorningHtml(r.uddoktaNumber||'')+'</div><div class="kyc-history-popup-list">'+(items.length?items.map(x=>'<div class="kyc-history-popup-row"><b>'+escapeMorningHtml(x[0])+'</b><span>'+escapeMorningHtml(x[1])+'</span></div>').join(''):'<div class="empty-state">No history found.</div>')+'</div>';
+    document.getElementById('visit-details-title').textContent='KYC Status History';
+    box.innerHTML='<div style="color:#64748b;font-size:.84rem">'+title+' · '+escapeMorningHtml(r.uddoktaNumber||'')+'</div><div class="kyc-history-popup-list">'+(items.length?items.map(x=>'<div class="kyc-history-popup-row"><b>'+escapeMorningHtml(x[0])+'</b><span>'+escapeMorningHtml(x[1])+'</span></div>').join(''):'<div class="empty-state">No history found.</div>')+'</div>';
     modal.classList.remove('hidden');
 }
 function kycShortCollectionDate(value){
@@ -6421,6 +6423,7 @@ async function updateKycStatus(id,status,button,select){
 async function showKycPicture(id){
     const r=kycRecords.find(r=>String(r.id)===String(id));if(!r||!canSeeKycRecord(r))return;
     const modal=document.getElementById('visit-details-modal'),box=document.getElementById('visit-details-content');if(!modal||!box)return;
+    document.getElementById('visit-details-title').textContent='KYC Picture';
     const token=++kycPhotoViewToken;modal.classList.remove('hidden');box.innerHTML='<div style="padding:20px;text-align:center">Loading picture...</div>';
     try{
         const photo=await getKycPhoto(id);if(token!==kycPhotoViewToken||modal.classList.contains('hidden'))return;
