@@ -34,7 +34,7 @@
   }
 
   #view-login .dms-signin,
-  #main-app :is(.card,.perf-panel,.executive-panel,.details-card,.report-kpi,.chart-kpi,.vf-compose,.vf-thread,.vf-stat),
+  #main-app :is(.card,.perf-panel,.executive-panel,.report-kpi,.chart-kpi,.vf-compose,.vf-thread,.vf-stat),
   #main-app :is(.quick-grid,.cards-grid,.morning-summary,.kyc-summary) > .card,
   #main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary > .card,
   :is(.metric,.panel,.boot-card,dialog) {
