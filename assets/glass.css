@@ -16,13 +16,13 @@
   }
 
   :root {
-    background: var(--glass-canvas) fixed;
+    background: var(--glass-canvas);
     scrollbar-width: thin;
     scrollbar-color: #aa8f76 transparent;
   }
 
   body, body:not(.app-logged-in), body:not(.app-logged-in) #view-login,
-  body:has(#app[data-attendance-page="dashboard"]) .workspace {
+  .workspace:has(> #app[data-attendance-page="dashboard"]) {
     background: transparent !important;
     color: var(--glass-ink);
   }
@@ -50,8 +50,6 @@
     border-color: var(--glass-line);
     box-shadow: var(--glass-shadow);
     color: var(--glass-ink) !important;
-    -webkit-backdrop-filter: blur(18px) saturate(115%);
-    backdrop-filter: blur(18px) saturate(115%);
   }
 
   :is(#header-user-name,#current-user-name,#current-user-role,#current-user-id),

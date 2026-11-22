@@ -5,6 +5,7 @@
     const themes = new Set(['glassy', 'light', 'dark']);
     let user = '';
     let previewUser = '';
+    const root = document.documentElement;
     let theme = 'glassy';
 
     function read(key) {
@@ -15,13 +16,20 @@
         try { localStorage.setItem(key, value); } catch (_) {}
     }
 
-    function apply(value) {
-        theme = themes.has(value) ? value : 'glassy';
-        document.documentElement.dataset.dmsTheme = theme;
+    function syncPickers() {
         document.querySelectorAll('[data-dms-theme-picker]').forEach(select => {
-            select.value = theme;
+            if (select.value !== theme) select.value = theme;
         });
-        document.getElementById('dms-attendance-frame')?.contentWindow?.DmsTheme?.reflect(theme);
+    }
+
+    function apply(value) {
+        const next = themes.has(value) ? value : 'glassy';
+        if (root.dataset.dmsTheme === next) return;
+        theme = next;
+        root.dataset.dmsTheme = theme;
+        if (document.readyState !== 'loading') syncPickers();
+        const frame = document.getElementById('dms-attendance-frame');
+        if (frame?.hasAttribute('src')) frame.contentWindow?.DmsTheme?.reflect(theme);
     }
 
     function embeddedTheme() {
@@ -50,7 +58,7 @@
 
     apply(embeddedTheme() || read(lastKey));
     window.DmsTheme = { signIn, preview, signOut, reflect: apply };
-    document.addEventListener('DOMContentLoaded', () => apply(theme), { once: true });
+    document.addEventListener('DOMContentLoaded', syncPickers, { once: true });
     document.addEventListener('change', event => {
         const select = event.target;
         if (!user || !select.matches('[data-dms-theme-picker]')) return;

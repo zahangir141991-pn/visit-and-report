@@ -1,16 +1,17 @@
 <!DOCTYPE html>
 <html lang="bn">
 <head>
-    <script src="assets/secure-data.js?v=166"></script>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-22-dark-contrast-v216">
+    <meta name="dms-app-version" content="2026-11-22-fast-theme-v217">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://visit-report-ea224-default-rtdb.firebaseio.com https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://nominatim.openstreetmap.org https://dms-attendance-login.zahangir-ithome.workers.dev; img-src 'self' data: blob: https://*.tile.openstreetmap.org; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DMS</title>
-    <script src="assets/theme.js?v=213"></script>
+    <link rel="preload" as="style" href="assets/glass.css?v=217">
+    <script src="assets/theme.js?v=217"></script>
+    <script defer src="assets/secure-data.js?v=166"></script>
     
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://dms-attendance-login.zahangir-ithome.workers.dev" crossorigin>
@@ -1612,13 +1613,28 @@ body.app-logged-in #view-login{display:none!important}
             return promise;
         }
 
+        const firebaseSdkBase = 'https://www.gstatic.com/firebasejs/10.8.0/';
+        let firebaseModulesPreloaded = false;
+        function preloadFirebaseModules() {
+            if (firebaseModulesPreloaded) return;
+            firebaseModulesPreloaded = true;
+            for (const name of ['database', 'auth']) {
+                const preload = document.createElement('link');
+                preload.rel = 'preload';
+                preload.as = 'script';
+                preload.href = firebaseSdkBase + 'firebase-' + name + '-compat.js';
+                document.head.appendChild(preload);
+            }
+        }
+
         async function ensureFirebaseSdk() {
             if (!window.firebase || typeof window.firebase.initializeApp !== 'function') {
-                await loadRuntimeScript('firebase-app', 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
+                preloadFirebaseModules();
+                await loadRuntimeScript('firebase-app', firebaseSdkBase + 'firebase-app-compat.js');
             }
             await Promise.all([
-                firebase.database || loadRuntimeScript('firebase-database', 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js'),
-                firebase.auth || loadRuntimeScript('firebase-auth', 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js')
+                firebase.database || loadRuntimeScript('firebase-database', firebaseSdkBase + 'firebase-database-compat.js'),
+                firebase.auth || loadRuntimeScript('firebase-auth', firebaseSdkBase + 'firebase-auth-compat.js')
             ]);
             return initializeFirebaseServices();
         }
@@ -1718,8 +1734,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-22-dark-contrast-v216';
-        const APP_RELEASED_AT = 1795344506131;
+        const APP_CACHE_VERSION = '2026-11-22-fast-theme-v217';
+        const APP_RELEASED_AT = 1795345833539;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -2244,6 +2260,28 @@ body.app-logged-in #view-login{display:none!important}
             url.searchParams.set('_apprefresh', Date.now().toString());
             location.replace(url.toString());
         }
+        async function readHostedAppVersion(response) {
+            const versionPattern = /<meta\s+name=["']dms-app-version["']\s+content=["']([^"']+)["']/i;
+            const legacyPattern = /const\s+APP_CACHE_VERSION\s*=\s*['"]([^'"]+)['"]/;
+            if (!response.body?.getReader) {
+                const html = await response.text();
+                return (html.match(versionPattern) || html.match(legacyPattern))?.[1];
+            }
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let html = '';
+            try {
+                while (true) {
+                    const {value, done} = await reader.read();
+                    html += decoder.decode(value, {stream: !done});
+                    const version = html.match(versionPattern)?.[1];
+                    if (version || done) return version || html.match(legacyPattern)?.[1];
+                }
+            } finally {
+                reader.cancel().catch(() => {});
+            }
+        }
+
         async function checkForHostedAppUpdate(forceCheck = false) {
             if (location.protocol === 'file:') return false;
             const now = Date.now();
@@ -2262,11 +2300,10 @@ body.app-logged-in #view-login{display:none!important}
                     signal: controller ? controller.signal : undefined
                 });
                 if (!res.ok) return false;
-                const html = await res.text();
-                const m = html.match(/<meta\s+name=["']dms-app-version["']\s+content=["']([^"']+)["']/i) || html.match(/const\s+APP_CACHE_VERSION\s*=\s*['\"]([^'\"]+)['\"]/);
-                if(m&&m[1])verifiedHostedAppVersion=m[1];
-                if (m && m[1] && m[1] !== APP_CACHE_VERSION) {
-                    showAppUpdatePrompt(m[1]);
+                const version = await readHostedAppVersion(res);
+                if (version) verifiedHostedAppVersion = version;
+                if (version && version !== APP_CACHE_VERSION) {
+                    showAppUpdatePrompt(version);
                     return true;
                 }
             } catch (e) {
@@ -6693,7 +6730,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=216';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=217';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
@@ -6797,7 +6834,7 @@ body:not(.app-logged-in) #view-login{background:radial-gradient(ellipse at 50% 0
 @media(prefers-reduced-motion:reduce){#view-login input,#view-login button{transition:none!important}}
 </style>
 
-<link rel="stylesheet" href="assets/glass.css?v=216">
+<link rel="stylesheet" href="assets/glass.css?v=217">
 <script src="feedback/visit-feedback.js?v=203"></script>
 </body>
 </html>
