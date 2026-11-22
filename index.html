@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-22-button-timed-door-v226">
+    <meta name="dms-app-version" content="2026-11-22-slower-door-motion-v227">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -10,7 +10,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DMS</title>
     <script src="assets/theme.js?v=219"></script>
-    <link rel="stylesheet" href="assets/glass.css?v=225">
+    <link rel="stylesheet" href="assets/glass.css?v=227">
     <script defer src="assets/secure-data.js?v=166"></script>
     
     <link rel="preconnect" href="https://www.gstatic.com">
@@ -1735,8 +1735,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-22-button-timed-door-v226';
-        const APP_RELEASED_AT = 1795365875091;
+        const APP_CACHE_VERSION = '2026-11-22-slower-door-motion-v227';
+        const APP_RELEASED_AT = 1795366166421;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -2638,7 +2638,7 @@ body.app-logged-in #view-login{display:none!important}
             runner.textContent = '🏃';
             scene.append(runner, icon.cloneNode(true));
             document.body.appendChild(scene);
-            setTimeout(() => scene.remove(), 420);
+            setTimeout(() => scene.remove(), 1050);
         }
 
         async function login(confirmed = false, activationEvent = null) {
@@ -6892,7 +6892,7 @@ body:not(.app-logged-in) #view-login{background:radial-gradient(ellipse at 50% 0
 @media(prefers-reduced-motion:reduce){#view-login input,#view-login button{transition:none!important}}
 </style>
 
-<link rel="stylesheet" href="assets/glass.css?v=225">
+<link rel="stylesheet" href="assets/glass.css?v=227">
 <script src="feedback/visit-feedback.js?v=203"></script>
 </body>
 </html>

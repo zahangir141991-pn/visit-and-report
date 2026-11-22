@@ -632,7 +632,7 @@
     gap: 1px;
     transform: translateX(-100%);
     pointer-events: none;
-    animation: dms-door-fade 400ms both;
+    animation: dms-door-fade 1s both;
   }
 
   .dms-door-runner {
@@ -642,7 +642,7 @@
   }
 
   .dms-door-motion .dms-door-icon > span {
-    animation: dms-door-swing 155ms 160ms both;
+    animation: dms-door-swing 480ms 160ms ease-in-out both;
   }
 
   .dms-door-motion--closing .dms-door-icon > span {
@@ -663,7 +663,7 @@
   }
 
   @keyframes dms-door-fade {
-    0%, 72% { opacity: 1; }
+    0%, 86% { opacity: 1; }
     100% { opacity: 0; }
   }
 }
