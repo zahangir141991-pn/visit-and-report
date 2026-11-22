@@ -15,7 +15,7 @@
     --glass-table-head: #e5edf6;
   }
 
-  html {
+  :root {
     background: var(--glass-canvas) fixed;
     scrollbar-width: thin;
     scrollbar-color: #aa8f76 transparent;
@@ -396,6 +396,9 @@
 @media screen {
   :root[data-dms-theme="dark"] {
     --dark-panel: #19222e;
+    --dark-highlight: #ffdf85;
+    --dark-success: #8ee8bc;
+    --dark-danger: #ffabb7;
     --dark-row: #18212d;
     --dark-row-alt: #202b39;
     --dark-row-hover: #28374a;
@@ -484,5 +487,78 @@
     --glass-ink: #fff;
     --glass-muted: #d3deee;
     background: var(--dark-panel);
+  }
+
+  html[data-dms-theme="dark"] #main-app :is(.quick-grid,.cards-grid,.morning-summary,.kyc-summary) > .card,
+  html[data-dms-theme="dark"] #main-app :is(.report-kpi,.chart-kpi) {
+    --kpi-color: var(--glass-ink);
+    border-color: var(--glass-line) !important;
+  }
+
+  html[data-dms-theme="dark"] #main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .zero-b2b-kpi {
+    background: var(--glass-pane) !important;
+    --kpi-color: var(--dark-highlight);
+  }
+
+  html[data-dms-theme="dark"] #main-app,
+  html[data-dms-theme="dark"] #main-app :is(.filter-grid,.compact-filter-panel .morning-actions,.chart-filter-grid) label,
+  html[data-dms-theme="dark"] #main-app .report-pagination :is(div,label) {
+    color: var(--glass-ink) !important;
+  }
+
+  html[data-dms-theme="dark"] #view-login :is(.dms-signin-intro h1,.dms-signin-logo strong,.dms-signin-logo small,.dms-signin-form h2) {
+    color: var(--glass-ink);
+  }
+
+  html[data-dms-theme="dark"] #view-login .dms-signin-form input:focus {
+    background: var(--glass-field);
+    border-color: #95baff;
+  }
+
+  html[data-dms-theme="dark"] #main-app :is(.quick-grid,.cards-grid,.morning-summary,.kyc-summary) .card :is(.card-lbl,span),
+  html[data-dms-theme="dark"] #main-app :is(#view-morning-report,#view-afternoon-report) .morning-summary .card span,
+  html[data-dms-theme="dark"] #main-app :is(.report-kpi,.chart-kpi) > span {
+    color: var(--glass-muted) !important;
+  }
+
+  html[data-dms-theme="dark"] #main-app :is(.quick-grid,.cards-grid,.morning-summary,.kyc-summary) .card :is(.card-val,b),
+  html[data-dms-theme="dark"] #main-app :is(.report-kpi,.chart-kpi) > b {
+    color: var(--kpi-color) !important;
+  }
+
+  html[data-dms-theme="dark"] #main-app :is(.perf-panel,.perf-table,.perf-card) {
+    color: var(--glass-ink);
+    border-color: var(--glass-line);
+  }
+
+  html[data-dms-theme="dark"] #main-app .perf-card {
+    background: var(--glass-field);
+  }
+
+  html[data-dms-theme="dark"] #main-app .perf-card span {
+    color: var(--glass-muted);
+  }
+
+  html[data-dms-theme="dark"] #main-app .perf-card strong {
+    color: var(--glass-ink);
+  }
+
+  html[data-dms-theme="dark"] #main-app .perf-chart svg text {
+    fill: var(--glass-muted);
+  }
+
+  html[data-dms-theme="dark"] #main-app table.reports-table tbody tr,
+  html[data-dms-theme="dark"] #main-app .perf-table :is(th,td) {
+    background: var(--glass-table-head);
+    border-color: var(--glass-line);
+    color: var(--glass-ink);
+  }
+
+  html[data-dms-theme="dark"] #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table thead th :is(.table-sort-btn,.table-sort-state,.report-wrap-label) {
+    color: inherit !important;
+  }
+
+  html[data-dms-theme="dark"] #main-app table.reports-table td[data-label]::before {
+    color: var(--glass-muted);
   }
 }

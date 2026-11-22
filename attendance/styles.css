@@ -163,3 +163,74 @@ body:has(#app[data-attendance-page="dashboard"]) .workspace { background:#f4f8f5
   .overview-filters :is(input,select) { width:100%; min-width:0; }
   .overview-metrics .metric-icon { display:grid; }
 }
+
+
+@media screen {
+  html[data-dms-theme="dark"] {
+    --line: var(--glass-line);
+    --muted: var(--glass-muted);
+    --green: var(--dark-success);
+    --amber: var(--dark-highlight);
+    --red: var(--dark-danger);
+  }
+
+  html[data-dms-theme="dark"] :is(.workspace, dialog) {
+    color: var(--glass-ink);
+  }
+
+  html[data-dms-theme="dark"] :is(.workspace, dialog) :is(
+    .breadcrumb span, .topbar time, .metric small, .panel-heading small, .eyebrow,
+    .hint, .pagination, .empty, .activity-item, .activity-item small, .activity-item time,
+    .side-stat, .trend-column, .overview-checkin .person small, .overview-ring small,
+    .form-heading, .form-grid label, label small, .check-list label, .selection-tools,
+    .setup-steps, .setup-values small, summary, footer
+  ) {
+    color: var(--glass-muted);
+  }
+
+  html[data-dms-theme="dark"] :is(.workspace, dialog) :is(
+    td strong, .person strong, .side-stat strong, .empty strong, .overview-ring strong,
+    .summary-line b, .server-bar strong, .setup-values div, .dialog-heading h2, .metric b
+  ) {
+    color: var(--glass-ink);
+  }
+
+  html[data-dms-theme="dark"] .workspace :is(.metric.green b, .connection.live) {
+    color: var(--dark-success);
+  }
+
+  html[data-dms-theme="dark"] .workspace :is(
+    .metric.amber b, .connection.offline, .summary-line b, .pending-banner
+  ) {
+    color: var(--dark-highlight);
+  }
+
+  html[data-dms-theme="dark"] .workspace .metric.red b,
+  html[data-dms-theme="dark"] #dialog .form-error {
+    color: var(--dark-danger);
+  }
+
+  html[data-dms-theme="dark"] .workspace .connection {
+    color: var(--glass-muted);
+  }
+
+  html[data-dms-theme="dark"] :is(.workspace, dialog) :is(
+    .summary-line, .server-bar, .segmented, .segmented button.active, .notice, .pending-banner,
+    .mono, .setup-values div, .overview-ring > div, button.ghost, .icon-button
+  ) {
+    background: var(--glass-field);
+    border-color: var(--glass-line);
+    color: var(--glass-ink);
+  }
+
+  html[data-dms-theme="dark"] .workspace .notice.amber { color: var(--dark-highlight) !important; }
+  html[data-dms-theme="dark"] .workspace .notice.error { color: var(--dark-danger) !important; }
+
+  html[data-dms-theme="dark"] .workspace :is(.segmented button:not(.active), .mono) {
+    color: var(--glass-muted);
+  }
+
+  html[data-dms-theme="dark"] #dialog :is(input, textarea)::placeholder {
+    color: var(--glass-muted);
+  }
+}
