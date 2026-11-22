@@ -214,3 +214,116 @@
     color: #3d281c;
   }
 }
+
+@media screen {
+  .dms-theme-control {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 8px;
+    color: var(--glass-ink);
+  }
+
+  .dms-theme-control select {
+    background: var(--glass-field);
+    border: 1px solid var(--glass-line);
+    border-radius: 8px;
+    color: var(--glass-ink);
+    padding: 5px 7px;
+    font: inherit;
+  }
+
+  #view-login .dms-theme-control { margin-top: 14px; }
+  #app-nav .dms-theme-control { order: 8; margin: 0; }
+
+  :root[data-dms-theme="light"] {
+    --glass-canvas: #f4f6f8;
+    --glass-pane: #fff;
+    --glass-field: #fff;
+    --glass-line: #ccd5de;
+    --glass-table-head: #e9eef3;
+    --glass-shadow: 0 3px 12px #23304514;
+  }
+
+  [data-dms-theme="light"] :is(#app-header,#user-info-bar.user-visible,#app-nav.nav-sidebar,#submit-action-bar,.sidebar,.topbar),
+  [data-dms-theme="light"] #view-dashboard .executive-board {
+    background: #fff !important;
+    backdrop-filter: none;
+  }
+
+  [data-dms-theme="light"] #view-dashboard .executive-heading { background: #264464; }
+  [data-dms-theme="light"] #app-nav.nav-sidebar .nav-item.active {
+    background: #e8f0fb;
+    color: #1f436d;
+    box-shadow: inset 3px 0 #486e9b;
+  }
+
+  :root[data-dms-theme="dark"] {
+    color-scheme: dark;
+    --glass-canvas: #101620;
+    --glass-pane: #1b2533;
+    --glass-field: #253344;
+    --glass-line: #46566b;
+    --glass-table-head: #29394c;
+    --glass-shadow: 0 4px 14px #0004;
+    --glass-ink: #f0f4fa;
+    --glass-muted: #c2cedd;
+  }
+
+  [data-dms-theme="dark"] :is(#app-header,#user-info-bar.user-visible,#app-nav.nav-sidebar,#submit-action-bar,.sidebar,.topbar) {
+    background: #1b2533 !important;
+    border-color: var(--glass-line);
+    backdrop-filter: none;
+  }
+
+  [data-dms-theme="dark"] #view-dashboard .executive-board,
+  [data-dms-theme="dark"] .workspace { background: var(--glass-canvas) !important; }
+
+  [data-dms-theme="dark"] #view-dashboard .executive-heading { background: #22344b; }
+  [data-dms-theme="dark"] #view-dashboard .executive-panel { --exec-detail-ink: #d8e3f2; }
+
+  [data-dms-theme="dark"] #app-nav.nav-sidebar :is(.nav-item,.visit-menu-btn) { color: var(--glass-ink); }
+  [data-dms-theme="dark"] #app-nav.nav-sidebar :is(.nav-item.active,.nav-item:hover,.visit-menu-btn:hover) {
+    background: #34465d;
+    box-shadow: inset 3px 0 #95baff;
+  }
+
+  [data-dms-theme="dark"] #view-login .dms-signin-form :is(label,input),
+  [data-dms-theme="dark"] #view-login .dms-signin-form input::placeholder {
+    color: var(--glass-ink);
+  }
+
+  [data-dms-theme="dark"] #view-login .dms-signin-form input { background: var(--glass-field); }
+
+  [data-dms-theme="dark"] #main-app :is(.card,.perf-panel,.executive-panel,.executive-filters,.executive-kpis) :is(h2,h3,p,label,small,.card-lbl,.card-val),
+  [data-dms-theme="dark"] #view-dashboard :is(.executive-kpis strong,.executive-kpis span,.executive-rank-label b,.target-legend span),
+  [data-dms-theme="dark"] .workspace :is(h1,h2,h3,p,label,.metric-top,.breadcrumb,.breadcrumb strong) {
+    color: var(--glass-ink) !important;
+  }
+
+  [data-dms-theme="dark"] #view-dashboard .executive-donut > div { background: var(--glass-field); }
+  [data-dms-theme="dark"] #view-dashboard .executive-donut b { color: var(--glass-ink); }
+
+  [data-dms-theme="dark"] #main-app table.reports-table :is(th, td),
+  [data-dms-theme="dark"] #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table :is(th,td),
+  [data-dms-theme="dark"] #main-app #view-kyc-status table.kyc-table :is(th,td),
+  [data-dms-theme="dark"] .report-floating-head th,
+  [data-dms-theme="dark"] .workspace table :is(th,td) {
+    background: var(--glass-table-head) !important;
+    border-color: var(--glass-line) !important;
+    color: var(--glass-ink) !important;
+  }
+
+  [data-dms-theme="dark"] #main-app table.reports-table :is(th, td) :is(button.table-sort-btn,span,small,b,strong,a),
+  [data-dms-theme="dark"] .report-floating-head th :is(button,span) {
+    color: inherit !important;
+  }
+
+  [data-dms-theme="dark"] :is(.details-card,.update-card) {
+    color-scheme: light;
+    --glass-ink: #111827;
+    --glass-muted: #364152;
+    color: #111827;
+  }
+}
