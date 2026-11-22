@@ -3,7 +3,7 @@
 <head>
     <script src="assets/secure-data.js?v=166"></script>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-22-account-theme-v213">
+    <meta name="dms-app-version" content="2026-11-22-glass-across-themes-v214">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1718,8 +1718,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-22-account-theme-v213';
-        const APP_RELEASED_AT = 1795343738304;
+        const APP_CACHE_VERSION = '2026-11-22-glass-across-themes-v214';
+        const APP_RELEASED_AT = 1795344084282;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -6693,7 +6693,7 @@ function openDmsAttendance(){
  if(mustChangeDefaultPassword){alert('আগে Default Password পরিবর্তন করুন।');return;}
  if(location.protocol==='file:'){alert('DMS ও attendance.html একই Hosting-এ খুলুন।');return;}
  closeDmsAttendance();document.documentElement.classList.add('attendance-open');document.getElementById('dms-attendance-shell').classList.add('open');
- document.getElementById('dms-attendance-frame').src='attendance.html?v=2026-11-21-font-contrast-v198';
+ document.getElementById('dms-attendance-frame').src='attendance.html?v=214';
 }
 window.addEventListener('message',async event=>{
  const frame=document.getElementById('dms-attendance-frame'),shell=document.getElementById('dms-attendance-shell');
@@ -6797,7 +6797,7 @@ body:not(.app-logged-in) #view-login{background:radial-gradient(ellipse at 50% 0
 @media(prefers-reduced-motion:reduce){#view-login input,#view-login button{transition:none!important}}
 </style>
 
-<link rel="stylesheet" href="assets/glass.css?v=212">
+<link rel="stylesheet" href="assets/glass.css?v=214">
 <script src="feedback/visit-feedback.js?v=203"></script>
 </body>
 </html>
