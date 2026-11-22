@@ -392,3 +392,97 @@
     color: #fff !important;
   }
 }
+
+@media screen {
+  :root[data-dms-theme="dark"] {
+    --dark-panel: #19222e;
+    --dark-row: #18212d;
+    --dark-row-alt: #202b39;
+    --dark-row-hover: #28374a;
+    --glass-canvas: radial-gradient(ellipse at 75% 0%, #24354e, transparent 57%), #10151e;
+    --glass-pane: linear-gradient(145deg, #273449e8, #1a2330df 62%, #242e3dcc);
+    --glass-board: #1219238c;
+    --glass-field: #222e3e;
+    --glass-line: #526278;
+    --glass-table-head: #29374a;
+    --dms-chrome: #19222e;
+    --glass-ink: #fff;
+    --glass-muted: #d3deee;
+  }
+
+  html[data-dms-theme="dark"] :is(#app-header,#user-info-bar.user-visible,#app-nav.nav-sidebar,#submit-action-bar,.sidebar,.topbar) {
+    background: var(--dms-chrome) !important;
+  }
+
+  html[data-dms-theme="dark"] :is(#main-app,.workspace) :is(.section-head,.page-head,.perf-panel,.panel-head,.details-head) :is(h1,h2,h3,small,label,p,summary),
+  html[data-dms-theme="dark"] #main-app :is(.form-group > label,.filter-label,.empty-state,.morning-status,.upload-meta-age,.vf-meta,.vf-muted,.perf-muted,.card-lbl),
+  html[data-dms-theme="dark"] #view-dashboard :is(.executive-status,.executive-filter-note,.executive-rank small) {
+    color: var(--glass-muted) !important;
+  }
+
+  html[data-dms-theme="dark"] :is(#main-app,.workspace) :is(h1,h2,h3,.section-head h2) {
+    color: #fff !important;
+  }
+
+  html[data-dms-theme="dark"] :is(#main-app,.workspace,#view-login) :is(input,textarea)::placeholder {
+    color: #c0cce0;
+    opacity: 1;
+  }
+
+  html[data-dms-theme="dark"] :is(#main-app,.workspace) :is(.table-responsive,.table-wrap,.detail-box,.morning-status,.camera-box,.vf-compose,.vf-thread,.vf-stat,.report-kpi,.chart-kpi,.vf-message) {
+    background: var(--dark-panel) !important;
+    border-color: var(--glass-line);
+  }
+
+  html[data-dms-theme="dark"] :is(#main-app,.workspace) :is(.alert-info,.vf-empty,.notice-card) {
+    background: #243650;
+    color: #edf5ff;
+    border-color: #5277a7;
+  }
+
+  html[data-dms-theme="dark"] :is(#main-app,#view-login) .alert-error {
+    background: #40232b;
+    border-color: #8c515d;
+    color: #ffd9df;
+  }
+
+  html[data-dms-theme="dark"] #main-app .alert-success {
+    background: #193b34;
+    border-color: #44806e;
+    color: #d1fae5;
+  }
+
+  html[data-dms-theme="dark"] #main-app table tbody tr > td,
+  html[data-dms-theme="dark"] .workspace table tbody tr > td {
+    background: var(--dark-row) !important;
+    color: #fff !important;
+  }
+
+  html[data-dms-theme="dark"] #main-app :is(#view-morning-report,#view-afternoon-report,#view-kyc-status) table tbody tr > td {
+    background: var(--dark-row) !important;
+  }
+
+  html[data-dms-theme="dark"] #main-app table tbody tr:nth-child(even) > td,
+  html[data-dms-theme="dark"] #main-app :is(#view-morning-report,#view-afternoon-report,#view-kyc-status) table tbody tr:nth-child(even) > td,
+  html[data-dms-theme="dark"] .workspace table tbody tr:nth-child(even) > td {
+    background: var(--dark-row-alt) !important;
+  }
+
+  html[data-dms-theme="dark"] #main-app :is(#view-morning-report,#view-afternoon-report) .enhanced-report-table tbody tr.zero-b2b-row td {
+    background: #40321e !important;
+    color: #ffe2a4 !important;
+  }
+
+  html[data-dms-theme="dark"] #main-app table tbody tr:hover > td,
+  html[data-dms-theme="dark"] .workspace table tbody tr:hover > td {
+    background: var(--dark-row-hover) !important;
+  }
+
+  html[data-dms-theme="dark"] #view-dashboard .executive-track { background: #344357; }
+  html[data-dms-theme="dark"] #view-dashboard .executive-board { border-color: var(--glass-line); }
+  html[data-dms-theme="dark"] :is(.details-card,.update-card) {
+    --glass-ink: #fff;
+    --glass-muted: #d3deee;
+    background: var(--dark-panel);
+  }
+}
