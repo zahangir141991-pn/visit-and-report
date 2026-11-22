@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-22-slower-door-motion-v227">
+    <meta name="dms-app-version" content="2026-11-22-logout-door-visibility-v228">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1735,8 +1735,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-22-slower-door-motion-v227';
-        const APP_RELEASED_AT = 1795366166421;
+        const APP_CACHE_VERSION = '2026-11-22-logout-door-visibility-v228';
+        const APP_RELEASED_AT = 1795366398663;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -2639,6 +2639,7 @@ body.app-logged-in #view-login{display:none!important}
             scene.append(runner, icon.cloneNode(true));
             document.body.appendChild(scene);
             setTimeout(() => scene.remove(), 1050);
+            return scene;
         }
 
         async function login(confirmed = false, activationEvent = null) {
@@ -5347,8 +5348,19 @@ let firebaseListenersStarted = false;
                 }
                 e.preventDefault();
                 e.stopPropagation();
-                if (currentUser) animateAuthDoor(btn, true);
-                logout();
+                if (!currentUser || btn.disabled) return;
+                if (!animateAuthDoor(btn, true)) {
+                    logout();
+                    return;
+                }
+
+                const generation = appSessionGeneration;
+                btn.disabled = true;
+                // The runner reaches the door at 160ms, then the door closes over 480ms.
+                setTimeout(() => {
+                    btn.disabled = false;
+                    if (currentUser && generation === appSessionGeneration) logout();
+                }, 740);
             }, true);
         }
 
