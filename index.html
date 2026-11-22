@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-22-login-info-mobile-v220">
+    <meta name="dms-app-version" content="2026-11-22-faster-sign-in-v221">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -13,7 +13,8 @@
     <link rel="stylesheet" href="assets/glass.css?v=217">
     <script defer src="assets/secure-data.js?v=166"></script>
     
-    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://www.gstatic.com">
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://dms-attendance-login.zahangir-ithome.workers.dev" crossorigin>
 
     <style>
@@ -1627,14 +1628,17 @@ body.app-logged-in #view-login{display:none!important}
             }
         }
 
-        async function ensureFirebaseSdk() {
+        async function ensureFirebaseSdk({authOnly = false} = {}) {
             if (!window.firebase || typeof window.firebase.initializeApp !== 'function') {
                 preloadFirebaseModules();
                 await loadRuntimeScript('firebase-app', firebaseSdkBase + 'firebase-app-compat.js');
             }
+            if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+            const authReady = firebase.auth || loadRuntimeScript('firebase-auth', firebaseSdkBase + 'firebase-auth-compat.js');
+            if (authOnly) return authReady;
             await Promise.all([
-                firebase.database || loadRuntimeScript('firebase-database', firebaseSdkBase + 'firebase-database-compat.js'),
-                firebase.auth || loadRuntimeScript('firebase-auth', firebaseSdkBase + 'firebase-auth-compat.js')
+                authReady,
+                firebase.database || loadRuntimeScript('firebase-database', firebaseSdkBase + 'firebase-database-compat.js')
             ]);
             return initializeFirebaseServices();
         }
@@ -1734,8 +1738,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-22-login-info-mobile-v220';
-        const APP_RELEASED_AT = 1795347218087;
+        const APP_CACHE_VERSION = '2026-11-22-faster-sign-in-v221';
+        const APP_RELEASED_AT = 1795363981540;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -2063,13 +2067,22 @@ body.app-logged-in #view-login{display:none!important}
             const [result]=await Promise.all([
                 authServerRequest('/login',{userId:user,password,deviceId:getDeviceId(),deviceLabel:getDeviceLabel(),userAgent:String(navigator.userAgent||'').slice(0,220)}),
                 (async () => {
-                    await ensureFirebaseSdk();
+                    await ensureFirebaseSdk({authOnly: true});
                     await dmsSignOutPromise;
                     await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE);
                 })()
             ]);
             if(result.userId!==user||typeof result.token!=='string'||!result.token)throw Error('Login identity verification failed');
-            const credential=await firebase.auth().signInWithCustomToken(result.token);
+            const [verified, services] = await Promise.allSettled([
+                firebase.auth().signInWithCustomToken(result.token),
+                ensureFirebaseSdk()
+            ]);
+            if (verified.status === 'rejected') throw verified.reason;
+            if (services.status === 'rejected') {
+                await firebase.auth().signOut();
+                throw services.reason;
+            }
+            const credential = verified.value;
             if(credential.user.uid!=='dms_'+user){await firebase.auth().signOut();throw Error('Login identity verification failed');}
             return result;
         }
@@ -5221,10 +5234,10 @@ let firebaseListenersStarted = false;
 
             bindVisitFormCompletionListeners();
 
-            loginView?.addEventListener('focusin', () => {
-                // Warm the SDK while credentials are typed. Authentication still requires Sign in.
-                ensureFirebaseSdk().catch(() => {});
-            }, {once:true});
+            const warmLoginSdk = () => { if (!currentUser) ensureFirebaseSdk().catch(() => {}); };
+            loginView?.addEventListener('focusin', warmLoginSdk, {once:true});
+            if ('requestIdleCallback' in window) requestIdleCallback(warmLoginSdk, {timeout: 1200});
+            else setTimeout(warmLoginSdk, 800);
 
             const u = document.getElementById('login-user');
             if (u && !u.dataset.enterBound) {
