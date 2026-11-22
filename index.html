@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-22-runner-door-v225">
+    <meta name="dms-app-version" content="2026-11-22-button-timed-door-v226">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1735,8 +1735,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-22-runner-door-v225';
-        const APP_RELEASED_AT = 1795365642331;
+        const APP_CACHE_VERSION = '2026-11-22-button-timed-door-v226';
+        const APP_RELEASED_AT = 1795365875091;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -2661,8 +2661,8 @@ body.app-logged-in #view-login{display:none!important}
 
             try{
             let cloudAuth;
-            try{cloudAuth=await signInDmsServer(user,pass);}catch(e){showLoginAlert(e.name==='AbortError'?'Login server সময়মতো উত্তর দেয়নি। আবার চেষ্টা করুন।':e.message,'error');return false;}
             animateAuthDoor(loginButton);
+            try{cloudAuth=await signInDmsServer(user,pass);}catch(e){showLoginAlert(e.name==='AbortError'?'Login server সময়মতো উত্তর দেয়নি। আবার চেষ্টা করুন।':e.message,'error');return false;}
             userPasswords[user]=pass;savePasswords();
 
 
