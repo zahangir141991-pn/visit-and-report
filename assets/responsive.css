@@ -175,3 +175,28 @@
  #main-app #view-kyc-status table.kyc-table tbody tr td{padding:7px 8px!important;font-size:11px!important}
  #main-app #view-kyc-status .kyc-status-control select{flex-basis:100%}
 }
+
+@media screen and (max-width: 767px) {
+  #main-app #view-login-info .table-responsive {
+    max-height: none;
+    overflow: visible !important;
+  }
+
+  #main-app #view-login-info table.reports-table {
+    min-width: 0 !important;
+  }
+
+  #main-app #view-login-info table.reports-table tbody,
+  #main-app #view-login-info table.reports-table tbody tr {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #main-app #view-login-info table.reports-table td[colspan] {
+    display: block;
+    text-align: center !important;
+  }
+
+  #main-app #view-login-info table.reports-table td[colspan]::before {
+    display: none;
+  }
+}
