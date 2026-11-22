@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-22-fast-theme-v217">
+    <meta name="dms-app-version" content="2026-11-22-fast-login-data-v218">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1734,8 +1734,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-22-fast-theme-v217';
-        const APP_RELEASED_AT = 1795345833539;
+        const APP_CACHE_VERSION = '2026-11-22-fast-login-data-v218';
+        const APP_RELEASED_AT = 1795346592334;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -2060,20 +2060,37 @@ body.app-logged-in #view-login{display:none!important}
             }finally{clearTimeout(timer);}
         }
         async function signInDmsServer(user,password){
-            const [result]=await Promise.all([authServerRequest('/login',{userId:user,password,deviceId:getDeviceId(),deviceLabel:getDeviceLabel(),userAgent:String(navigator.userAgent||'').slice(0,220)}),ensureFirebaseSdk()]);
+            const [result]=await Promise.all([
+                authServerRequest('/login',{userId:user,password,deviceId:getDeviceId(),deviceLabel:getDeviceLabel(),userAgent:String(navigator.userAgent||'').slice(0,220)}),
+                (async () => {
+                    await ensureFirebaseSdk();
+                    await dmsSignOutPromise;
+                    await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE);
+                })()
+            ]);
             if(result.userId!==user||typeof result.token!=='string'||!result.token)throw Error('Login identity verification failed');
-            await dmsSignOutPromise;
-            await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE);
             const credential=await firebase.auth().signInWithCustomToken(result.token);
             if(credential.user.uid!=='dms_'+user){await firebase.auth().signOut();throw Error('Login identity verification failed');}
             return result;
         }
+        const pendingPrivateReads = new Map();
         async function securePrivateRead(path){
             const user=currentUser,generation=appSessionGeneration,auth=firebase.auth().currentUser;
             if(!user||!auth||auth.uid!=='dms_'+user)throw Error('Please sign in again');
-            const result=await authServerRequest('/data',{idToken:await auth.getIdToken(),path});
-            if(currentUser!==user||generation!==appSessionGeneration)throw Error('Login session changed');
-            return result.data;
+            const key = generation + ':' + path;
+            const pending = pendingPrivateReads.get(key);
+            if (pending && pending.auth === auth) return pending.request;
+
+            const read = {auth, request: null};
+            read.request = (async () => {
+                const result = await authServerRequest('/data',{idToken:await auth.getIdToken(),path});
+                if(currentUser!==user||generation!==appSessionGeneration||firebase.auth().currentUser!==auth)throw Error('Login session changed');
+                return result.data;
+            })().finally(() => {
+                if (pendingPrivateReads.get(key) === read) pendingPrivateReads.delete(key);
+            });
+            pendingPrivateReads.set(key, read);
+            return read.request;
         }
         let dmsWriteSessionRenewal=null;
         async function renewDmsSessionForWrite(user,generation){
@@ -2646,9 +2663,6 @@ body.app-logged-in #view-login{display:none!important}
             if (mainApp) { mainApp.classList.remove('hidden'); mainApp.classList.add('app-visible'); }
             if (userBar) { userBar.classList.remove('hidden'); userBar.classList.add('user-visible'); }
             if (appNav) { appNav.classList.remove('hidden'); appNav.classList.add('nav-visible'); }
-            if(!mustChangeDefaultPassword)void refreshAllDataFromServerOnLogin().catch(err => {
-                console.warn('Login server sync failed; realtime fallback remains active:', err);
-            });
 
 
             try {
@@ -2684,6 +2698,16 @@ body.app-logged-in #view-login{display:none!important}
                 try { renderNotices(); } catch (e) {}
                 try { initApp(); } catch (e) {
                     console.error('App initialization error after login:', e);
+                }
+                if (!mustChangeDefaultPassword) {
+                    const generation = appSessionGeneration;
+                    const sync = () => {
+                        if (generation !== appSessionGeneration) return;
+                        refreshAllDataFromServerOnLogin().catch(err => {
+                            console.warn('Login server sync failed; realtime fallback remains active:', err);
+                        });
+                    };
+                    requestAnimationFrame(() => setTimeout(sync, 0));
                 }
                 // Start network/data libraries only after the app shell is visible.
                 setTimeout(loadPostLoginLibraries, 0);
