@@ -646,6 +646,27 @@
     animation: dms-door-swing 480ms 160ms ease-in-out both;
   }
 
+  .dms-door-motion--closing {
+    animation-duration: 1550ms;
+  }
+
+  .dms-door-motion--closing .dms-door-runner {
+    animation: dms-door-logout-runner 1500ms linear both;
+  }
+
+  .dms-door-motion--closing::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 3px;
+    width: 9px;
+    height: 2px;
+    border-radius: 2px;
+    background: #edb47c;
+    transform-origin: left center;
+    animation: dms-door-handle-grip 1500ms linear both;
+  }
+
   .dms-door-motion--closing .dms-door-icon > span {
     animation-direction: reverse;
   }
@@ -655,6 +676,24 @@
     28% { opacity: 1; transform: translate(-8px, -1px); }
     66% { transform: translate(-4px, 1px); }
     100% { transform: translate(0, 0); }
+  }
+
+  @keyframes dms-door-logout-runner {
+    0% { opacity: 0; transform: translate(-10px, 1px); }
+    5% { opacity: 1; transform: translate(-5px, -1px); }
+    11%, 46% { transform: translate(0, 0); scale: -1 1; }
+    49% { transform: translate(0, 0); scale: 1 1; }
+    62% { transform: translate(-5px, -1px); }
+    73% { transform: translate(-10px, 1px); }
+    84% { opacity: 1; transform: translate(-16px, -1px); }
+    94%, 100% { opacity: 0; transform: translate(-23px, 1px); scale: 1 1; }
+  }
+
+  @keyframes dms-door-handle-grip {
+    0%, 8% { opacity: 0; transform: scaleX(.45); }
+    11% { opacity: 1; transform: scaleX(.55); }
+    43% { opacity: 1; transform: scaleX(1); }
+    47%, 100% { opacity: 0; transform: scaleX(.45); }
   }
 
   @keyframes dms-door-swing {
