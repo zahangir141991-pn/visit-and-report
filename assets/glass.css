@@ -620,7 +620,6 @@
     background: #ffe2a0;
   }
 
-  #sidebar-logout .dms-door-icon > span { transform: rotateY(-64deg); }
 }
 
 @media screen {
@@ -646,14 +645,6 @@
     animation: dms-door-swing 650ms 210ms ease-in-out both;
   }
 
-  .dms-door-motion--closing {
-    animation-duration: 1550ms;
-  }
-
-  .dms-door-motion--closing .dms-door-runner {
-    animation: dms-door-logout-runner 1500ms linear both;
-  }
-
   .dms-door-motion::after {
     content: "";
     position: absolute;
@@ -667,14 +658,6 @@
     animation: dms-door-handle-push 1250ms linear both;
   }
 
-  .dms-door-motion--closing::after {
-    animation: dms-door-handle-grip 1500ms linear both;
-  }
-
-  .dms-door-motion--closing .dms-door-icon > span {
-    animation: dms-door-swing 480ms 160ms ease-in-out reverse both;
-  }
-
   @keyframes dms-door-run {
     0% { opacity: 0; transform: translate(-11px, 1px); }
     28% { opacity: 1; transform: translate(-8px, -1px); }
@@ -682,29 +665,11 @@
     100% { transform: translate(0, 0); }
   }
 
-  @keyframes dms-door-logout-runner {
-    0% { opacity: 0; transform: translate(-10px, 1px); }
-    5% { opacity: 1; transform: translate(-5px, -1px); }
-    11%, 46% { transform: translate(0, 0); scale: -1 1; }
-    49% { transform: translate(0, 0); scale: 1 1; }
-    62% { transform: translate(-5px, -1px); }
-    73% { transform: translate(-10px, 1px); }
-    84% { opacity: 1; transform: translate(-16px, -1px); }
-    94%, 100% { opacity: 0; transform: translate(-23px, 1px); scale: 1 1; }
-  }
-
   @keyframes dms-door-handle-push {
     0%, 12% { opacity: 0; transform: scaleX(.45); }
     16% { opacity: 1; transform: scaleX(1); }
     44% { opacity: 1; transform: scaleX(.58); }
     67%, 100% { opacity: 0; transform: scaleX(.4); }
-  }
-
-  @keyframes dms-door-handle-grip {
-    0%, 8% { opacity: 0; transform: scaleX(.45); }
-    11% { opacity: 1; transform: scaleX(.55); }
-    43% { opacity: 1; transform: scaleX(1); }
-    47%, 100% { opacity: 0; transform: scaleX(.45); }
   }
 
   @keyframes dms-door-swing {
@@ -715,5 +680,11 @@
   @keyframes dms-door-fade {
     0%, 86% { opacity: 1; }
     100% { opacity: 0; }
+  }
+}
+
+@media screen and (prefers-reduced-motion: no-preference) {
+  #sidebar-logout:active .dms-door-icon > span {
+    animation: dms-door-swing 220ms ease-out reverse both;
   }
 }
