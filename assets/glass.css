@@ -638,7 +638,8 @@
   .dms-door-runner {
     display: block;
     font: 12px/1 system-ui, sans-serif;
-    animation: dms-door-run 300ms both;
+    scale: -1 1;
+    animation: dms-door-run 160ms linear both;
   }
 
   .dms-door-motion .dms-door-icon > span {
@@ -651,9 +652,8 @@
 
   @keyframes dms-door-run {
     0% { opacity: 0; transform: translate(-11px, 1px); }
-    18% { opacity: 1; transform: translate(-7px, -1px); }
-    36% { transform: translate(-3px, 1px); }
-    52% { transform: translate(0, 0); }
+    28% { opacity: 1; transform: translate(-8px, -1px); }
+    66% { transform: translate(-4px, 1px); }
     100% { transform: translate(0, 0); }
   }
 
