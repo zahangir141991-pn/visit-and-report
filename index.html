@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-23-logout-door-inline-v234">
+    <meta name="dms-app-version" content="2026-11-23-report-load-v235">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1735,8 +1735,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-23-logout-door-inline-v234';
-        const APP_RELEASED_AT = 1795408227125;
+        const APP_CACHE_VERSION = '2026-11-23-report-load-v235';
+        const APP_RELEASED_AT = 1795425224186;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -2449,24 +2449,17 @@ body.app-logged-in #view-login{display:none!important}
                 return true;
             }
             if (activeId === 'view-afternoon-report' || activeId === 'view-afternoon-upload') {
-                const [afternoonRaw, morningRaw] = await Promise.all([
-                    firebaseValueOnce('afternoon_report_current'), firebaseValueOnce('morning_report_current')
+                const loadReport = async (kind, apply) => {
+                    const raw = await firebaseValueOnce(kind + '_report_current');
+                    const data = await resolveChunkedReport(kind, raw);
+                    if (currentUser === refreshUser && appSessionGeneration === refreshGeneration && data?.headers && data?.rows) {
+                        apply(data, 'latest server');
+                    }
+                };
+                await Promise.all([
+                    loadReport('afternoon', applyAfternoonReportData),
+                    loadReport('morning', applyMorningReportData)
                 ]);
-                const loads = [];
-                loads.push(resolveChunkedReport('afternoon', afternoonRaw).then(data => {
-                    if (data?.headers && data?.rows) {
-                        
-                        applyAfternoonReportData(data, 'latest server');
-                    }
-                }));
-                loads.push(resolveChunkedReport('morning', morningRaw).then(data => {
-                    if (data?.headers && data?.rows) {
-                        
-                        applyMorningReportData(data, 'latest server');
-                    }
-                }));
-                await Promise.all(loads);
-                renderAfternoonReport();
                 return true;
             }
             if (activeId === 'view-kyc-status' || activeId === 'view-kyc-collection') {
@@ -5678,8 +5671,7 @@ async function saveMorningExcel(){
         setMorningStatus('morning-upload-preview','Upload failed: '+err.message,'error');
     }finally{if(btn)btn.disabled=false;}
 }
-function canSeeMorningRow(row, headers){
-    const role=getRoleInfo(), map=morningColumnMap(headers);
+function canSeeMorningRow(row, headers, role = getRoleInfo(), map = morningColumnMap(headers)){
     if(role.role==='Admin'||role.role==='DM')return true;
     if(role.role==='DSS')return false;
     if(role.role==='DSO')return map.dso>=0 && normalizeScopeWallet(row[map.dso])===normalizeScopeWallet(role.dsoWallet);
@@ -5698,7 +5690,8 @@ function applyMorningReportData(data,source){
     if(isOlderUploadedReport(data,fullMorningReport))return false;
     fullMorningReport=data;
     scheduleReportCache('morning',data);
-    const scoped=data.rows.filter(row=>Array.isArray(row)&&canSeeMorningRow(row,data.headers));
+    const role=getRoleInfo(),map=morningColumnMap(data.headers);
+    const scoped=data.rows.filter(row=>Array.isArray(row)&&canSeeMorningRow(row,data.headers,role,map));
     currentMorningReport={headers:data.headers,rows:scoped,fileName:data.fileName||'',uploadedBy:data.uploadedBy||'',uploadedAt:data.uploadedAt||0};
     populateMorningFilters();
     renderMorningReport();
@@ -5855,7 +5848,8 @@ function renderMorningReport(){
     const dsoValue=normalizeScopeWallet((document.getElementById('morning-report-dso')||{}).value||'');
     const typeValue=String((document.getElementById('morning-report-agent-type')||{}).value||'all');
     const q=String((document.getElementById('morning-report-search')||{}).value||'').trim().toLowerCase();
-    let filtered=rows.filter(r=>canSeeMorningRow(r,headers));
+    const role=getRoleInfo();
+    let filtered=rows.filter(r=>canSeeMorningRow(r,headers,role,map));
     if(dssValue&&map.dso>=0){const allowed=getAssignedDsoWalletsForDss(dssValue);filtered=filtered.filter(r=>allowed.has(normalizeScopeWallet(r[map.dso])));}
     if(dsoValue&&map.dso>=0)filtered=filtered.filter(r=>normalizeScopeWallet(r[map.dso])===dsoValue);
     if(q)filtered=filtered.filter(r=>[map.agent>=0?r[map.agent]:'',map.agentName>=0?r[map.agentName]:''].some(v=>String(v).toLowerCase().includes(q)));
@@ -5903,7 +5897,6 @@ function renderMorningReport(){
     set('morning-kpi-cash-in-percent',formatPercent(totalCashInPercent));
     set('morning-kpi-balance',formatMorningNumber(balance));
     const head=document.getElementById('morning-report-head'),body=document.getElementById('morning-report-body');
-    const role=getRoleInfo();
     const showWallet=role.role==='Admin'||role.role==='DM';
     const reportCols=[
         ...(showWallet?[{title:'DSO Wallet',key:'dso',value:r=>morningDsoWallet(r,map)}]:[]),
@@ -6059,11 +6052,9 @@ async function saveAfternoonExcel(){
     }catch(err){failUploadProgress('Afternoon/Evening upload failed');setMorningStatus('afternoon-upload-preview','Upload failed: '+err.message,'error');}
     finally{if(btn)btn.disabled=false;}
 }
-function canSeeAfternoonRow(row,headers){
-    const role=getRoleInfo(),map=afternoonColumnMap(headers),wallet=map.dso>=0?normalizeScopeWallet(row[map.dso]):'';
+function canSeeAfternoonRow(row,headers,role=getRoleInfo(),map=afternoonColumnMap(headers)){
     if(role.role==='Admin'||role.role==='DM')return true;
-    if(role.role==='DSS')return false;
-    if(role.role==='DSO')return wallet===normalizeScopeWallet(role.dsoWallet);
+    if(role.role==='DSO')return map.dso>=0&&normalizeScopeWallet(row[map.dso])===normalizeScopeWallet(role.dsoWallet);
     return false;
 }
 function applyAfternoonReportData(data,source){
@@ -6073,7 +6064,8 @@ function applyAfternoonReportData(data,source){
     fullAfternoonReport=data;
     scheduleReportCache('afternoon',data);
     // Rows come only from Afternoon/Evening upload; AGENT TYPE is joined live from Morning by AGENT number.
-    const scoped=data.rows.filter(row=>Array.isArray(row)&&canSeeAfternoonRow(row,data.headers));
+    const role=getRoleInfo(),map=afternoonColumnMap(data.headers);
+    const scoped=data.rows.filter(row=>Array.isArray(row)&&canSeeAfternoonRow(row,data.headers,role,map));
     currentAfternoonReport={headers:data.headers,rows:scoped,fileName:data.fileName||'',uploadedAt:data.uploadedAt||0};
     populateAfternoonFilters();renderAfternoonReport();
     if(currentMorningReport&&Array.isArray(currentMorningReport.rows)&&currentMorningReport.rows.length)renderMorningReport();
@@ -6133,7 +6125,7 @@ function renderAfternoonReport(){
     const typeIndex=morningAgentTypeIndex();
     const isZeroB2BRow=r=>isZeroB2B(r,map.totalTxn,map.b2bs,map.b2br);
     const getType=r=>typeIndex.get(reportAgentKey(map.agent>=0?r[map.agent]:''))||{key:'unknown',label:'Not found in Morning'};
-    let filtered=rows.filter(r=>canSeeAfternoonRow(r,headers));if(dss&&map.dso>=0){const allowed=getAssignedDsoWalletsForDss(dss);filtered=filtered.filter(r=>allowed.has(normalizeScopeWallet(r[map.dso])));}if(dso&&map.dso>=0)filtered=filtered.filter(r=>normalizeScopeWallet(r[map.dso])===dso);
+    let filtered=rows.filter(r=>canSeeAfternoonRow(r,headers,role,map));if(dss&&map.dso>=0){const allowed=getAssignedDsoWalletsForDss(dss);filtered=filtered.filter(r=>allowed.has(normalizeScopeWallet(r[map.dso])));}if(dso&&map.dso>=0)filtered=filtered.filter(r=>normalizeScopeWallet(r[map.dso])===dso);
     if(type==='zero-b2b')filtered=filtered.filter(isZeroB2BRow);
     if(type==='cash-in'||type==='cash-out')filtered=filtered.filter(r=>getType(r).key===type);
     if(q)filtered=filtered.filter(r=>[map.agent>=0?r[map.agent]:'',map.agentName>=0?r[map.agentName]:''].some(v=>String(v).toLowerCase().includes(q)));
