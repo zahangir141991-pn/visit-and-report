@@ -4,7 +4,7 @@
 #view-dashboard .executive-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;background:linear-gradient(115deg,#086db9,#0788cb);padding:24px 28px;border-radius:16px;color:#fff;margin-bottom:18px;box-shadow:0 6px 18px #126bad17}
 #view-dashboard .executive-heading h2{color:#fff;font-size:clamp(1.25rem,2vw,1.85rem);line-height:1.25;margin:6px 0 8px;font-weight:750;letter-spacing:-.5px}
 #view-dashboard .executive-heading p{font-size:.82rem;color:#e2f5ff;margin:0}.executive-eyebrow{font-size:.65rem;font-weight:800;letter-spacing:1.8px}.executive-badge{font-size:.6rem;letter-spacing:1px;border:1px solid #ffffff60;padding:9px 12px;border-radius:30px;white-space:nowrap}
-#view-dashboard .executive-board{display:grid;grid-template-columns:185px minmax(0,1fr);gap:18px;align-items:start;background:#f1f6fa;border:1px solid #e1eaf1;padding:16px;border-radius:18px;text-align:left}
+#view-dashboard .executive-board{display:grid;grid-template-columns:185px minmax(0,1fr);gap:18px;align-items:start;background:#f1f6fa;border:0;padding:16px;border-radius:18px;text-align:left}
 #view-dashboard .executive-filters{background:#fff;border:1px solid #deE8f0;border-radius:12px;padding:15px;min-width:0;position:sticky;top:90px}
 #view-dashboard .executive-filter-title{display:flex;justify-content:space-between;font-size:.8rem;font-weight:800;color:var(--exec-ink);padding-bottom:14px;border-bottom:1px solid #e7eef4;margin-bottom:16px}
 #view-dashboard .executive-filters label{display:block;font-size:.7rem;color:#50677d;font-weight:650;margin-bottom:17px}
