@@ -44,3 +44,20 @@ test('legacy 1234 can only obtain a password-change restricted session',async()=
 test('every successful DMS credential login is atomically audited, including default-password accounts',async()=>{limits.clear();audits=[];account={passwordHash:await sha('01332517842','1234'),forceChange:false};const r=await run('/login',{userId:'842',password:'1234',deviceId:'device842',deviceLabel:'Android'});assert.equal(r.status,200);const data=await r.json();assert.equal(audits.length,1);const rows=Object.values(audits[0]);assert.equal(rows.length,2);assert.equal(rows[0].userId,'01332517842');assert.equal(rows[0].passwordChangeRequired,true);assert.equal(rows[0].active,false);assert.equal(rows[0].loginEventId,data.loginAudit.eventKey);assert.ok(!JSON.stringify(audits).includes('passwordHash'));});
 test('failed credentials never create login history; audit failure prevents a false-success response',async()=>{limits.clear();audits=[];account={passwordHash:await sha('admin','known-password')};assert.equal((await run('/login',{userId:'admin',password:'wrong'})).status,401);assert.equal(audits.length,0);auditFails=true;try{const r=await run('/login',{userId:'admin',password:'known-password'});assert.equal(r.status,503);assert.ok(!(await r.json()).token);}finally{auditFails=false;}});
 
+
+test('admin reset requires another selected user and DSO 835 can sign in with the new password',async()=>{
+ limits.clear();writes=[];
+ account={passwordHash:await sha('admin','admin-secret')};
+ for(const targetUser of ['','admin']){
+  const response=await run('/admin/password',{userId:'admin',password:'admin-secret',targetUser,newPassword:'new-testing-password'});
+  assert.equal(response.status,400);
+ }
+ assert.equal(writes.length,0);
+ const response=await run('/admin/password',{userId:'admin',password:'admin-secret',targetUser:'835',newPassword:'new-testing-password'});
+ assert.equal(response.status,200);
+ assert.equal((await response.json()).userId,'01332517835');
+ account=writes[0];
+ const login=await run('/login',{userId:'835',password:'new-testing-password'});
+ assert.equal(login.status,200);
+ assert.equal((await login.json()).userId,'01332517835');
+});

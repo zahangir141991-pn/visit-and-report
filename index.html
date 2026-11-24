@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-24-password-policy-v246">
+    <meta name="dms-app-version" content="2026-11-24-admin-reset-guard-v247">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1220,11 +1220,11 @@ body.app-logged-in #view-login{display:none!important}
                 <h2 style="font-size:1.1rem; margin-bottom:12px;">Admin Management Panel</h2>
                 <div class="card" style="text-align:left; margin-bottom:16px;">
                     <h3 style="font-size:1rem; margin-bottom:6px;">Admin Password Management</h3>
-                    <p style="color:#64748b;font-size:.86rem;line-height:1.5;margin-bottom:12px;">Admin যেকোনো user-এর password সরাসরি পরিবর্তন করতে পারবেন। নতুন password সেট করলে সেটিই পরবর্তী login-এর জন্য কার্যকর হবে।</p>
+                    <p style="color:#64748b;font-size:.86rem;line-height:1.5;margin-bottom:12px;">অন্য ইউজারের পাসওয়ার্ড বদলাতে প্রথমে ইউজার বেছে নিন। নিজের পাসওয়ার্ড বদলাতে Settings ব্যবহার করুন।</p>
                     <div class="form-group">
                         <label>Select User</label>
                         <select id="admin-password-user">
-                            <option value="admin">Admin</option>
+                            <option value="" disabled selected>Select a user</option>
                             <option value="zahangir">DM - Zahangir</option>
                             <option value="sohag">DSS - Sohag</option>
                             <option value="alamin">DSS - Alamin</option>
@@ -1236,7 +1236,7 @@ body.app-logged-in #view-login{display:none!important}
                     </div>
                     <div class="form-group">
                         <label>New Password</label>
-                        <input type="password" id="admin-new-password" minlength="3" placeholder="Enter new password">
+                        <input type="password" id="admin-new-password" minlength="8" maxlength="256" autocomplete="new-password" placeholder="Enter new password">
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;">
                         <label for="admin-confirm-password">Your current Admin password</label><input id="admin-confirm-password" type="password" autocomplete="current-password" placeholder="Confirm Admin password">
@@ -1735,8 +1735,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-24-password-policy-v246';
-        const APP_RELEASED_AT = 1795506307991;
+        const APP_CACHE_VERSION = '2026-11-24-admin-reset-guard-v247';
+        const APP_RELEASED_AT = 1795525388966;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -2939,7 +2939,7 @@ function clearPrivateSessionData(){
             const targetUser = select ? select.value : '';
             const newPass = passInput ? passInput.value.trim() : '';
 
-            if (!targetUser) {
+            if (!targetUser || targetUser === 'admin') {
                 alert('Please select a user.');
                 return;
             }
@@ -2948,10 +2948,9 @@ function clearPrivateSessionData(){
                 return;
             }
 
+            const label = select.options[select.selectedIndex]?.text || targetUser;
+            if (!confirm('Reset the password for '+label+' (User ID: '+targetUser+')?')) return;
             try{await saveCloudAuth(targetUser,newPass,false);}catch(e){alert(e.message||'Password update failed.');return;}
-            userPasswords[targetUser] = newPass;savePasswords();
-
-            const label = select.options[select.selectedIndex]?.text || targetUser.toUpperCase();
             if (status) {
                 status.innerText = `Password changed successfully for ${label}.`;
                 status.style.color = '#15803d';

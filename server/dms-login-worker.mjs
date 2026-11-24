@@ -168,6 +168,7 @@ export default {async fetch(req,env){
   if(u.pathname==='/admin/password'){
    if(id!=='admin'||account.forceChange===true||isWeakDmsPassword(password))return json({error:'Admin permission required'},403,origin);
    const target=normalizeUser(input.targetUser),next=input.newPassword,reset=input.forceChange===true;
+   if(target===id)return json({error:'Change your own password in Settings.'},400,origin);
    if(!approvedUser(target)||isWeakDmsPassword(next)||next.length>256)return json({error:'Select a valid user and use at least 8 characters. Numeric-only and common passwords are not allowed.'},400,origin);
    const response=await firebase(env,'user_auth/'+target,{headers:{'X-Firebase-ETag':'true'}});
    if(!response.ok)throw Error('FIREBASE_ACCESS_DENIED');
