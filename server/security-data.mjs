@@ -29,11 +29,20 @@ export async function secureData(input,id,read){
    if(data.chunked){
     const prefix=section.replace('_current','_chunks')+'/';
     if(typeof data.chunkRoot!=='string'||!data.chunkRoot.startsWith(prefix)||!/^\w+\/[-\w]+$/.test(data.chunkRoot)||!Number.isInteger(data.chunkCount)||data.chunkCount<0||data.chunkCount>250)throw Error('Invalid report manifest');
-    rows=[];for(let i=0;i<data.chunkCount;i+=8){const chunks=await Promise.all(Array.from({length:Math.min(8,data.chunkCount-i)},(_,j)=>read(data.chunkRoot+'/chunk_'+(i+j))));for(const chunk of chunks)rows.push(...(Array.isArray(chunk)?chunk:[]));}
+    if(!s.all&&data.dsoShards===true){
+     const scopedRows=await read(data.chunkRoot+'/by_dso/'+s.own);
+     rows=Array.isArray(scopedRows)?scopedRows:[];
+    }else{
+     rows=[];
+     for(let i=0;i<data.chunkCount;i+=8){
+      const chunks=await Promise.all(Array.from({length:Math.min(8,data.chunkCount-i)},(_,j)=>read(data.chunkRoot+'/chunk_'+(i+j))));
+      for(const chunk of chunks)if(Array.isArray(chunk))rows.push(...chunk);
+     }
+    }
    }
    const headers=data.headers||[],column=headers.findIndex(h=>/^DSO(?:[ _-]*(?:WALLET|NUMBER|NO|ID))?$/i.test(String(h).trim()));
    rows=rows.filter(r=>s.all||(column>=0&&s.wallets.has(wallet(r[column]))));
-   data={...data,rows,chunked:false,rowCount:rows.length};delete data.chunkRoot;delete data.chunkCount;
+   data={...data,rows,chunked:false,rowCount:rows.length};delete data.chunkRoot;delete data.chunkCount;delete data.dsoShards;
   }
  }else if(['visit_reports','visit_reports_index','visit_notices','new_uddokta_kyc'].includes(section)){
   const predicate=section==='new_uddokta_kyc'?owned:section==='visit_notices'?(r=>!s.dss&&owned(r)):visitOwned;

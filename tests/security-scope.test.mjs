@@ -38,3 +38,24 @@ test('read adapter query filters and unsubscribe suppress late responses',async(
  let resolve,calls=0;const native={ref:()=>({toString:()=>'',set(){},update(){},push(){},transaction(){},onDisconnect(){}})};
  const db=api.database(native,()=>new Promise(r=>resolve=r));const ref=db.ref('new_uddokta_kyc');ref.on('value',()=>calls++);db.stopScopedReads();resolve({a:{}});await new Promise(r=>setTimeout(r,0));assert.equal(calls,0);
 });
+
+test('partitioned reports read only the verified DSO shard, including empty results', async () => {
+ const manifest = {...fixtures.morning_report_current, dsoShards:true};
+ const requested = [];
+ const readPartitioned = async path => {
+  requested.push(path);
+  if(path === 'morning_report_current')return manifest;
+  if(path.endsWith('/by_dso/801'))return [['801','own'],['802','wrongly filed']];
+  if(path.endsWith('/by_dso/803'))return null;
+  return read(path);
+ };
+ const own = await secureData({path:'morning_report_current',userId:'802'},'01332517801',readPartitioned);
+ assert.deepEqual(own.rows,[['801','own']]);
+ assert.deepEqual(requested,['morning_report_current','morning_report_chunks/upload1/by_dso/801']);
+ requested.length=0;
+ assert.deepEqual((await secureData({path:'morning_report_current'},'01332517803',readPartitioned)).rows,[]);
+ assert.deepEqual(requested,['morning_report_current','morning_report_chunks/upload1/by_dso/803']);
+ requested.length=0;
+ assert.equal((await secureData({path:'morning_report_current'},'admin',readPartitioned)).rows.length,2);
+ assert.deepEqual(requested,['morning_report_current','morning_report_chunks/upload1/chunk_0']);
+});

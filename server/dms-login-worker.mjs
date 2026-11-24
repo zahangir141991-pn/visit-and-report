@@ -142,7 +142,7 @@ export default {async fetch(req,env){
  if(u.pathname==='/backup/export')return handleBackupExport(req,env,{firebase,rateLimit});
  if(req.method==='GET'&&['/','/health'].includes(u.pathname)){
   try{serviceAccount(env);databaseUrl(env);await credentialCache.key;
-   return json({ok:true,service:'DMS Secure Login',version:'186',configured:true,capabilities:['attendance-token','dms-login','password-change','scoped-data-v1','encrypted-backup-export-v1','server-login-audit-v1','visit-feedback-v1'],note:'Configuration validated only; authenticated login and database rules must be tested separately.'});
+   return json({ok:true,service:'DMS Secure Login',version:'188',configured:true,capabilities:['attendance-token','dms-login','password-change','scoped-data-v1','encrypted-backup-export-v1','server-login-audit-v1','visit-feedback-v1'],note:'Configuration validated only; authenticated login and database rules must be tested separately.'});
   }catch(e){return json({ok:false,configured:false,error:errors[e.message]||'Login server configuration error'},503)}
  }
  if(!['/','/token','/login','/password','/admin/password','/performance','/targets','/data','/visit-feedback'].includes(u.pathname))return json({error:'Not found'},404);

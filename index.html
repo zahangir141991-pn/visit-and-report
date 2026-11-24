@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-24-background-sync-v248">
+    <meta name="dms-app-version" content="2026-11-24-report-scope-v249">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1735,7 +1735,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-24-background-sync-v248';
+        const APP_CACHE_VERSION = '2026-11-24-report-scope-v249';
         const APP_RELEASED_AT = 1795526302814;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -5475,11 +5475,24 @@ async function saveReportInParallelChunks(reportType,payload,targetSnapshot){
     const chunkRoot=reportType+'_report_chunks/'+uploadId;
     if(uploadProgressTimer)clearInterval(uploadProgressTimer);uploadProgressTimer=null;
     const parts=(chunks.length?chunks:[[]]).map((chunk,index)=>({path:chunkRoot+'/chunk_'+index,body:JSON.stringify(chunk),loaded:0}));
+    const dsoColumn=(payload.headers||[]).findIndex(header=>/^DSO(?:[ _-]*(?:WALLET|NUMBER|NO|ID))?$/i.test(String(header).trim()));
+    if(dsoColumn>=0){
+        const rowsByDso=new Map();
+        for(const row of rows){
+            const dso=normalizeScopeWallet(row[dsoColumn]);
+            if(!/^8(?:0[1-9]|[1-3][0-9]|4[0-6])$/.test(dso))continue;
+            if(!rowsByDso.has(dso))rowsByDso.set(dso,[]);
+            rowsByDso.get(dso).push(row);
+        }
+        for(const [dso,ownRows] of rowsByDso){
+            parts.push({path:chunkRoot+'/by_dso/'+dso,body:JSON.stringify(ownRows),loaded:0});
+        }
+    }
     const totalBytes=Math.max(1,parts.reduce((n,x)=>n+x.body.length,0));
     const label=reportType==='morning'?'Morning Report Upload':'Afternoon/Evening Report Upload';
     const updateActual=()=>{const loaded=parts.reduce((n,x)=>n+x.loaded,0);paintUploadProgress(Math.min(95,5+Math.round((loaded/totalBytes)*90)),label);};
     await Promise.all(parts.map(part=>firebaseRestWrite(part.path,part.body,'PUT',(loaded,total)=>{part.loaded=total?Math.min(loaded,total):loaded;updateActual();})));
-    const meta=Object.assign({},payload,{rows:[],chunked:true,chunkRoot,chunkCount:chunks.length,rowCount:rows.length,schemaVersion:3});
+    const meta=Object.assign({},payload,{rows:[],chunked:true,chunkRoot,chunkCount:chunks.length,rowCount:rows.length,schemaVersion:3,dsoShards:dsoColumn>=0});
     paintUploadProgress(97,'Final data confirmation...');
     const savedResponse=targetSnapshot
       ? await firebaseRestWrite('',JSON.stringify({[reportType+'_report_current']:meta,['dms_target_tracking/'+targetSnapshot.date.slice(0,7)+'/history/'+targetSnapshot.date]:targetSnapshot.groups,...Object.fromEntries(Object.entries(targetSnapshot.metrics||{}).map(([metric,rows])=>['dms_target_tracking/'+targetSnapshot.date.slice(0,7)+'/metrics/'+metric+'/history/'+targetSnapshot.date,rows]))}),'PATCH')
