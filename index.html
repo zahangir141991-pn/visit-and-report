@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-24-compact-dashboard-v237">
+    <meta name="dms-app-version" content="2026-11-24-smaller-dashboard-v238">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -925,14 +925,14 @@ body:has(#view-kyc-status.active) #app-copyright,body:has(#view-kyc-status.activ
 }
 </style>
 <style id="dashboard-compact-kpis">
-#view-dashboard .executive-kpis{gap:6px}
-#view-dashboard .executive-kpis>div{padding:6px 10px;border-radius:9px}
-#view-dashboard .executive-kpis span{font-size:11px;line-height:1.35}
-#view-dashboard .executive-kpis strong{font-size:17px;line-height:1.25;margin-top:2px;letter-spacing:-.2px}
-#view-dashboard .executive-kpis small{font-size:9px;line-height:1.35;margin-top:2px}
+#view-dashboard .executive-kpis{gap:4px}
+#view-dashboard .executive-kpis>div{padding:4px 8px;border-radius:7px}
+#view-dashboard .executive-kpis span{font-size:10px;line-height:1.25}
+#view-dashboard .executive-kpis strong{font-size:15px;line-height:1.2;margin-top:1px;letter-spacing:-.2px}
+#view-dashboard .executive-kpis small{font-size:9px;line-height:1.2;margin-top:1px}
 @media(max-width:600px){
- #view-dashboard .executive-kpis>div{padding:6px 8px}
- #view-dashboard .executive-kpis strong{font-size:15px}
+ #view-dashboard .executive-kpis>div{padding:4px 6px}
+ #view-dashboard .executive-kpis strong{font-size:14px}
  #view-dashboard .executive-kpis span{font-size:10px}
 }
 </style>
@@ -1735,8 +1735,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-24-compact-dashboard-v237';
-        const APP_RELEASED_AT = 1795499351631;
+        const APP_CACHE_VERSION = '2026-11-24-smaller-dashboard-v238';
+        const APP_RELEASED_AT = 1795499526941;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
