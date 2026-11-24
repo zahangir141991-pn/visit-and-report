@@ -53,6 +53,14 @@ export async function passwordMatches(account,id,password){
  if(account.passwordAlgorithm&&account.passwordAlgorithm!=='sha256')return false;
  return equalHash(await digest('dms-v1|'+id+'|'+password),String(account.passwordHash||''));
 }
+function isWeakDmsPassword(value) {
+    if (typeof value !== 'string') return true;
+    const password = value.trim().toLowerCase();
+    return password.length < 8 || /^[0-9০-৯]+$/.test(password) ||
+        /^(.)\1+$/.test(password) ||
+        /^(?:password|qwerty|letmein|admin|welcome|changeme|abcd|abcdef|abc)(?:[0-9]+)?[!@#$]*$/.test(password);
+}
+
 export async function newPasswordRecord(id,password){
  const salt=Array.from(crypto.getRandomValues(new Uint8Array(16)),x=>x.toString(16).padStart(2,'0')).join('');
  const key=await crypto.subtle.importKey('raw',encoder.encode(password),'PBKDF2',false,['deriveBits']);
@@ -150,7 +158,7 @@ export default {async fetch(req,env){
   if(u.pathname==='/performance')return json(await performanceReport(env,input),200,origin);
   const id=normalizeUser(input.userId),password=input.password;
   const attendanceOnly=['/','/token'].includes(u.pathname);
-  if(!approvedUser(id)||typeof password!=='string'||!password||password.length>256||(attendanceOnly&&(!['admin','zahangir'].includes(id)||password==='1234')))
+  if(!approvedUser(id)||typeof password!=='string'||!password||password.length>256||(attendanceOnly&&(!['admin','zahangir'].includes(id)||isWeakDmsPassword(password))))
    return json({error:'Invalid User ID or Password'},401,origin);
   // Cross-account attempts from the same IP share a separate budget.
   const ip=req.headers.get('CF-Connecting-IP')||'unknown';
@@ -158,9 +166,9 @@ export default {async fetch(req,env){
   const account=await readAccount(env,id);
   if(!await passwordMatches(account,id,password)||(attendanceOnly&&account.forceChange===true))return json({error:'Invalid User ID or Password'},401,origin);
   if(u.pathname==='/admin/password'){
-   if(id!=='admin'||account.forceChange===true||password==='1234')return json({error:'Admin permission required'},403,origin);
+   if(id!=='admin'||account.forceChange===true||isWeakDmsPassword(password))return json({error:'Admin permission required'},403,origin);
    const target=normalizeUser(input.targetUser),next=input.newPassword,reset=input.forceChange===true;
-   if(!approvedUser(target)||typeof next!=='string'||next.length>256||next.length<8||next==='1234')return json({error:'Select a valid user and use at least 8 characters. Default password 1234 is not allowed.'},400,origin);
+   if(!approvedUser(target)||isWeakDmsPassword(next)||next.length>256)return json({error:'Select a valid user and use at least 8 characters. Numeric-only and common passwords are not allowed.'},400,origin);
    const response=await firebase(env,'user_auth/'+target,{headers:{'X-Firebase-ETag':'true'}});
    if(!response.ok)throw Error('FIREBASE_ACCESS_DENIED');
    const latest=await response.json(),etag=response.headers.get('etag');
@@ -173,7 +181,7 @@ export default {async fetch(req,env){
   }
   if(u.pathname==='/password'){
    const next=input.newPassword;
-   if(typeof next!=='string'||next.length<8||next.length>256||next===password)return json({error:'Use a different password with at least 8 characters'},400,origin);
+   if(isWeakDmsPassword(next)||next.length>256||next===password)return json({error:'Use a different password with at least 8 characters. Numeric-only and common passwords are not allowed.'},400,origin);
    // ETag guards the credential read and update against concurrent password changes.
    const response=await firebase(env,'user_auth/'+id,{headers:{'X-Firebase-ETag':'true'}});
    if(!response.ok)throw Error('FIREBASE_ACCESS_DENIED');const latest=await response.json(),etag=response.headers.get('etag');
@@ -184,9 +192,9 @@ export default {async fetch(req,env){
    if(!saved.ok)throw Error('FIREBASE_ACCESS_DENIED');
    return json({ok:true,requireLogin:true},200,origin);
   }
-  const token=await issueToken(env,id,{...account,forceChange:account.forceChange===true||password==='1234'},attendanceOnly);
-  const loginAudit=attendanceOnly?null:await recordVerifiedLogin(env,id,input,account.forceChange===true||password==='1234');
-  return json({token,...(attendanceOnly?{}:{userId:id,forceChange:account.forceChange===true||password==='1234',loginAudit})},200,origin);
+  const token=await issueToken(env,id,{...account,forceChange:account.forceChange===true||isWeakDmsPassword(password)},attendanceOnly);
+  const loginAudit=attendanceOnly?null:await recordVerifiedLogin(env,id,input,account.forceChange===true||isWeakDmsPassword(password));
+  return json({token,...(attendanceOnly?{}:{userId:id,forceChange:account.forceChange===true||isWeakDmsPassword(password),loginAudit})},200,origin);
  }catch(e){return json({error:e.status?e.message:errors[e.message]||'Login server temporarily unavailable'},e.status||503,origin)}
 }};
 

@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-24-attendance-footer-v245">
+    <meta name="dms-app-version" content="2026-11-24-password-policy-v246">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1735,8 +1735,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-24-attendance-footer-v245';
-        const APP_RELEASED_AT = 1795505379082;
+        const APP_CACHE_VERSION = '2026-11-24-password-policy-v246';
+        const APP_RELEASED_AT = 1795506307991;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -2662,7 +2662,7 @@ body.app-logged-in #view-login{display:none!important}
             // Login itself must never depend on Firebase/network/table loading.
             // Enter the app first, then initialize optional data services safely.
             appSessionGeneration++;currentUser = user;window.DmsTheme?.signIn(user);startDmsIdleLogout();verifiedLoginAudit=cloudAuth?.loginAudit||null;syncReportUploadClock();
-            mustChangeDefaultPassword = cloudAuth&&typeof cloudAuth.forceChange==='boolean'?cloudAuth.forceChange:(pass==='1234');
+            mustChangeDefaultPassword = cloudAuth?.forceChange===true||isWeakDmsPassword(pass);
             clearRuntimeDataCaches();
             document.body.classList.add('app-logged-in');
             startAppUpdateMonitor();
@@ -2897,6 +2897,14 @@ function clearPrivateSessionData(){
             else setTimeout(cleanup, 0);
         }
 
+        function isWeakDmsPassword(value) {
+            if (typeof value !== 'string') return true;
+            const password = value.trim().toLowerCase();
+            return password.length < 8 || /^[0-9০-৯]+$/.test(password) ||
+                /^(.)\1+$/.test(password) ||
+                /^(?:password|qwerty|letmein|admin|welcome|changeme|abcd|abcdef|abc)(?:[0-9]+)?[!@#$]*$/.test(password);
+        }
+
         async function changePassword() {
             const oldInput = document.getElementById('old-password');
             const newInput = document.getElementById('new-password');
@@ -2905,7 +2913,7 @@ function clearPrivateSessionData(){
             const newPass = newInput ? newInput.value.trim() : '';
             const confirmPass = confirmInput ? confirmInput.value.trim() : '';
             if(!currentUser||!oldPass){alert('Old Password দিন।');return;}
-            if(newPass.length<8){alert('New Password কমপক্ষে ৮ অক্ষরের হতে হবে।');return;}
+            if(isWeakDmsPassword(newPass)){alert('কমপক্ষে ৮ অক্ষরের পাসওয়ার্ড দিন। শুধু সংখ্যা বা প্রচলিত দুর্বল পাসওয়ার্ড ব্যবহার করা যাবে না।');return;}
             if(newPass===oldPass){alert('New Password আলাদা হতে হবে।');return;}
             if(newPass!==confirmPass){alert('New Password এবং Confirm Password মিলছে না।');return;}
             const user=currentUser,generation=appSessionGeneration;
@@ -2935,8 +2943,8 @@ function clearPrivateSessionData(){
                 alert('Please select a user.');
                 return;
             }
-            if (newPass.length < 8) {
-                alert('Password must be at least 8 characters.');
+            if (isWeakDmsPassword(newPass)) {
+                alert('Use at least 8 characters. Numeric-only and common passwords are not allowed.');
                 return;
             }
 
