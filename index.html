@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-24-admin-reset-guard-v247">
+    <meta name="dms-app-version" content="2026-11-24-background-sync-v248">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1735,8 +1735,8 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-24-admin-reset-guard-v247';
-        const APP_RELEASED_AT = 1795525388966;
+        const APP_CACHE_VERSION = '2026-11-24-background-sync-v248';
+        const APP_RELEASED_AT = 1795526302814;
         // Remove old automatic-reload parameters without reloading the page.
         try {
             const cleanUrl=new URL(location.href);
@@ -2504,31 +2504,37 @@ body.app-logged-in #view-login{display:none!important}
 
         let loginServerSyncPromise = null;
         let serverUpdatePollTimer = null;
-        let serverUpdatePollBusy = false;
+        let serverUpdatePollJob = null;
         let lastServerUpdateSignature = '';
         function stopServerUpdatePolling() {
             if (serverUpdatePollTimer) clearTimeout(serverUpdatePollTimer);
-            serverUpdatePollTimer = null; serverUpdatePollBusy = false;
+            serverUpdatePollTimer = null; serverUpdatePollJob = null;
         }
         async function pollServerUpdateSignal() {
             if (!currentUser || !document.body?.classList.contains('app-logged-in')) { stopServerUpdatePolling(); return; }
-            if (serverUpdatePollBusy) return;
+            if (document.hidden || serverUpdatePollJob) return;
             if (serverUpdatePollTimer) clearTimeout(serverUpdatePollTimer);
             serverUpdatePollTimer = null;
-            serverUpdatePollBusy = true;
+            const job = {generation: appSessionGeneration};
+            serverUpdatePollJob = job;
+            const active = () => serverUpdatePollJob === job && job.generation === appSessionGeneration;
             try {
                 const signal = await firebaseRestReadFresh('dms_live_update_signal');
+                if (!active()) return;
                 const signature = signal ? [signal.type,signal.revision,signal.uploadId,signal.reportId,signal.recordId].map(v=>String(v||'')).join('|') : '';
                 if (signature && lastServerUpdateSignature && signature !== lastServerUpdateSignature) {
                     try { scopedReportLoads.clear(); } catch (_) {}
                     await refreshVisiblePageDataFast();
+                    if (!active()) return;
                     showLiveUpdateToast('নতুন data স্বয়ংক্রিয়ভাবে update হয়েছে ✓');
                 }
                 if (signature) lastServerUpdateSignature = signature;
             } catch (e) { console.warn('Background update check skipped:', e); }
             finally {
-                serverUpdatePollBusy = false;
-                if (currentUser && document.body?.classList.contains('app-logged-in')) serverUpdatePollTimer = setTimeout(pollServerUpdateSignal, 3000);
+                if (active()) {
+                    serverUpdatePollJob = null;
+                    if (!document.hidden && currentUser && document.body?.classList.contains('app-logged-in')) serverUpdatePollTimer = setTimeout(pollServerUpdateSignal, 3000);
+                }
             }
         }
         function startServerUpdatePolling() {
