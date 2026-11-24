@@ -208,9 +208,9 @@
   }
 
   #app-nav.nav-sidebar .nav-item.active {
-    background: #fff5e8;
-    box-shadow: inset 3px 0 #886044;
-    color: #3d281c;
+    background: #d3e6fb;
+    box-shadow: inset 3px 0 #3169a8;
+    color: #183b63;
   }
 }
 
