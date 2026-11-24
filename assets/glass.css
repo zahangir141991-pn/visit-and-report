@@ -688,3 +688,28 @@
     animation: dms-door-swing 220ms ease-out reverse both;
   }
 }
+
+@media screen {
+  :root:not([data-dms-theme="light"]):not([data-dms-theme="dark"]) {
+    --dms-field-sheen: linear-gradient(155deg, #ffffffc9, #f0f7ff45 68%, #dbeaf56b);
+    --dms-field-edge: #8aa8c480;
+    --dms-field-shadow: inset 0 1px 0 #fffffff2, 0 2px 5px #2e537615;
+  }
+
+  :root:not([data-dms-theme="light"]):not([data-dms-theme="dark"])
+  :is(#main-app,#view-login,#app-nav,.workspace,dialog)
+  :is(input:not([type="checkbox"],[type="radio"],[type="range"],[type="color"],[type="button"],[type="submit"],[type="reset"]),select,textarea) {
+    background-color: transparent;
+    background-image: var(--dms-field-sheen);
+    border-color: var(--dms-field-edge);
+    box-shadow: var(--dms-field-shadow);
+    color: #152c46;
+  }
+
+  :root:not([data-dms-theme="light"]):not([data-dms-theme="dark"])
+  :is(#main-app,#view-login,#app-nav,.workspace,dialog)
+  :is(input:not([type="checkbox"],[type="radio"],[type="range"],[type="color"],[type="button"],[type="submit"],[type="reset"]),select,textarea):focus {
+    border-color: #477bb2;
+    box-shadow: var(--dms-field-shadow), 0 0 0 2px #477bb24d;
+  }
+}
