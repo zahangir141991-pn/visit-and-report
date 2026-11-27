@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="dms-app-version" content="2026-11-27-kyc-whatsapp-v250">
+    <meta name="dms-app-version" content="2026-11-27-kyc-whatsapp-v251">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1735,7 +1735,7 @@ body.app-logged-in #view-login{display:none!important}
         // short-lived fallback so old/stale data is automatically
         // removed instead of being shown indefinitely.
         // ----------------------------------------------------
-        const APP_CACHE_VERSION = '2026-11-27-kyc-whatsapp-v250';
+        const APP_CACHE_VERSION = '2026-11-27-kyc-whatsapp-v251';
         const APP_RELEASED_AT = 1795526302814;
         // Remove old automatic-reload parameters without reloading the page.
         try {
@@ -6423,7 +6423,12 @@ function openKycWhatsAppUpdate(button){
     if(entered===null)return;
     const number=normalizeKycWhatsAppNumber(entered);
     if(!number){kycAlert('সঠিক বাংলাদেশি WhatsApp নম্বর দিন।','error');return;}
-    const message='DMS KYC আপডেট: আপনার '+(record.collectionDate?record.collectionDate+' তারিখে ':'')+'জমা দেওয়া KYC-এর বর্তমান স্ট্যাটাস '+normalizeKycStatus(record.status)+'। বিস্তারিত DMS-এর KYC Status-এ দেখুন।';
+    const message=[
+        'DMS KYC আপডেট: আপনার '+(record.collectionDate?record.collectionDate+' তারিখে ':'')+'জমা দেওয়া KYC-এর বর্তমান স্ট্যাটাস '+normalizeKycStatus(record.status)+'।',
+        'Uddokta Number: '+(String(record.uddoktaNumber??'').trim()||'—'),
+        'Shop Name: '+(String(record.shopName??'').trim()||'—'),
+        'বিস্তারিত DMS-এর KYC Status-এ দেখুন।'
+    ].join('\n');
     window.open('https://wa.me/'+number+'?text='+encodeURIComponent(message),'_blank','noopener,noreferrer');
 }
 
